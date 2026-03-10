@@ -1,19 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { mockTimeEntries } from '@/data/mockData';
 import { formatHoursDecimal } from '@/utils/timeUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
-
-function StatusBadge({ status }: { status: string }) {
-  const config = {
-    pending: { label: 'Pendente', className: 'bg-pending/15 text-pending-foreground border-pending/30' },
-    approved: { label: 'Aprovado', className: 'bg-approved/15 text-approved-foreground border-approved/30' },
-    rejected: { label: 'Rejeitado', className: 'bg-rejected/15 text-rejected-foreground border-rejected/30' },
-  }[status] || { label: status, className: '' };
-  return <Badge variant="outline" className={config.className}>{config.label}</Badge>;
-}
 
 export default function History() {
   const { user } = useAuth();
@@ -61,7 +51,7 @@ export default function History() {
                   <th className="pb-3 font-medium">Entrada 2</th>
                   <th className="pb-3 font-medium">Saída 2</th>
                   <th className="pb-3 font-medium">Total</th>
-                  <th className="pb-3 font-medium">Status</th>
+                  <th className="pb-3 font-medium">Justificativa</th>
                 </tr>
               </thead>
               <tbody>
@@ -75,7 +65,7 @@ export default function History() {
                     <td className="py-3">{e.entry2 || '--'}</td>
                     <td className="py-3">{e.exit2 || '--'}</td>
                     <td className="py-3 font-semibold">{formatHoursDecimal(e.totalHours)}</td>
-                    <td className="py-3"><StatusBadge status={e.status} /></td>
+                    <td className="py-3 text-xs text-muted-foreground">{e.justification || '—'}</td>
                   </tr>
                 ))}
                 {entries.length === 0 && (

@@ -1,7 +1,5 @@
 export type UserRole = 'user' | 'admin';
 
-export type PointStatus = 'pending' | 'approved' | 'rejected';
-
 export interface User {
   id: string;
   name: string;
@@ -10,20 +8,22 @@ export interface User {
   department: string;
   weeklyHours: number;
   avatar?: string;
+  ra?: string;
+  cargo?: string;
+  recessStartDate?: string; // YYYY-MM-DD
+  onRecess?: boolean;
 }
 
 export interface TimeEntry {
   id: string;
   userId: string;
   date: string; // YYYY-MM-DD
-  entry1: string | null; // decimal format e.g. "07:15"
+  entry1: string | null;
   exit1: string | null;
   entry2: string | null;
   exit2: string | null;
   totalHours: number;
-  status: PointStatus;
-  approvedBy?: string;
-  approvedAt?: string;
+  justification?: string; // required if > 6h10min
   notes?: string;
 }
 
@@ -32,7 +32,7 @@ export interface HourBalance {
   month: string; // YYYY-MM
   expectedHours: number;
   workedHours: number;
-  balance: number; // positive or negative
+  balance: number;
 }
 
 export interface Notification {
@@ -42,7 +42,17 @@ export interface Notification {
   type: 'info' | 'warning' | 'alert';
   createdAt: string;
   read: boolean;
-  targetUserId?: string; // null = all users
+  targetUserId?: string;
+}
+
+export interface Justification {
+  id: string;
+  userId: string;
+  date: string;
+  type: 'atestado' | 'compensado';
+  description?: string;
+  attachmentName?: string;
+  createdAt: string;
 }
 
 export interface AuditLog {

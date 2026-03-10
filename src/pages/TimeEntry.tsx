@@ -3,10 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { validateTime, validateTimeSequence, calculateDailyHours, formatHoursDecimal } from '@/utils/timeUtils';
 import { Clock, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const MAX_HOURS_WITHOUT_JUSTIFICATION = 6.167; // 6h10min
+
+const JUSTIFICATION_OPTIONS = [
+  'Alinhado com a coordenação',
+  'Alto nível de demanda',
+];
 
 export default function TimeEntry() {
   const { user } = useAuth();
@@ -15,6 +23,7 @@ export default function TimeEntry() {
   const [exit1, setExit1] = useState('');
   const [entry2, setEntry2] = useState('');
   const [exit2, setExit2] = useState('');
+  const [justification, setJustification] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
 
@@ -29,10 +38,11 @@ export default function TimeEntry() {
     entry1 || null, exit1 || null, entry2 || null, exit2 || null
   );
 
+  const needsJustification = totalHours > MAX_HOURS_WITHOUT_JUSTIFICATION;
+
   const handleSave = () => {
     const newErrors: Record<string, string> = {};
 
-    // Validate individual times
     fields.forEach(f => {
       if (f.value) {
         const result = validateTime(f.value);
@@ -40,10 +50,8 @@ export default function TimeEntry() {
       }
     });
 
-    // At least entry1 required
     if (!entry1) newErrors.entry1 = 'Entrada 1 é obrigatória';
 
-    // Validate sequence
     if (Object.keys(newErrors).length === 0) {
       const seq = validateTimeSequence(entry1 || null, exit1 || null, entry2 || null, exit2 || null);
       if (!seq.valid) {
@@ -52,15 +60,19 @@ export default function TimeEntry() {
       }
     }
 
-    // Check paired entries
     if (entry2 && !exit1) newErrors.exit1 = 'Preencha Saída 1 antes de Entrada 2';
     if (exit2 && !entry2) newErrors.entry2 = 'Preencha Entrada 2 antes de Saída 2';
+
+    // Check justification requirement
+    if (needsJustification && !justification) {
+      newErrors.justification = 'Justificativa obrigatória para mais de 6h10min';
+    }
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
     setSaved(true);
-    toast.success('Ponto registrado com sucesso! Aguardando aprovação.');
+    toast.success('Ponto registrado com sucesso!');
   };
 
   if (!user) return null;
@@ -106,6 +118,34 @@ export default function TimeEntry() {
               ))}
             </div>
 
+            {/* Justification dropdown - shows when hours > 6h10min */}
+            {needsJustification && (
+              <div className="mt-4 space-y-2 rounded-lg border border-warning/30 bg-warning/5 p-4">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-warning" />
+                  <Label className="text-sm font-medium text-foreground">
+                    Justificativa para horas extras (acima de 6h10min)
+                  </Label>
+                </div>
+                <Select value={justification} onValueChange={v => { setJustification(v); setSaved(false); }} disabled={saved}>
+                  <SelectTrigger className={errors.justification ? 'border-destructive' : ''}>
+                    <SelectValue placeholder="Selecione uma justificativa..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JUSTIFICATION_OPTIONS.map(opt => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.justification && (
+                  <p className="flex items-center gap-1 text-xs text-destructive">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.justification}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="mt-6 flex items-center justify-between">
               <div className="rounded-lg bg-muted px-4 py-2">
                 <p className="text-xs text-muted-foreground">Total calculado</p>
@@ -142,7 +182,7 @@ export default function TimeEntry() {
             </div>
             <div className="flex items-start gap-2">
               <AlertCircle className="mt-0.5 h-4 w-4 text-info shrink-0" />
-              <p>Registros ficam pendentes até aprovação</p>
+              <p>Máximo de 6h10min sem justificativa</p>
             </div>
           </CardContent>
         </Card>
