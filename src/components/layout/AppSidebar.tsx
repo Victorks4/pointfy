@@ -1,4 +1,4 @@
-import { Clock, LayoutDashboard, FileText, Bell, Users, CheckSquare, BarChart3, Settings, LogOut, ArrowLeftRight } from 'lucide-react';
+import { Clock, LayoutDashboard, FileText, Bell, Users, BarChart3, Settings, LogOut, ArrowLeftRight, FileCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -14,9 +14,9 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['user', 'admin'] },
   { label: 'Registrar Ponto', icon: Clock, path: '/registrar-ponto', roles: ['user'] },
   { label: 'Meu Histórico', icon: FileText, path: '/historico', roles: ['user'] },
+  { label: 'Justificativas', icon: FileCheck, path: '/justificativas', roles: ['user'] },
   { label: 'Notificações', icon: Bell, path: '/notificacoes', roles: ['user', 'admin'] },
   { label: 'Usuários', icon: Users, path: '/admin/usuarios', roles: ['admin'] },
-  { label: 'Aprovações', icon: CheckSquare, path: '/admin/aprovacoes', roles: ['admin'] },
   { label: 'Relatórios', icon: BarChart3, path: '/admin/relatorios', roles: ['admin'] },
   { label: 'Configurações', icon: Settings, path: '/admin/configuracoes', roles: ['admin'] },
 ];

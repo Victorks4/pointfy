@@ -1,20 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { mockTimeEntries, mockBalances, mockNotifications } from '@/data/mockData';
 import { formatHoursDecimal, formatBalance } from '@/utils/timeUtils';
 import { Clock, TrendingUp, TrendingDown, CalendarDays, Bell, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-function StatusBadge({ status }: { status: string }) {
-  const config = {
-    pending: { label: 'Pendente', className: 'bg-pending/15 text-pending-foreground border-pending/30' },
-    approved: { label: 'Aprovado', className: 'bg-approved/15 text-approved-foreground border-approved/30' },
-    rejected: { label: 'Rejeitado', className: 'bg-rejected/15 text-rejected-foreground border-rejected/30' },
-  }[status] || { label: status, className: '' };
-
-  return <Badge variant="outline" className={config.className}>{config.label}</Badge>;
-}
 
 export default function UserDashboard() {
   const { user } = useAuth();
@@ -28,13 +17,11 @@ export default function UserDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Olá, {user.name.split(' ')[0]}!</h1>
         <p className="text-muted-foreground">Acompanhe seu registro de ponto e saldo de horas.</p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="shadow-card">
           <CardContent className="p-5">
@@ -95,7 +82,6 @@ export default function UserDashboard() {
         </Card>
       </div>
 
-      {/* Recent entries + status */}
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="shadow-card lg:col-span-2">
           <CardHeader>
@@ -114,10 +100,7 @@ export default function UserDashboard() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-foreground">{formatHoursDecimal(entry.totalHours)}</span>
-                    <StatusBadge status={entry.status} />
-                  </div>
+                  <span className="text-sm font-semibold text-foreground">{formatHoursDecimal(entry.totalHours)}</span>
                 </div>
               ))}
             </div>

@@ -10,9 +10,9 @@ import UserDashboard from "@/pages/UserDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
 import TimeEntry from "@/pages/TimeEntry";
 import History from "@/pages/History";
+import Justifications from "@/pages/Justifications";
 import Notifications from "@/pages/Notifications";
 import AdminUsers from "@/pages/AdminUsers";
-import AdminApprovals from "@/pages/AdminApprovals";
 import AdminReports from "@/pages/AdminReports";
 import AdminSettings from "@/pages/AdminSettings";
 import NotFound from "./pages/NotFound";
@@ -52,9 +52,9 @@ const App = () => (
               <Route path="/dashboard" element={<DashboardRedirect />} />
               <Route path="/registrar-ponto" element={<ProtectedRoute role="user"><TimeEntry /></ProtectedRoute>} />
               <Route path="/historico" element={<ProtectedRoute role="user"><History /></ProtectedRoute>} />
+              <Route path="/justificativas" element={<ProtectedRoute role="user"><Justifications /></ProtectedRoute>} />
               <Route path="/notificacoes" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/admin/usuarios" element={<ProtectedRoute role="admin"><AdminUsers /></ProtectedRoute>} />
-              <Route path="/admin/aprovacoes" element={<ProtectedRoute role="admin"><AdminApprovals /></ProtectedRoute>} />
               <Route path="/admin/relatorios" element={<ProtectedRoute role="admin"><AdminReports /></ProtectedRoute>} />
               <Route path="/admin/configuracoes" element={<ProtectedRoute role="admin"><AdminSettings /></ProtectedRoute>} />
             </Route>
