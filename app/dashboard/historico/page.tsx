@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
+import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
@@ -30,7 +31,8 @@ const MESES = [
 
 export default function HistoricoPage() {
   const { user } = useAuth()
-  const { getPontosByUser, getBancoHoras } = useData()
+  const { usuarios, getPontosByUser, getBancoHoras } = useData()
+  const searchParams = useSearchParams()
 
   const currentYear = new Date().getFullYear()
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0')
@@ -38,8 +40,12 @@ export default function HistoricoPage() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const [selectedYear, setSelectedYear] = useState(String(currentYear))
 
-  const pontos = user ? getPontosByUser(user.id) : []
-  const bancoHoras = user ? getBancoHoras(user.id) : 0
+  const requestedUserId = searchParams.get('userId')
+  const targetUserId = user?.cargo === 'admin' && requestedUserId ? requestedUserId : user?.id
+  const targetUser = targetUserId ? usuarios.find((u) => u.id === targetUserId) : null
+
+  const pontos = targetUserId ? getPontosByUser(targetUserId) : []
+  const bancoHoras = targetUserId ? getBancoHoras(targetUserId) : 0
 
   // Filtrar por mês/ano
   const pontosFiltrados = pontos.filter((p) => {
@@ -63,10 +69,12 @@ export default function HistoricoPage() {
       <main className="flex-1 p-4 md:p-6">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-foreground">
-            Histórico de Pontos
+            Histórico de Pontos {targetUser ? `- ${targetUser.nome}` : ''}
           </h2>
           <p className="text-muted-foreground">
-            Visualize seus registros anteriores
+            {user?.cargo === 'admin'
+              ? 'Visualização administrativa de registros do estagiário'
+              : 'Visualize seus registros anteriores'}
           </p>
         </div>
 

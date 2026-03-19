@@ -11,7 +11,6 @@ import { Separator } from '@/components/ui/separator'
 import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 import {
   getTodayString,
@@ -32,8 +31,8 @@ export default function PontoPage() {
   const [mounted, setMounted] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
 
-  const today = getTodayString()
-  const pontoHoje = user ? getPontoByDate(user.id, today) : null
+  const [selectedDate, setSelectedDate] = useState(getTodayString())
+  const pontoHoje = user ? getPontoByDate(user.id, selectedDate) : null
 
   const [entrada1, setEntrada1] = useState(pontoHoje?.entrada1 || '')
   const [saida1, setSaida1] = useState(pontoHoje?.saida1 || '')
@@ -50,7 +49,7 @@ export default function PontoPage() {
 
   // Verificar se está em período de recesso
   const emRecesso = user && isInRecessPeriod(
-    today,
+    selectedDate,
     user.dataInicioRecesso,
     user.dataFimRecesso
   )
@@ -80,6 +79,9 @@ export default function PontoPage() {
   // Calcular progresso (meta = 6h = 360min)
   const metaDiaria = 360
   const progresso = Math.min((totalMinutos / metaDiaria) * 100, 100)
+  const progressoParaExibicao = Math.max(progresso, 4)
+  const progressoColorClass =
+    progresso >= 83.33 ? 'wave-blue' : progresso >= 75 ? 'wave-yellow' : 'wave-red'
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -121,8 +123,8 @@ export default function PontoPage() {
     }
 
     // Validar que tem pelo menos entrada e saída 1
-    if (!entrada1 || !saida1) {
-      newErrors.push('Preencha pelo menos a Entrada 1 e Saída 1')
+    if (!entrada1 || !saida1 || !entrada2 || !saida2) {
+      newErrors.push('Os campos dos dois períodos são obrigatórios')
     }
 
     setErrors(newErrors)
@@ -146,7 +148,7 @@ export default function PontoPage() {
 
     const pontoData = {
       userId: user.id,
-      data: today,
+      data: selectedDate,
       entrada1: entrada1 || null,
       saida1: saida1 || null,
       entrada2: entrada2 || null,
@@ -217,64 +219,140 @@ export default function PontoPage() {
       </header>
 
       <main className="flex-1 p-4 md:p-6 bg-muted/30">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className={`mb-6 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
             <h2 className="text-2xl font-bold text-foreground">
               Ponto do Dia
             </h2>
             <p className="text-muted-foreground">
-              {formatDate(today)}
+              {formatDate(selectedDate)}
             </p>
           </div>
 
-          {/* Card de Total */}
-          <Card className={`mb-6 overflow-hidden transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '100ms' }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2 text-foreground">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Clock className="h-5 w-5 text-primary" />
-                </div>
-                Total do Dia
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-end gap-4 mb-4">
-                <div className={`text-4xl font-bold transition-all duration-300 ${totalMinutos > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
-                  {formatMinutesToDisplay(totalMinutos)}
-                </div>
-                <div className="text-sm text-muted-foreground pb-1">
-                  / {formatMinutesToDisplay(metaDiaria)} meta
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Progresso da meta</span>
-                  <span className="font-medium text-foreground">{progresso.toFixed(0)}%</span>
-                </div>
-                <Progress value={progresso} className="h-3" />
-              </div>
-
-              {precisaJustificativa && (
-                <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-                  <p className="text-sm text-amber-700">
-                    Acima de {formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} - justificativa obrigatória
-                  </p>
-                </div>
-              )}
-
-              {totalMinutos >= metaDiaria && (
-                <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
-                  <p className="text-sm text-green-700">
-                    Meta diária atingida! Bom trabalho.
-                  </p>
-                </div>
-              )}
+          <Card className={`mb-6 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '50ms' }}>
+            <CardContent className="pt-6">
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="registro-data" className="text-foreground">Selecionar dia do mês</FieldLabel>
+                  <Input
+                    id="registro-data"
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                  />
+                </Field>
+              </FieldGroup>
             </CardContent>
           </Card>
+
+          <div className={`grid gap-6 mb-6 md:grid-cols-2 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '100ms' }}>
+            {/* Card de Total */}
+            <Card className="overflow-hidden h-full">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Clock className="h-5 w-5 text-primary" />
+                  </div>
+                  Total do Dia
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-4 mb-4">
+                  <div className={`text-4xl font-bold transition-all duration-300 ${totalMinutos > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {formatMinutesToDisplay(totalMinutos)}
+                  </div>
+                  <div className="text-sm text-muted-foreground pb-1">
+                    / {formatMinutesToDisplay(metaDiaria)} meta
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-center">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Progresso da meta</span>
+                        <span className="font-medium text-foreground">{progresso.toFixed(0)}%</span>
+                      </div>
+                      <div className={`wave-progress-track ${progressoColorClass}`}>
+                        <div
+                          className="wave-progress-fill"
+                          style={{ width: `${Math.max(progresso, 6)}%` }}
+                        >
+                          <div className="wave-progress-shine" />
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      className={`relative mx-auto h-24 w-24 rounded-full border-4 overflow-hidden ${progressoColorClass}`}
+                      aria-label={`Relógio de progresso diário: ${progresso.toFixed(0)} por cento`}
+                    >
+                      <div className="absolute inset-0 rounded-full border-2 wave-ring" />
+                      <div className="absolute inset-1 rounded-full border-2 wave-ring-delayed" />
+                      <div className="absolute inset-x-0 bottom-0 wave-water-base" style={{ height: `${progressoParaExibicao}%` }} />
+                      <div
+                        className="absolute inset-x-0 bottom-0 wave-water"
+                        style={{
+                          height: `${Math.max(progressoParaExibicao - 5, 0)}%`,
+                        }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold wave-text">
+                        {Math.round(progresso)}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {precisaJustificativa && (
+                  <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                    <p className="text-sm text-amber-700">
+                      Acima de {formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} - justificativa obrigatória
+                    </p>
+                  </div>
+                )}
+
+                {totalMinutos >= metaDiaria && (
+                  <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
+                    <p className="text-sm text-green-700">
+                      Meta diária atingida! Bom trabalho.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className={`transition-all duration-500 border-zinc-200 h-full ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '140ms' }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xl text-zinc-900">Regras de Preenchimento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3 text-base text-[#5f7897]">
+                  <li className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                    Formato HH:MM obrigatório
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                    Horários &quot;fechados&quot; (minutos = 00) não são aceitos
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                    Saída deve ser após a entrada
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                    Sem sobreposição de horários
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Info className="h-4 w-4 text-sky-500" />
+                    Máximo de {formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} sem justificativa
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Formulário */}
           <Card className={`transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '200ms' }}>
@@ -325,7 +403,7 @@ export default function PontoPage() {
                   <h3 className="text-sm font-semibold mb-4 flex items-center gap-2 text-foreground">
                     <div className="w-6 h-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-xs font-bold">2</div>
                     Segundo Período
-                    <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
+                    <span className="text-xs font-normal text-muted-foreground">(obrigatório)</span>
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <FieldGroup>

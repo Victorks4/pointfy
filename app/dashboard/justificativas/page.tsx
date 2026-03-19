@@ -17,7 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { formatDate, formatMinutesToDisplay, getTodayString } from '@/lib/time-utils'
 import { MINUTOS_COMPENSACAO } from '@/lib/types'
-import { FileText, Upload, Clock, Send, Info, AlertCircle } from 'lucide-react'
+import { FileText, Clock, Send, Info } from 'lucide-react'
 
 export default function JustificativasPage() {
   const { user } = useAuth()
@@ -32,13 +32,8 @@ export default function JustificativasPage() {
   const [atestadoArquivo, setAtestadoArquivo] = useState<File | null>(null)
 
   // Estados para formulário de compensação
+  const [compDataFalta, setCompDataFalta] = useState('')
   const [compDescricao, setCompDescricao] = useState('')
-
-  // Verificar se o texto é "COMP", "comp", "compensado" ou "Compensado"
-  const isCompensacao = (text: string): boolean => {
-    const normalized = text.trim().toLowerCase()
-    return ['comp', 'compensado'].includes(normalized)
-  }
 
   const handleAtestadoSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -80,34 +75,28 @@ export default function JustificativasPage() {
 
     if (!user) return
 
+    if (!compDataFalta) {
+      toast.error('Selecione a data da falta para compensação')
+      return
+    }
+
     if (!compDescricao.trim()) {
-      toast.error('Digite COMP, comp, compensado ou Compensado para registrar')
-      return
-    }
-
-    if (!isCompensacao(compDescricao)) {
-      toast.error('Para compensar, digite: COMP, comp, compensado ou Compensado')
-      return
-    }
-
-    // Verificar se há saldo negativo para compensar
-    if (bancoHoras >= 0) {
-      toast.info('Você não tem horas negativas para compensar')
+      toast.error('Descreva o motivo da compensação')
       return
     }
 
     addJustificativa({
       userId: user.id,
-      data: getTodayString(),
+      data: compDataFalta,
       tipo: 'compensacao',
-      descricao: 'Compensação de horas',
+      descricao: compDescricao.trim(),
       arquivoUrl: null,
-      minutosAbatidos: MINUTOS_COMPENSACAO, // 6h = 360 minutos
+      minutosAbatidos: -MINUTOS_COMPENSACAO,
     })
 
-    toast.success(`Compensação registrada! ${formatMinutesToDisplay(MINUTOS_COMPENSACAO)} retiradas do seu débito.`)
+    toast.success(`Compensação registrada! ${formatMinutesToDisplay(MINUTOS_COMPENSACAO)} debitadas no banco.`)
 
-    // Limpar formulário
+    setCompDataFalta('')
     setCompDescricao('')
   }
 
@@ -245,58 +234,60 @@ export default function JustificativasPage() {
               <CardHeader>
                 <CardTitle>Registrar Compensação</CardTitle>
                 <CardDescription>
-                  Compense horas devidas retirando 6h do seu débito no banco de horas
+                  Ao registrar compensação, 6h serão debitadas do banco de horas
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Alert className="mb-4">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    Para registrar uma compensação, digite <strong>COMP</strong>, <strong>comp</strong>, <strong>compensado</strong> ou <strong>Compensado</strong> no campo abaixo.
-                    Cada compensação retira 6h do seu saldo negativo.
+                    Regra de negócio: toda compensação debita <strong>6h</strong> do banco.
+                    Se o saldo for positivo, ele reduz 6h; se for zero/negativo, a dívida aumenta em 6h.
                   </AlertDescription>
                 </Alert>
 
-                {bancoHoras >= 0 ? (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Você não possui horas negativas para compensar. Seu saldo atual é positivo.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <form onSubmit={handleCompensacaoSubmit} className="space-y-4">
-                    <FieldGroup>
-                      <Field>
-                        <FieldLabel htmlFor="comp-descricao">
-                          Digite para confirmar a compensação
-                        </FieldLabel>
-                        <Input
-                          id="comp-descricao"
-                          placeholder="COMP ou compensado"
-                          value={compDescricao}
-                          onChange={(e) => setCompDescricao(e.target.value)}
-                        />
-                      </Field>
-                    </FieldGroup>
+                <form onSubmit={handleCompensacaoSubmit} className="space-y-4">
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel htmlFor="comp-data-falta">Data da Falta</FieldLabel>
+                      <Input
+                        id="comp-data-falta"
+                        type="date"
+                        value={compDataFalta}
+                        onChange={(e) => setCompDataFalta(e.target.value)}
+                        max={getTodayString()}
+                        required
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="comp-descricao">Descrição da justificativa</FieldLabel>
+                      <Textarea
+                        id="comp-descricao"
+                        placeholder="Descreva a situação da falta para compensação..."
+                        value={compDescricao}
+                        onChange={(e) => setCompDescricao(e.target.value)}
+                        rows={3}
+                        required
+                      />
+                    </Field>
+                  </FieldGroup>
 
-                    <Button type="submit" className="w-full">
-                      <Clock className="mr-2 h-4 w-4" />
-                      Registrar Compensação (-6h do débito)
-                    </Button>
-                  </form>
-                )}
+                  <Button type="submit" className="w-full">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Registrar Compensação (-6h no banco)
+                  </Button>
+                </form>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
 
-        {/* Histórico de Justificativas */}
+        {/* Histórico de Justificativas e Compensações */}
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Histórico de Justificativas</CardTitle>
+            <CardTitle>Histórico de Justificativas e Compensações</CardTitle>
             <CardDescription>
-              Suas justificativas e compensações anteriores
+              Acompanhe o histórico completo de atestados e compensações
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -341,9 +332,10 @@ export default function JustificativasPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {j.minutosAbatidos > 0 ? (
-                            <span className="text-green-600 font-medium">
-                              +{formatMinutesToDisplay(j.minutosAbatidos)}
+                          {j.minutosAbatidos !== 0 ? (
+                            <span className={`font-medium ${j.minutosAbatidos > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {j.minutosAbatidos > 0 ? '+' : '-'}
+                              {formatMinutesToDisplay(Math.abs(j.minutosAbatidos))}
                             </span>
                           ) : (
                             <span className="text-muted-foreground">-</span>

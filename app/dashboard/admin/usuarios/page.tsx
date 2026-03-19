@@ -39,10 +39,13 @@ const CARGAS_HORARIAS = [
 
 export default function UsuariosAdminPage() {
   const { user } = useAuth()
-  const { usuarios, addUsuario, updateUsuario, getBancoHoras, addNotificacao } = useData()
+  const { usuarios, addUsuario, updateUsuario, deleteUsuario, getBancoHoras, addNotificacao } = useData()
   const router = useRouter()
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isActionDialogOpen, setIsActionDialogOpen] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   
   // Estados do formulário
   const [nome, setNome] = useState('')
@@ -51,6 +54,8 @@ export default function UsuariosAdminPage() {
   const [departamento, setDepartamento] = useState('')
   const [cargaHoraria, setCargaHoraria] = useState('')
   const [dataRecesso, setDataRecesso] = useState('')
+
+  const selectedUser = selectedUserId ? usuarios.find((u) => u.id === selectedUserId) ?? null : null
 
   // Verificar se é admin
   useEffect(() => {
@@ -141,6 +146,69 @@ export default function UsuariosAdminPage() {
     })
 
     toast.success('Recesso agendado com sucesso!')
+  }
+
+  const openUserActions = (userId: string) => {
+    const usuario = usuarios.find((u) => u.id === userId)
+    if (!usuario) return
+
+    setSelectedUserId(usuario.id)
+    setNome(usuario.nome)
+    setEmail(usuario.email)
+    setRa(usuario.ra)
+    setDepartamento(usuario.departamento)
+    setCargaHoraria(String(usuario.cargaHorariaSemanal))
+    setDataRecesso(usuario.dataInicioRecesso || '')
+    setIsEditMode(false)
+    setIsActionDialogOpen(true)
+  }
+
+  const handleUpdateSelectedUser = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedUser) return
+
+    if (!nome || !email || !ra || !departamento || !cargaHoraria) {
+      toast.error('Preencha todos os campos obrigatórios')
+      return
+    }
+
+    const emailDuplicado = usuarios.some(
+      (u) => u.id !== selectedUser.id && u.email.toLowerCase() === email.toLowerCase()
+    )
+    if (emailDuplicado) {
+      toast.error('Este email já está cadastrado')
+      return
+    }
+
+    const raDuplicado = usuarios.some((u) => u.id !== selectedUser.id && u.ra.toLowerCase() === ra.toLowerCase())
+    if (raDuplicado) {
+      toast.error('Este RA já está cadastrado')
+      return
+    }
+
+    const dataFimRecesso = dataRecesso ? calculateRecessEnd(dataRecesso) : null
+
+    updateUsuario(selectedUser.id, {
+      nome,
+      email,
+      ra,
+      departamento,
+      cargaHorariaSemanal: parseInt(cargaHoraria),
+      dataInicioRecesso: dataRecesso || null,
+      dataFimRecesso,
+    })
+
+    toast.success('Usuário atualizado com sucesso!')
+    setIsEditMode(false)
+  }
+
+  const handleDeleteSelectedUser = () => {
+    if (!selectedUser) return
+    deleteUsuario(selectedUser.id)
+    toast.success('Usuário excluído com sucesso!')
+    setIsActionDialogOpen(false)
+    setSelectedUserId(null)
+    setIsEditMode(false)
   }
 
   return (
@@ -343,7 +411,15 @@ export default function UsuariosAdminPage() {
 
                       return (
                         <TableRow key={u.id}>
-                          <TableCell className="font-medium">{u.nome}</TableCell>
+                          <TableCell className="font-medium">
+                            <button
+                              type="button"
+                              onClick={() => openUserActions(u.id)}
+                              className="text-primary hover:underline"
+                            >
+                              {u.nome}
+                            </button>
+                          </TableCell>
                           <TableCell>{u.email}</TableCell>
                           <TableCell>{u.ra}</TableCell>
                           <TableCell>
@@ -430,6 +506,105 @@ export default function UsuariosAdminPage() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedUser ? `Ações de ${selectedUser.nome}` : 'Ações do usuário'}
+              </DialogTitle>
+              <DialogDescription>
+                Visualize histórico, edite informações ou exclua o perfil do estagiário.
+              </DialogDescription>
+            </DialogHeader>
+
+            {!isEditMode ? (
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={() => {
+                    if (!selectedUser) return
+                    setIsActionDialogOpen(false)
+                    router.push(`/dashboard/historico?userId=${selectedUser.id}`)
+                  }}
+                >
+                  Visualizar Histórico
+                </Button>
+                <Button type="button" variant="outline" className="w-full" onClick={() => setIsEditMode(true)}>
+                  Editar Usuário
+                </Button>
+                <Button type="button" variant="destructive" className="w-full" onClick={handleDeleteSelectedUser}>
+                  Excluir Usuário
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleUpdateSelectedUser} className="space-y-4">
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="edit-nome">Nome Completo</FieldLabel>
+                    <Input id="edit-nome" value={nome} onChange={(e) => setNome(e.target.value)} required />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="edit-email">Email</FieldLabel>
+                    <Input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="edit-ra">RA</FieldLabel>
+                    <Input id="edit-ra" value={ra} onChange={(e) => setRa(e.target.value)} required />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="edit-departamento">Departamento</FieldLabel>
+                    <Select value={departamento} onValueChange={setDepartamento}>
+                      <SelectTrigger id="edit-departamento">
+                        <SelectValue placeholder="Selecione o departamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DEPARTAMENTOS.map((dep) => (
+                          <SelectItem key={dep} value={dep}>
+                            {dep}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="edit-carga">Carga Horária Semanal</FieldLabel>
+                    <Select value={cargaHoraria} onValueChange={setCargaHoraria}>
+                      <SelectTrigger id="edit-carga">
+                        <SelectValue placeholder="Selecione a carga horária" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CARGAS_HORARIAS.map((ch) => (
+                          <SelectItem key={ch.value} value={ch.value}>
+                            {ch.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="edit-recesso">Data do Recesso</FieldLabel>
+                    <Input
+                      id="edit-recesso"
+                      type="date"
+                      value={dataRecesso}
+                      onChange={(e) => setDataRecesso(e.target.value)}
+                    />
+                  </Field>
+                </FieldGroup>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setIsEditMode(false)}>
+                    Voltar
+                  </Button>
+                  <Button type="submit" className="flex-1">
+                    Salvar Alterações
+                  </Button>
+                </div>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </>
   )

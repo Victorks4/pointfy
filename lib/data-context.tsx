@@ -27,6 +27,7 @@ interface DataContextType {
   usuarios: User[]
   addUsuario: (usuario: Omit<User, 'id' | 'createdAt'>) => void
   updateUsuario: (id: string, usuario: Partial<User>) => void
+  deleteUsuario: (id: string) => void
   
   // Banco de Horas
   getBancoHoras: (userId: string) => number
@@ -159,6 +160,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     ))
   }
 
+  const deleteUsuario = (id: string) => {
+    setUsuarios(prev => prev.filter(u => u.id !== id))
+    setPontos(prev => prev.filter(p => p.userId !== id))
+    setJustificativas(prev => prev.filter(j => j.userId !== id))
+    setNotificacoes(prev => prev.filter(n => n.userId !== id))
+  }
+
   // Funções de Banco de Horas
   const calcularBancoHoras = (userId: string): number => {
     const user = usuarios.find(u => u.id === userId)
@@ -206,6 +214,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       usuarios,
       addUsuario,
       updateUsuario,
+      deleteUsuario,
       getBancoHoras,
       calcularBancoHoras
     }}>

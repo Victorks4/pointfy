@@ -5,41 +5,41 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #1e3a8a;
+  --foreground: #000000;
   --card: #ffffff;
-  --card-foreground: #1e3a8a;
+  --card-foreground: #111111;
   --popover: #ffffff;
-  --popover-foreground: #1e3a8a;
+  --popover-foreground: #111111;
   --primary: #2563eb;
   --primary-foreground: #ffffff;
-  --secondary: #e5e7eb;
-  --secondary-foreground: #1e40af;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #3b82f6;
-  --accent-foreground: #1d4ed8;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #52525b;
+  --accent: #e4e4e7;
+  --accent-foreground: #18181b;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #1e40af;
-  --input: #bfdbfe;
-  --ring: #2563eb;
-  --chart-4: #60a5fa;
-  --chart-5: #1e3a8a;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #3f3f46;
+  --chart-1: #2563eb;
+  --chart-2: #16a34a;
+  --chart-3: #f97316;
+  --chart-4: #a855f7;
+  --chart-5: #ef4444;
   --amber-50: #fef3c7;
-    --foreground: #222222;
-    --card-foreground: #222222;
-    --popover-foreground: #222222;
   --amber-500: #f59e42;
   --amber-600: #d97706;
   --radius: 0.75rem;
-  --sidebar: #1e3a8a;
-  --sidebar-foreground: #ffffff;
-    --muted-foreground: #6b7280;
+  --sidebar: #09090b;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #3f3f46;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #3b82f6;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #1e40af;
-  --sidebar-ring: #3b82f6;
+  --sidebar-accent: #18181b;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #52525b;
 }
 
 .dark {
@@ -125,4 +125,178 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes wave-slide {
+  0% {
+    transform: translateX(-25%);
+  }
+  100% {
+    transform: translateX(25%);
+  }
+}
+
+@keyframes wave-shine {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+@keyframes ring-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.85;
+  }
+}
+
+.wave-progress-track {
+  position: relative;
+  height: 0.75rem;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: #dbeafe;
+}
+
+.wave-progress-fill {
+  position: relative;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 55%, #60a5fa 100%);
+}
+
+.wave-progress-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgb(255 255 255 / 0.25) 0px,
+    rgb(255 255 255 / 0.25) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  animation: wave-slide 2.2s linear infinite;
+}
+
+.wave-progress-shine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+  animation: wave-shine 2.4s ease-in-out infinite;
+}
+
+.wave-water {
+  animation: wave 1.8s ease-in-out infinite;
+}
+
+.wave-ring {
+  animation: ring-pulse 2.4s ease-in-out infinite;
+}
+
+.wave-ring-delayed {
+  animation: ring-pulse 2.4s ease-in-out infinite 1.2s;
+}
+
+.wave-red {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.wave-red .wave-progress-fill,
+.wave-red.wave-progress-fill {
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 55%, #f87171 100%);
+}
+
+.wave-red .wave-water-base {
+  background: rgb(239 68 68 / 0.72);
+}
+
+.wave-red .wave-water {
+  background: rgb(248 113 113 / 0.62);
+}
+
+.wave-red .wave-ring,
+.wave-red .wave-ring-delayed {
+  border-color: rgb(248 113 113 / 0.6);
+}
+
+.wave-red .wave-text {
+  color: #7f1d1d;
+}
+
+.wave-yellow {
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.wave-yellow .wave-progress-fill,
+.wave-yellow.wave-progress-fill {
+  background: linear-gradient(90deg, #ca8a04 0%, #eab308 55%, #facc15 100%);
+}
+
+.wave-yellow .wave-water-base {
+  background: rgb(234 179 8 / 0.72);
+}
+
+.wave-yellow .wave-water {
+  background: rgb(250 204 21 / 0.62);
+}
+
+.wave-yellow .wave-ring,
+.wave-yellow .wave-ring-delayed {
+  border-color: rgb(250 204 21 / 0.56);
+}
+
+.wave-yellow .wave-text {
+  color: #854d0e;
+}
+
+.wave-blue {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.wave-blue .wave-progress-fill,
+.wave-blue.wave-progress-fill {
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 55%, #60a5fa 100%);
+}
+
+.wave-blue .wave-water-base {
+  background: rgb(59 130 246 / 0.72);
+}
+
+.wave-blue .wave-water {
+  background: rgb(96 165 250 / 0.62);
+}
+
+.wave-blue .wave-ring,
+.wave-blue .wave-ring-delayed {
+  border-color: rgb(96 165 250 / 0.56);
+}
+
+.wave-blue .wave-text {
+  color: #1e3a8a;
 }

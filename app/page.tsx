@@ -30,7 +30,13 @@ export default function LoginPage() {
     try {
       const success = await login(email, senha);
       if (success) {
-        router.push("/dashboard");
+        const savedUser = sessionStorage.getItem("currentUser");
+        const parsedUser = savedUser ? JSON.parse(savedUser) : null;
+        if (parsedUser?.cargo === "admin") {
+          router.push("/dashboard/admin");
+        } else {
+          router.push("/dashboard");
+        }
       } else {
         setError("Email ou senha incorretos");
       }
