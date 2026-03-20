@@ -182,7 +182,8 @@
   min-width: 0;
   overflow: hidden;
   border-radius: 9999px;
-  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 55%, #60a5fa 100%);
+  /* A cor do preenchimento é definida por variantes (wave-progress-fill-*) */
+  background: transparent;
 }
 
 .wave-progress-fill::before {
@@ -220,21 +221,32 @@
   animation: ring-pulse 2.4s ease-in-out infinite 1.2s;
 }
 
+.wave-progress-fill-red {
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 55%, #f87171 100%);
+}
+
+.wave-progress-fill-yellow {
+  background: linear-gradient(90deg, #ca8a04 0%, #eab308 55%, #facc15 100%);
+}
+
+.wave-progress-fill-blue {
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 55%, #60a5fa 100%);
+}
+
 .wave-red {
   background: #fef2f2;
   border-color: #fca5a5;
 }
 
-.wave-red .wave-progress-fill,
-.wave-red.wave-progress-fill {
-  background: linear-gradient(90deg, #dc2626 0%, #ef4444 55%, #f87171 100%);
-}
+/* Cores do relógio/segmentos são definidas por classes diretas
+   (ex.: wave-water-base-red). Evitamos seletores parentais para não
+   sobrescrever segmentos segmentados. */
 
-.wave-red .wave-water-base {
+.wave-water-base-red {
   background: rgb(239 68 68 / 0.72);
 }
 
-.wave-red .wave-water {
+.wave-water-red {
   background: rgb(248 113 113 / 0.62);
 }
 
@@ -252,16 +264,13 @@
   border-color: #fcd34d;
 }
 
-.wave-yellow .wave-progress-fill,
-.wave-yellow.wave-progress-fill {
-  background: linear-gradient(90deg, #ca8a04 0%, #eab308 55%, #facc15 100%);
-}
+/* (ver comentário acima) */
 
-.wave-yellow .wave-water-base {
+.wave-water-base-yellow {
   background: rgb(234 179 8 / 0.72);
 }
 
-.wave-yellow .wave-water {
+.wave-water-yellow {
   background: rgb(250 204 21 / 0.62);
 }
 
@@ -279,16 +288,13 @@
   border-color: #93c5fd;
 }
 
-.wave-blue .wave-progress-fill,
-.wave-blue.wave-progress-fill {
-  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 55%, #60a5fa 100%);
-}
+/* (ver comentário acima) */
 
-.wave-blue .wave-water-base {
+.wave-water-base-blue {
   background: rgb(59 130 246 / 0.72);
 }
 
-.wave-blue .wave-water {
+.wave-water-blue {
   background: rgb(96 165 250 / 0.62);
 }
 

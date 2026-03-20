@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,14 +8,28 @@ import { Input } from '@/components/ui/input'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
+import { Checkbox } from '@/components/ui/checkbox'
+import { getPontoSettings, setPontoSettings } from '@/lib/ponto-settings'
 
 export default function AdminConfiguracoesPontoPage() {
   const { user } = useAuth()
-  const [formatoDecimal, setFormatoDecimal] = useState('brasileiro')
-  const [restricaoMinutos, setRestricaoMinutos] = useState('.0')
+  const [formatoDecimal, setFormatoDecimal] = useState<'americano' | 'brasileiro'>('americano')
+  const [rejeitarMinutosZero, setRejeitarMinutosZero] = useState(true)
+
+  useEffect(() => {
+    const settings = getPontoSettings()
+    setFormatoDecimal(settings.formatoDecimal)
+    setRejeitarMinutosZero(settings.rejeitarMinutosZero)
+  }, [])
 
   const handleSalvar = (e: React.FormEvent) => {
     e.preventDefault()
+
+    setPontoSettings({
+      formatoDecimal,
+      rejeitarMinutosZero,
+    })
+
     toast.success('Configurações salvas com sucesso.')
   }
 
@@ -44,19 +58,23 @@ export default function AdminConfiguracoesPontoPage() {
                 <Input
                   id="formato-decimal"
                   value={formatoDecimal}
-                  onChange={(e) => setFormatoDecimal(e.target.value)}
+                  onChange={(e) =>
+                    setFormatoDecimal(e.target.value === 'brasileiro' ? 'brasileiro' : 'americano')
+                  }
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="restricao-minutos">
-                  Restrição de minutos
+
+              <div className="flex items-center gap-3 rounded-lg border p-3">
+                <Checkbox
+                  id="rejeitar-minutos-zero"
+                  checked={rejeitarMinutosZero}
+                  onCheckedChange={(checked) => setRejeitarMinutosZero(Boolean(checked))}
+                />
+                <label htmlFor="rejeitar-minutos-zero" className="text-sm leading-5">
+                  Rejeitar minutos fechados (<span className="font-mono">:00</span>) no registro de ponto
                 </label>
-                <Input
-                  id="restricao-minutos"
-                  value={restricaoMinutos}
-                  onChange={(e) => setRestricaoMinutos(e.target.value)}
-                />
               </div>
+
               <Button type="submit">Salvar configurações</Button>
             </form>
           </CardContent>

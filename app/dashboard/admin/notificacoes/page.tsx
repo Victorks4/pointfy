@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { BellRing, Send } from 'lucide-react'
 
@@ -17,6 +18,7 @@ export default function AdminNotificacoesPage() {
   const { usuarios, notificacoes, addNotificacao } = useData()
   const [titulo, setTitulo] = useState('')
   const [mensagem, setMensagem] = useState('')
+  const [destinoUserId, setDestinoUserId] = useState<string | 'all'>('all')
 
   const estagiarios = useMemo(
     () => usuarios.filter((usuario) => usuario.cargo === 'estagiario'),
@@ -36,16 +38,26 @@ export default function AdminNotificacoesPage() {
       return
     }
 
-    estagiarios.forEach((estagiario) => {
+    const tituloTrim = titulo.trim()
+    const mensagemTrim = mensagem.trim()
+
+    if (destinoUserId === 'all') {
       addNotificacao({
-        userId: estagiario.id,
-        titulo: titulo.trim(),
-        mensagem: mensagem.trim(),
+        userId: null,
+        titulo: tituloTrim,
+        mensagem: mensagemTrim,
         lida: false,
       })
-    })
-
-    toast.success(`Notificação enviada para ${estagiarios.length} estagiário(s).`)
+      toast.success('Notificação enviada para todos os estagiários.')
+    } else {
+      addNotificacao({
+        userId: destinoUserId,
+        titulo: tituloTrim,
+        mensagem: mensagemTrim,
+        lida: false,
+      })
+      toast.success('Notificação enviada para o estagiário selecionado.')
+    }
     setTitulo('')
     setMensagem('')
   }
@@ -65,11 +77,27 @@ export default function AdminNotificacoesPage() {
           <CardHeader>
             <CardTitle>Enviar nova notificação</CardTitle>
             <CardDescription>
-              O envio será direcionado para todos os usuários com cargo de estagiário.
+              Selecione o destino (todos ou um estagiário específico).
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleEnviar} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Destino</label>
+                <Select value={destinoUserId} onValueChange={(v) => setDestinoUserId(v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o destino" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os estagiários</SelectItem>
+                    {estagiarios.map((estagiario) => (
+                      <SelectItem key={estagiario.id} value={estagiario.id}>
+                        {estagiario.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Input
                 placeholder="Título da notificação"
                 value={titulo}

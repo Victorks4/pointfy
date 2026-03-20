@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { formatDate, formatMinutesToDisplay, calculateRecessEnd, isRecessApproaching } from '@/lib/time-utils'
 import { DIAS_RECESSO } from '@/lib/types'
-import { UserPlus, Users, Calendar, Info, AlertCircle } from 'lucide-react'
+import { UserPlus, Users, Calendar, Info, AlertCircle, Search } from 'lucide-react'
 
 const DEPARTAMENTOS = [
   'TI',
@@ -46,6 +46,8 @@ export default function UsuariosAdminPage() {
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [departamentoFiltro, setDepartamentoFiltro] = useState('')
+  const [busca, setBusca] = useState('')
   
   // Estados do formulário
   const [nome, setNome] = useState('')
@@ -79,6 +81,14 @@ export default function UsuariosAdminPage() {
   }
 
   const estagiarios = usuarios.filter(u => u.cargo === 'estagiario')
+  const estagiariosFiltrados = estagiarios.filter((u) => {
+    const departamentoOk = !departamentoFiltro || u.departamento.toLowerCase().includes(departamentoFiltro.toLowerCase())
+    const buscaOk =
+      !busca ||
+      u.nome.toLowerCase().includes(busca.toLowerCase()) ||
+      u.ra.toLowerCase().includes(busca.toLowerCase())
+    return departamentoOk && buscaOk
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -389,7 +399,26 @@ export default function UsuariosAdminPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {estagiarios.length > 0 ? (
+            <div className="flex gap-3 items-center mb-4 flex-wrap">
+              <Input
+                placeholder="Filtrar por departamento"
+                value={departamentoFiltro}
+                onChange={(e) => setDepartamentoFiltro(e.target.value)}
+                className="w-64"
+              />
+
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou RA"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="pl-9 w-80"
+                />
+              </div>
+            </div>
+
+            {estagiariosFiltrados.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -404,7 +433,7 @@ export default function UsuariosAdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {estagiarios.map((u) => {
+                    {estagiariosFiltrados.map((u) => {
                       const bancoHoras = getBancoHoras(u.id)
                       const emRecesso = u.dataInicioRecesso && new Date(u.dataInicioRecesso) <= new Date() && new Date(u.dataFimRecesso || '') >= new Date()
                       const recessoProximo = isRecessApproaching(u.dataInicioRecesso)
@@ -501,7 +530,7 @@ export default function UsuariosAdminPage() {
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                Nenhum estagiário cadastrado. Clique em &quot;Novo Usuário&quot; para adicionar.
+                Nenhum estagiário encontrado no filtro atual. Clique em &quot;Novo Usuário&quot; para adicionar.
               </div>
             )}
           </CardContent>

@@ -12,6 +12,7 @@ import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
+import { getPontoSettings } from '@/lib/ponto-settings'
 import {
   getTodayString,
   formatDate,
@@ -21,6 +22,8 @@ import {
   isValidNonOverlapping,
   formatMinutesToDisplay,
   isInRecessPeriod,
+  splitPercentIntoThreeBands,
+  getWaveBandClassByMinutes,
 } from '@/lib/time-utils'
 import { LIMITE_MINUTOS_SEM_JUSTIFICATIVA, JUSTIFICATIVAS_HORA_EXTRA } from '@/lib/types'
 import { Clock, AlertCircle, Save, Info, CheckCircle, Timer, Coffee } from 'lucide-react'
@@ -30,6 +33,7 @@ export default function PontoPage() {
   const { addPonto, updatePonto, getPontoByDate } = useData()
   const [mounted, setMounted] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [pontoSettings, setPontoSettings] = useState(getPontoSettings())
 
   const [selectedDate, setSelectedDate] = useState(getTodayString())
   const pontoHoje = user ? getPontoByDate(user.id, selectedDate) : null
@@ -45,6 +49,10 @@ export default function PontoPage() {
     setMounted(true)
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    setPontoSettings(getPontoSettings())
   }, [])
 
   // Verificar se está em período de recesso
@@ -80,8 +88,27 @@ export default function PontoPage() {
   const metaDiaria = 360
   const progresso = Math.min((totalMinutos / metaDiaria) * 100, 100)
   const progressoParaExibicao = Math.max(progresso, 4)
-  const progressoColorClass =
-    progresso >= 83.33 ? 'wave-blue' : progresso >= 75 ? 'wave-yellow' : 'wave-red'
+
+  const progressoColorClass = getWaveBandClassByMinutes(totalMinutos, metaDiaria)
+
+  // Barra: mínima exibição, mas a cor segue a faixa real de minutos (blocos de 2h)
+  const barFillPercent = Math.max(progresso, 6)
+  const barFillVariantClass =
+    progressoColorClass === 'wave-red'
+      ? 'wave-progress-fill-red'
+      : progressoColorClass === 'wave-yellow'
+        ? 'wave-progress-fill-yellow'
+        : 'wave-progress-fill-blue'
+
+  // Relógio: o anel usa valores visuais mínimos (base e water), mas segmentados por faixa
+  const [baseRed, baseYellow, baseBlue] = splitPercentIntoThreeBands(progressoParaExibicao)
+  const waterHeight = Math.max(progressoParaExibicao - 5, 0)
+  const [waterRed, waterYellow, waterBlue] = splitPercentIntoThreeBands(waterHeight)
+
+  const baseBottomYellow = baseRed
+  const baseBottomBlue = baseRed + baseYellow
+  const waterBottomYellow = waterRed
+  const waterBottomBlue = waterRed + waterYellow
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -90,18 +117,37 @@ export default function PontoPage() {
   const validateForm = (): boolean => {
     const newErrors: string[] = []
 
+    const hasClosedMinutes = (time: string): boolean => {
+      const parts = time.split(':')
+      if (parts.length !== 2) return false
+      const minutes = Number(parts[1])
+      return Number.isFinite(minutes) && minutes === 0
+    }
+
     // Validar formato dos horários
     if (entrada1 && !isValidTimeFormat(entrada1)) {
       newErrors.push('Entrada 1: formato inválido (use HH:mm)')
     }
+    if (entrada1 && pontoSettings.rejeitarMinutosZero && hasClosedMinutes(entrada1)) {
+      newErrors.push('Entrada 1: minutos devem ser diferentes de :00')
+    }
     if (saida1 && !isValidTimeFormat(saida1)) {
       newErrors.push('Saída 1: formato inválido (use HH:mm)')
+    }
+    if (saida1 && pontoSettings.rejeitarMinutosZero && hasClosedMinutes(saida1)) {
+      newErrors.push('Saída 1: minutos devem ser diferentes de :00')
     }
     if (entrada2 && !isValidTimeFormat(entrada2)) {
       newErrors.push('Entrada 2: formato inválido (use HH:mm)')
     }
+    if (entrada2 && pontoSettings.rejeitarMinutosZero && hasClosedMinutes(entrada2)) {
+      newErrors.push('Entrada 2: minutos devem ser diferentes de :00')
+    }
     if (saida2 && !isValidTimeFormat(saida2)) {
       newErrors.push('Saída 2: formato inválido (use HH:mm)')
+    }
+    if (saida2 && pontoSettings.rejeitarMinutosZero && hasClosedMinutes(saida2)) {
+      newErrors.push('Saída 2: minutos devem ser diferentes de :00')
     }
 
     // Validar sequência
@@ -274,10 +320,10 @@ export default function PontoPage() {
                         <span className="text-muted-foreground">Progresso da meta</span>
                         <span className="font-medium text-foreground">{progresso.toFixed(0)}%</span>
                       </div>
-                      <div className={`wave-progress-track ${progressoColorClass}`}>
+                      <div className="wave-progress-track">
                         <div
-                          className="wave-progress-fill"
-                          style={{ width: `${Math.max(progresso, 6)}%` }}
+                          className={`wave-progress-fill ${barFillVariantClass}`}
+                          style={{ width: `${barFillPercent}%` }}
                         >
                           <div className="wave-progress-shine" />
                         </div>
@@ -289,13 +335,44 @@ export default function PontoPage() {
                     >
                       <div className="absolute inset-0 rounded-full border-2 wave-ring" />
                       <div className="absolute inset-1 rounded-full border-2 wave-ring-delayed" />
-                      <div className="absolute inset-x-0 bottom-0 wave-water-base" style={{ height: `${progressoParaExibicao}%` }} />
-                      <div
-                        className="absolute inset-x-0 bottom-0 wave-water"
-                        style={{
-                          height: `${Math.max(progressoParaExibicao - 5, 0)}%`,
-                        }}
-                      />
+                      {/* Camadas segmentadas do anel (faixas por hora) */}
+                      {baseRed > 0 && (
+                        <div
+                          className="absolute inset-x-0 bottom-0 wave-water-base wave-water-base-red"
+                          style={{ height: `${baseRed}%` }}
+                        />
+                      )}
+                      {baseYellow > 0 && (
+                        <div
+                          className="absolute inset-x-0 wave-water-base wave-water-base-yellow"
+                          style={{ height: `${baseYellow}%`, bottom: `${baseBottomYellow}%` }}
+                        />
+                      )}
+                      {baseBlue > 0 && (
+                        <div
+                          className="absolute inset-x-0 wave-water-base wave-water-base-blue"
+                          style={{ height: `${baseBlue}%`, bottom: `${baseBottomBlue}%` }}
+                        />
+                      )}
+
+                      {waterRed > 0 && (
+                        <div
+                          className="absolute inset-x-0 bottom-0 wave-water wave-water-red"
+                          style={{ height: `${waterRed}%` }}
+                        />
+                      )}
+                      {waterYellow > 0 && (
+                        <div
+                          className="absolute inset-x-0 wave-water wave-water-yellow"
+                          style={{ height: `${waterYellow}%`, bottom: `${waterBottomYellow}%` }}
+                        />
+                      )}
+                      {waterBlue > 0 && (
+                        <div
+                          className="absolute inset-x-0 wave-water wave-water-blue"
+                          style={{ height: `${waterBlue}%`, bottom: `${waterBottomBlue}%` }}
+                        />
+                      )}
                       <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold wave-text">
                         {Math.round(progresso)}%
                       </div>

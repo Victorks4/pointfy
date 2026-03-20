@@ -8,11 +8,12 @@ import { useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { formatMinutesToDisplay, formatDate } from '@/lib/time-utils'
-import { Users, Clock, TrendingUp, TrendingDown, Calendar } from 'lucide-react'
+import { Users, Clock, TrendingUp, TrendingDown, Calendar, Search } from 'lucide-react'
 
 const MESES = [
   { value: '01', label: 'Janeiro' },
@@ -31,7 +32,7 @@ const MESES = [
 
 export default function AdminPage() {
   const { user } = useAuth()
-  const { usuarios, pontos, getBancoHoras } = useData()
+  const { usuarios, pontos, getBancoHorasPorPeriodo } = useData()
   const router = useRouter()
 
   const currentYear = new Date().getFullYear()
@@ -39,6 +40,8 @@ export default function AdminPage() {
 
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const [selectedYear, setSelectedYear] = useState(String(currentYear))
+  const [departamentoFiltro, setDepartamentoFiltro] = useState('')
+  const [busca, setBusca] = useState('')
 
   // Verificar se é admin
   useEffect(() => {
@@ -67,7 +70,7 @@ export default function AdminPage() {
       return p.userId === usuario.id && ano === selectedYear && mes === selectedMonth
     })
     const horasMes = pontosUsuario.reduce((acc, p) => acc + p.totalMinutos, 0)
-    const bancoHoras = getBancoHoras(usuario.id)
+    const bancoHoras = getBancoHorasPorPeriodo(usuario.id, selectedYear, selectedMonth)
     const diasTrabalhados = pontosUsuario.length
 
     return {
@@ -77,6 +80,23 @@ export default function AdminPage() {
       diasTrabalhados,
     }
   })
+
+  const usuariosComDadosFiltradosOrdenados = usuariosComDados
+    .filter((u) => {
+      const departamentoOk = !departamentoFiltro || u.departamento.toLowerCase().includes(departamentoFiltro.toLowerCase())
+      const buscaOk =
+        !busca ||
+        u.nome.toLowerCase().includes(busca.toLowerCase()) ||
+        u.ra.toLowerCase().includes(busca.toLowerCase())
+      return departamentoOk && buscaOk
+    })
+    .sort((a, b) => {
+      // Ordem fixa: mais horas a cumprir (bancoHoras mais negativo) -> mais horas feitas
+      if (a.bancoHoras !== b.bancoHoras) return a.bancoHoras - b.bancoHoras
+      // Desempate: mais horas no mês primeiro
+      if (a.horasMes !== b.horasMes) return b.horasMes - a.horasMes
+      return a.nome.localeCompare(b.nome)
+    })
 
   // Dialog de opções administrativas
   const [selectedUser, setSelectedUser] = useState(null)
@@ -187,7 +207,26 @@ export default function AdminPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {usuariosComDados.length > 0 ? (
+            <div className="flex gap-3 items-center mb-4 flex-wrap">
+              <Input
+                placeholder="Filtrar por departamento"
+                value={departamentoFiltro}
+                onChange={(e) => setDepartamentoFiltro(e.target.value)}
+                className="w-64"
+              />
+
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar estagiário (nome ou RA)"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="pl-9 w-80"
+                />
+              </div>
+            </div>
+
+            {usuariosComDadosFiltradosOrdenados.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -201,7 +240,7 @@ export default function AdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {usuariosComDados.map((u) => (
+                    {usuariosComDadosFiltradosOrdenados.map((u) => (
                       <TableRow key={u.id}>
                         <TableCell className="font-medium">
                           <button

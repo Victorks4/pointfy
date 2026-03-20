@@ -156,3 +156,37 @@ export function isRecessApproaching(
   
   return diffDays > 0 && diffDays <= daysAhead
 }
+
+/**
+ * Divide um percentual (0..100) em 3 faixas iguais (0-1/3, 1/3-2/3, 2/3-1).
+ * Retorna [faixa0, faixa1, faixa2] onde cada valor está em (0..33.333...).
+ */
+export function splitPercentIntoThreeBands(percent: number): [number, number, number] {
+  const EPS = 1e-6
+  const value = Math.max(0, Math.min(percent, 100))
+  const band = 100 / 3
+
+  const normalize = (n: number) => (Math.abs(n) < EPS ? 0 : n)
+
+  const band0 = normalize(Math.min(value, band))
+  const band1 = normalize(Math.min(Math.max(value - band, 0), band))
+  const band2 = normalize(Math.min(Math.max(value - band * 2, 0), band))
+
+  return [band0, band1, band2]
+}
+
+/**
+ * Determina a cor do progresso por faixa de horas na meta diária (padrão 6h / 360min).
+ * Faixa (0..meta):
+ * - vermelho: 0..(meta/3) inclusive
+ * - amarelo: (meta/3)..(2*meta/3) inclusive
+ * - azul: (2*meta/3)..meta
+ */
+export function getWaveBandClassByMinutes(totalMinutes: number, metaMinutes: number = 360): string {
+  const clamped = Math.max(0, Math.min(totalMinutes, metaMinutes))
+  const bandMinutes = metaMinutes / 3
+
+  if (clamped <= bandMinutes) return 'wave-red'
+  if (clamped <= bandMinutes * 2) return 'wave-yellow'
+  return 'wave-blue'
+}

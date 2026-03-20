@@ -32,6 +32,10 @@ interface DataContextType {
   // Banco de Horas
   getBancoHoras: (userId: string) => number
   calcularBancoHoras: (userId: string) => number
+
+  // Banco de Horas por período (mês/ano)
+  getBancoHorasPorPeriodo: (userId: string, year: string, month: string) => number
+  calcularBancoHorasPorPeriodo: (userId: string, year: string, month: string) => number
 }
 
 const DataContext = createContext<DataContextType | null>(null)
@@ -193,6 +197,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return totalTrabalhado - cargaEsperada + totalCompensado
   }
 
+  const calcularBancoHorasPorPeriodo = (userId: string, year: string, month: string): number => {
+    const user = usuarios.find(u => u.id === userId)
+    if (!user) return 0
+
+    const yearMonthKey = `${year}-${String(month).padStart(2, '0')}`
+
+    const getYearMonthFromDate = (dateString: string) => dateString.slice(0, 7) // YYYY-MM
+
+    const pontosNoPeriodo = pontos.filter(p => p.userId === userId && getYearMonthFromDate(p.data) === yearMonthKey)
+    const justificativasNoPeriodo = justificativas.filter(
+      j => j.userId === userId && getYearMonthFromDate(j.data) === yearMonthKey
+    )
+
+    const totalTrabalhado = pontosNoPeriodo.reduce((acc, p) => acc + p.totalMinutos, 0)
+
+    const totalCompensado = justificativasNoPeriodo
+      .filter(j => j.tipo === 'compensacao')
+      .reduce((acc, j) => acc + j.minutosAbatidos, 0)
+
+    const diasTrabalhados = pontosNoPeriodo.length
+    const cargaDiaria = user.cargaHorariaSemanal / 5
+    const cargaEsperada = diasTrabalhados * cargaDiaria
+
+    return totalTrabalhado - cargaEsperada + totalCompensado
+  }
+
   const getBancoHoras = (userId: string): number => {
     return calcularBancoHoras(userId)
   }
@@ -216,7 +246,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updateUsuario,
       deleteUsuario,
       getBancoHoras,
-      calcularBancoHoras
+      calcularBancoHoras,
+      getBancoHorasPorPeriodo: (userId: string, year: string, month: string) =>
+        calcularBancoHorasPorPeriodo(userId, year, month),
+      calcularBancoHorasPorPeriodo
     }}>
       {children}
     </DataContext.Provider>
