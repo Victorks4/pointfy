@@ -1,365 +1,526 @@
-  'use client'
-
-  import { useState, useEffect } from 'react'
-  import { useAuth } from '@/lib/auth-context'
-  import { useData } from '@/lib/data-context'
-  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-  import { Button } from '@/components/ui/button'
-  import { Input } from '@/components/ui/input'
-  import { SidebarTrigger } from '@/components/ui/sidebar'
-  import { Separator } from '@/components/ui/separator'
-  import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
-  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-  import { Alert, AlertDescription } from '@/components/ui/alert'
-  import { toast } from 'sonner'
-  import { getPontoSettings } from '@/lib/ponto-settings'
-  import {
-    getTodayString,
-    formatDate,
-    calculateDayTotal,
-    isValidTimeFormat,
-    isValidTimeSequence,
-    isValidNonOverlapping,
-    formatMinutesToDisplay,
-    isInRecessPeriod,
-    splitPercentIntoThreeBands,
-    getWaveBandClassByMinutes,
-  } from '@/lib/time-utils'
-  import { LIMITE_MINUTOS_SEM_JUSTIFICATIVA, JUSTIFICATIVAS_HORA_EXTRA } from '@/lib/types'
-  import { Clock, AlertCircle, Save, Info, CheckCircle, Timer, Coffee } from 'lucide-react'
-
-  // ─── Tipos ────────────────────────────────────────────────────────────────────
-
-  type PeriodoFields = {
-    entrada1: string
-    saida1: string
-    entrada2: string
-    saida2: string
-  }
-
-  // ─── Constantes ───────────────────────────────────────────────────────────────
-
-  const META_DIARIA_MINUTOS = 360
-
-  const REGRAS_PREENCHIMENTO = [
-    { icon: AlertCircle, color: 'text-amber-500', texto: 'Formato HH:MM obrigatório' },
-    { icon: AlertCircle, color: 'text-amber-500', texto: 'Horários "fechados" (minutos = 00) não são aceitos' },
-    { icon: AlertCircle, color: 'text-amber-500', texto: 'Saída deve ser após a entrada' },
-    { icon: AlertCircle, color: 'text-amber-500', texto: 'Sem sobreposição de horários' },
-    { icon: Info,        color: 'text-sky-500',   texto: `Máximo de ${formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} sem justificativa` },
-  ]
-
-  // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-  const hasClosedMinutes = (time: string): boolean => {
-    const [, min] = time.split(':')
-    return Number.isFinite(Number(min)) && Number(min) === 0
-  }
-
-  const formatTime = (date: Date) =>
-    date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-
-  // ─── Hook de validação ────────────────────────────────────────────────────────
-
-  function useValidatePonto(
-    campos: PeriodoFields,
-    justificativa: string,
-    precisaJustificativa: boolean,
-    rejeitarMinutosZero: boolean,
-  ) {
-    const validate = (): string[] => {
-      const { entrada1, saida1, entrada2, saida2 } = campos
-      const erros: string[] = []
-
-      // Formato e minutos fechados
-      const periodos = [
-        { label: 'Entrada 1', value: entrada1 },
-        { label: 'Saída 1',   value: saida1 },
-        { label: 'Entrada 2', value: entrada2 },
-        { label: 'Saída 2',   value: saida2 },
-      ]
-
-      for (const { label, value } of periodos) {
-        if (!value) continue
-        if (!isValidTimeFormat(value))
-          erros.push(`${label}: formato inválido (use HH:mm)`)
-        if (rejeitarMinutosZero && hasClosedMinutes(value))
-          erros.push(`${label}: minutos devem ser diferentes de :00`)
-      }
-
-      // Sequência e sobreposição
-      const sequencias = [
-        { anterior: entrada1, posterior: saida1,   msg: 'A Saída 1 deve ser após a Entrada 1' },
-        { anterior: entrada2, posterior: saida2,   msg: 'A Saída 2 deve ser após a Entrada 2' },
-        { anterior: saida1,   posterior: entrada2, msg: 'A Entrada 2 deve ser após a Saída 1' },
-      ]
-
-      for (const { anterior, posterior, msg } of sequencias) {
-        if (anterior && posterior && !isValidTimeSequence(anterior, posterior))
-          erros.push(msg)
-      }
-
-      if (precisaJustificativa && !justificativa)
-        erros.push(`Acima de ${formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} é necessário uma justificativa`)
-
-      if (!entrada1 || !saida1 || !entrada2 || !saida2)
-        erros.push('Os campos dos dois períodos são obrigatórios')
-
-      return erros
+'use client'
+ 
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '@/lib/auth-context'
+import { useData } from '@/lib/data-context'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { SidebarTrigger } from '@/components/ui/sidebar'
+import { Separator } from '@/components/ui/separator'
+import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { toast } from 'sonner'
+import { getPontoSettings } from '@/lib/ponto-settings'
+import {
+  getTodayString,
+  formatDate,
+  calculateDayTotal,
+  isValidTimeFormat,
+  isValidTimeSequence,
+  formatMinutesToDisplay,
+  isInRecessPeriod,
+} from '@/lib/time-utils'
+import { LIMITE_MINUTOS_SEM_JUSTIFICATIVA, JUSTIFICATIVAS_HORA_EXTRA } from '@/lib/types'
+import { Clock, AlertCircle, Save, Info, CheckCircle, Timer, Coffee } from 'lucide-react'
+ 
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+ 
+type PeriodoFields = {
+  entrada1: string
+  saida1: string
+  entrada2: string
+  saida2: string
+}
+ 
+type EstadoClock = 'red' | 'yellow' | 'green'
+ 
+// ─── Constantes ───────────────────────────────────────────────────────────────
+ 
+const META_DIARIA_MINUTOS = 360
+ 
+const REGRAS_PREENCHIMENTO = [
+  { icon: AlertCircle, color: 'text-amber-500', texto: 'Formato HH:MM obrigatório' },
+  { icon: AlertCircle, color: 'text-amber-500', texto: 'Horários "fechados" (minutos = 00) não são aceitos' },
+  { icon: AlertCircle, color: 'text-amber-500', texto: 'Saída deve ser após a entrada' },
+  { icon: AlertCircle, color: 'text-amber-500', texto: 'Sem sobreposição de horários' },
+  { icon: Info,        color: 'text-sky-500',   texto: `Máximo de ${formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} sem justificativa` },
+]
+ 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+ 
+const hasClosedMinutes = (time: string): boolean => {
+  const [, min] = time.split(':')
+  return Number.isFinite(Number(min)) && Number(min) === 0
+}
+ 
+const formatTime = (date: Date) =>
+  date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+ 
+const getCurrentTimeString = (): string => {
+  const now = new Date()
+  return now.toTimeString().slice(0, 5)
+}
+ 
+// ─── Lógica do estado do relógio ──────────────────────────────────────────────
+ 
+function getEstadoClock(minutos: number, meta: number): EstadoClock {
+  const pct = minutos / meta
+  if (pct >= 1) return 'green'
+  if (pct >= 0.5) return 'yellow'
+  return 'red'
+}
+ 
+const CLOCK_STATE_CONFIG: Record<EstadoClock, {
+  ringColor: string
+  waveColor: string
+  waveColorLight: string
+  label: string
+}> = {
+  red: {
+    ringColor: 'border-red-500',
+    waveColor: '#E24B4A',
+    waveColorLight: '#F09595',
+    label: 'Início',
+  },
+  yellow: {
+    ringColor: 'border-amber-400',
+    waveColor: '#EF9F27',
+    waveColorLight: '#FAC775',
+    label: 'Progresso',
+  },
+  green: {
+    ringColor: 'border-green-500',
+    waveColor: '#639922',
+    waveColorLight: '#97C459',
+    label: 'Completo',
+  },
+}
+ 
+// ─── Hook de validação ────────────────────────────────────────────────────────
+ 
+function useValidatePonto(
+  campos: PeriodoFields,
+  justificativa: string,
+  precisaJustificativa: boolean,
+  rejeitarMinutosZero: boolean,
+) {
+  const validate = useCallback((): string[] => {
+    const { entrada1, saida1, entrada2, saida2 } = campos
+    const erros: string[] = []
+ 
+    const periodos = [
+      { label: 'Entrada 1', value: entrada1 },
+      { label: 'Saída 1',   value: saida1 },
+      { label: 'Entrada 2', value: entrada2 },
+      { label: 'Saída 2',   value: saida2 },
+    ]
+ 
+    for (const { label, value } of periodos) {
+      if (!value) continue
+      if (!isValidTimeFormat(value))
+        erros.push(`${label}: formato inválido (use HH:mm)`)
+      if (rejeitarMinutosZero && hasClosedMinutes(value))
+        erros.push(`${label}: minutos devem ser diferentes de :00`)
     }
-
-    return { validate }
-  }
-
-  // ─── Hook de progresso visual ─────────────────────────────────────────────────
-
-  function useProgressoVisual(totalMinutos: number) {
-    const progresso = Math.min((totalMinutos / META_DIARIA_MINUTOS) * 100, 100)
-    const progressoParaExibicao = Math.max(progresso, 4)
-    const progressoColorClass = getWaveBandClassByMinutes(totalMinutos, META_DIARIA_MINUTOS)
-    
-
-    const barFillPercent = Math.max(progresso, 6)
-    const barFillVariantClass =
-      progressoColorClass === 'wave-red'    ? 'wave-progress-fill-red'    :
-      progressoColorClass === 'wave-yellow' ? 'wave-progress-fill-yellow' :
-                                              'wave-progress-fill-blue'
-
-    const [baseRed, baseYellow, baseBlue] = splitPercentIntoThreeBands(progressoParaExibicao)
-    const waterHeight = Math.max(progressoParaExibicao - 5, 0)
-    const [waterRed, waterYellow, waterBlue] = splitPercentIntoThreeBands(waterHeight)
-
-    return {
-      progresso,
-      progressoColorClass,
-      barFillPercent,
-      barFillVariantClass,
-      base: { red: baseRed, yellow: baseYellow, blue: baseBlue },
-      water: { red: waterRed, yellow: waterYellow, blue: waterBlue },
-      baseBottomYellow: baseRed,
-      baseBottomBlue: baseRed + baseYellow,
-      waterBottomYellow: waterRed,
-      waterBottomBlue: waterRed + waterYellow,
+ 
+    const sequencias = [
+      { anterior: entrada1, posterior: saida1,   msg: 'A Saída 1 deve ser após a Entrada 1' },
+      { anterior: entrada2, posterior: saida2,   msg: 'A Saída 2 deve ser após a Entrada 2' },
+      { anterior: saida1,   posterior: entrada2, msg: 'A Entrada 2 deve ser após a Saída 1' },
+    ]
+ 
+    for (const { anterior, posterior, msg } of sequencias) {
+      if (anterior && posterior && !isValidTimeSequence(anterior, posterior))
+        erros.push(msg)
     }
-  }
-
-  // ─── Sub-componentes ──────────────────────────────────────────────────────────
-
-  function PageHeader({ currentTime }: { currentTime: Date }) {
-    return (
+ 
+    if (!entrada1 || !saida1 || !entrada2 || !saida2)
+      erros.push('Os campos dos dois períodos são obrigatórios')
+ 
+    if (precisaJustificativa && !justificativa)
+      erros.push(`Acima de ${formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} é necessário uma justificativa`)
+ 
+    return erros
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campos, justificativa, precisaJustificativa, rejeitarMinutosZero])
+ 
+  return { validate }
+}
+ 
+// ─── Sub-componentes ──────────────────────────────────────────────────────────
+ 
+function PageHeader({ currentTime }: { currentTime: Date }) {
+  return (
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card/50 backdrop-blur-sm px-4 sticky top-0 z-10">
+      <SidebarTrigger className="-ml-1" />
+      <Separator orientation="vertical" className="mr-2 h-4" />
+      <h1 className="text-lg font-semibold text-foreground">Registrar Ponto</h1>
+      <div className="ml-auto flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-sm">
+          <Timer className="h-4 w-4 text-primary" />
+          <span className="font-mono text-primary font-medium">{formatTime(currentTime)}</span>
+        </div>
+      </div>
+    </header>
+  )
+}
+ 
+function RecessoCard({ dataFimRecesso }: { dataFimRecesso?: string }) {
+  return (
+    <>
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card/50 backdrop-blur-sm px-4 sticky top-0 z-10">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <h1 className="text-lg font-semibold text-foreground">Registrar Ponto</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-sm">
-            <Timer className="h-4 w-4 text-primary" />
-            <span className="font-mono text-primary font-medium">{formatTime(currentTime)}</span>
+      </header>
+      <main className="flex-1 p-4 md:p-6 bg-muted/30">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-2 border-amber-500/30 bg-amber-50/50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-4 rounded-full bg-amber-500/10">
+                  <Coffee className="h-8 w-8 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg text-foreground">Você está de Recesso</h3>
+                  <p className="text-muted-foreground">Período de recesso remunerado. Aproveite para descansar!</p>
+                  {dataFimRecesso && (
+                    <p className="text-sm text-amber-600 mt-1">Retorno em: {formatDate(dataFimRecesso)}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </>
+  )
+}
+ 
+function CardRegraPreenchimento() {
+  return (
+    <Card className="border-zinc-200 h-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xl text-zinc-900">Regras de Preenchimento</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="space-y-3 text-base text-[#5f7897]">
+          {REGRAS_PREENCHIMENTO.map(({ icon: Icon, color, texto }) => (
+            <li key={texto} className="flex items-center gap-2">
+              <Icon className={`h-4 w-4 ${color}`} />
+              {texto}
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  )
+}
+ 
+// ─── Relógio com waves ────────────────────────────────────────────────────────
+ 
+function WaveClock({ totalMinutos, meta }: { totalMinutos: number; meta: number }) {
+  const progresso = Math.min((totalMinutos / meta) * 100, 100)
+  const estado = getEstadoClock(totalMinutos, meta)
+  const config = CLOCK_STATE_CONFIG[estado]
+  const isComplete = estado === 'green'
+ 
+  // Animação de wave via CSS keyframes inline
+  const waveStyle = `
+    @keyframes wave-move {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    @keyframes pulse-ring {
+      0%   { transform: scale(1); opacity: 0.7; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+  `
+ 
+  const fillHeight = `${Math.max(progresso, 4)}%`
+ 
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <style>{waveStyle}</style>
+ 
+      {/* Anel pulsante no estado completo */}
+      <div className="relative">
+        <AnimatePresence>
+          {isComplete && (
+            <motion.div
+              key="pulse"
+              className="absolute inset-0 rounded-full border-2 border-green-400 pointer-events-none"
+              initial={{ scale: 1, opacity: 0.7 }}
+              animate={{ scale: 1.5, opacity: 0 }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut' }}
+              style={{ zIndex: 0 }}
+            />
+          )}
+        </AnimatePresence>
+ 
+        {/* Corpo do relógio */}
+        <motion.div
+          className={`relative w-24 h-24 rounded-full border-4 overflow-hidden ${config.ringColor}`}
+          animate={{ borderColor: config.waveColor }}
+          transition={{ duration: 0.5 }}
+          aria-label={`Progresso diário: ${Math.round(progresso)}%`}
+          role="img"
+        >
+          {/* Fundo escuro */}
+          <div className="absolute inset-0 bg-slate-900" />
+ 
+          {/* Água com wave */}
+          <motion.div
+            className="absolute inset-x-0 bottom-0"
+            animate={{ height: fillHeight }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            {/* Wave SVG animada */}
+            <div
+              style={{
+                position: 'absolute',
+                top: -8,
+                left: 0,
+                width: '200%',
+                height: 16,
+                animation: 'wave-move 1.8s linear infinite',
+              }}
+            >
+              <svg
+                viewBox="0 0 200 16"
+                preserveAspectRatio="none"
+                style={{ width: '100%', height: '100%' }}
+              >
+                <path
+                  d="M0 8 C25 0, 50 16, 75 8 C100 0, 125 16, 150 8 C175 0, 200 16, 200 8 L200 16 L0 16 Z"
+                  fill={config.waveColor}
+                  opacity="0.8"
+                />
+              </svg>
+            </div>
+            <div
+              style={{
+                position: 'absolute',
+                top: -5,
+                left: 0,
+                width: '200%',
+                height: 12,
+                animation: 'wave-move 2.4s linear infinite reverse',
+                opacity: 0.5,
+              }}
+            >
+              <svg
+                viewBox="0 0 200 12"
+                preserveAspectRatio="none"
+                style={{ width: '100%', height: '100%' }}
+              >
+                <path
+                  d="M0 6 C30 0, 60 12, 90 6 C120 0, 150 12, 180 6 C190 0, 200 12, 200 6 L200 12 L0 12 Z"
+                  fill={config.waveColorLight}
+                />
+              </svg>
+            </div>
+ 
+            {/* Fill sólido abaixo das waves */}
+            <div
+              className="absolute inset-x-0 bottom-0 top-6"
+              style={{ background: config.waveColor }}
+            />
+          </motion.div>
+ 
+          {/* Conteúdo central: % ou check */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <AnimatePresence mode="wait">
+              {isComplete ? (
+                <motion.div
+                  key="check"
+                  initial={{ scale: 0.4, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.4, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 320, damping: 18 }}
+                >
+                  <CheckCircle className="h-9 w-9 text-white drop-shadow" />
+                </motion.div>
+              ) : (
+                <motion.span
+                  key="pct"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-xs font-semibold text-white drop-shadow"
+                >
+                  {Math.round(progresso)}%
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      </div>
+ 
+      {/* Label de estado */}
+      <motion.span
+        key={estado}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+          estado === 'red'
+            ? 'bg-red-100 text-red-700'
+            : estado === 'yellow'
+            ? 'bg-amber-100 text-amber-700'
+            : 'bg-green-100 text-green-700'
+        }`}
+      >
+        {config.label}
+      </motion.span>
+    </div>
+  )
+}
+ 
+// ─── Card Total do Dia ────────────────────────────────────────────────────────
+ 
+function CardTotalDia({
+  totalMinutos,
+  precisaJustificativa,
+}: {
+  totalMinutos: number
+  precisaJustificativa: boolean
+}) {
+  const progresso = Math.min((totalMinutos / META_DIARIA_MINUTOS) * 100, 100)
+  const isComplete = totalMinutos >= META_DIARIA_MINUTOS
+  const estado = getEstadoClock(totalMinutos, META_DIARIA_MINUTOS)
+ 
+  const barColor =
+    estado === 'red' ? 'bg-red-500' : estado === 'yellow' ? 'bg-amber-400' : 'bg-green-500'
+ 
+  return (
+    <Card className="overflow-hidden h-full">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Clock className="h-5 w-5 text-primary" />
+          </div>
+          Total do Dia
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-end gap-4 mb-4">
+          <motion.div
+            key={totalMinutos}
+            initial={{ scale: 0.95 }}
+            animate={{ scale: 1 }}
+            className={`text-4xl font-bold transition-colors duration-300 ${
+              totalMinutos > 0 ? 'text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            {formatMinutesToDisplay(totalMinutos)}
+          </motion.div>
+          <div className="text-sm text-muted-foreground pb-1">
+            / {formatMinutesToDisplay(META_DIARIA_MINUTOS)} meta
           </div>
         </div>
-      </header>
-    )
-  }
-
-  function RecessoCard({ dataFimRecesso }: { dataFimRecesso?: string }) {
-    return (
-      <>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card/50 backdrop-blur-sm px-4 sticky top-0 z-10">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <h1 className="text-lg font-semibold text-foreground">Registrar Ponto</h1>
-        </header>
-        <main className="flex-1 p-4 md:p-6 bg-muted/30">
-          <div className="max-w-2xl mx-auto">
-            <Card className="border-2 border-amber-500/30 bg-amber-50/50">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-4 rounded-full bg-amber-500/10">
-                    <Coffee className="h-8 w-8 text-amber-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg text-foreground">Você está de Recesso</h3>
-                    <p className="text-muted-foreground">Período de recesso remunerado. Aproveite para descansar!</p>
-                    {dataFimRecesso && (
-                      <p className="text-sm text-amber-600 mt-1">Retorno em: {formatDate(dataFimRecesso)}</p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-      </>
-    )
-  }
-
-  function CardRegraPreenchimento() {
-    return (
-      <Card className="border-zinc-200 h-full">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xl text-zinc-900">Regras de Preenchimento</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-3 text-base text-[#5f7897]">
-            {REGRAS_PREENCHIMENTO.map(({ icon: Icon, color, texto }) => (
-              <li key={texto} className="flex items-center gap-2">
-                <Icon className={`h-4 w-4 ${color}`} />
-                {texto}
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  function CardTotalDia({
-    totalMinutos,
-    precisaJustificativa,
-  }: {
-    totalMinutos: number
-    precisaJustificativa: boolean
-  }) {
-    const {
-      progresso,
-      progressoColorClass,
-      barFillPercent,
-      barFillVariantClass,
-      base,
-      water,
-      baseBottomYellow,
-      baseBottomBlue,
-      waterBottomYellow,
-      waterBottomBlue,
-    } = useProgressoVisual(totalMinutos)
-
-    const camadas = [
-      { tipo: 'base', cor: 'red',    valor: base.red,    bottom: 0 },
-      { tipo: 'base', cor: 'yellow', valor: base.yellow, bottom: baseBottomYellow },
-      { tipo: 'base', cor: 'blue',   valor: base.blue,   bottom: baseBottomBlue },
-      { tipo: 'water', cor: 'red',   valor: water.red,   bottom: 0 },
-      { tipo: 'water', cor: 'yellow',valor: water.yellow,bottom: waterBottomYellow },
-      { tipo: 'water', cor: 'blue',  valor: water.blue,  bottom: waterBottomBlue },
-    ]
-
-    return (
-      <Card className="overflow-hidden h-full">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center gap-2 text-foreground">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Clock className="h-5 w-5 text-primary" />
-            </div>
-            Total do Dia
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-end gap-4 mb-4">
-            <div className={`text-4xl font-bold transition-all duration-300 ${totalMinutos > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
-              {formatMinutesToDisplay(totalMinutos)}
-            </div>
-            <div className="text-sm text-muted-foreground pb-1">
-              / {formatMinutesToDisplay(META_DIARIA_MINUTOS)} meta
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-center">
-              {/* Barra de progresso */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Progresso da meta</span>
-                  <span className="font-medium text-foreground">{progresso.toFixed(0)}%</span>
-                </div>
-                <div className="wave-progress-track">
-                  <div className={`wave-progress-fill ${barFillVariantClass}`} style={{ width: `${barFillPercent}%` }}>
-                    <div className="wave-progress-shine" />
-                  </div>
-                </div>
+ 
+        <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-center">
+            {/* Barra de progresso */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Progresso da meta</span>
+                <span className="font-medium text-foreground">{Math.round(progresso)}%</span>
               </div>
-
-              {/* Relógio circular */}
-              <div
-                className={`relative mx-auto h-24 w-24 rounded-full border-4 overflow-hidden ${progressoColorClass}`}
-                aria-label={`Relógio de progresso diário: ${progresso.toFixed(0)} por cento`}
-              >
-                <div className="absolute inset-0 rounded-full border-2 wave-ring" />
-                <div className="absolute inset-1 rounded-full border-2 wave-ring-delayed" />
-
-                {camadas.map(({ tipo, cor, valor, bottom }) =>
-                  valor > 0 ? (
-                    <div
-                      key={`${tipo}-${cor}`}
-                      className={`absolute inset-x-0 wave-water${tipo === 'base' ? '-base' : ''} wave-water${tipo === 'base' ? '-base' : ''}-${cor}`}
-                      style={{ height: `${valor}%`, bottom: `${bottom}%` }}
-                    />
-                  ) : null
-                )}
-
-                <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold wave-text">
-                  {Math.round(progresso)}%
-                </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <motion.div
+                  className={`h-full rounded-full ${barColor}`}
+                  animate={{ width: `${Math.max(progresso, 2)}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                />
               </div>
             </div>
+ 
+            {/* Relógio com waves */}
+            <WaveClock totalMinutos={totalMinutos} meta={META_DIARIA_MINUTOS} />
           </div>
-
+        </div>
+ 
+        <AnimatePresence>
           {precisaJustificativa && (
-            <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-2">
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-2"
+            >
               <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
               <p className="text-sm text-amber-700">
-                Acima de {formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} - justificativa obrigatória
+                Acima de {formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} — justificativa obrigatória
               </p>
-            </div>
+            </motion.div>
           )}
-
-          {totalMinutos >= META_DIARIA_MINUTOS && (
-            <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center gap-2">
+        </AnimatePresence>
+ 
+        <AnimatePresence>
+          {isComplete && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center gap-2"
+            >
               <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
               <p className="text-sm text-green-700">Meta diária atingida! Bom trabalho.</p>
-            </div>
+            </motion.div>
           )}
-        </CardContent>
-      </Card>
-    )
-  }
-
-  function PeriodoInput({
-    numero,
-    entradaId,
-    saidaId,
-    entradaValue,
-    saidaValue,
-    onEntradaChange,
-    onSaidaChange,
-    obrigatorio,
-  }: {
-    numero: 1 | 2
-    entradaId: string
-    saidaId: string
-    entradaValue: string
-    saidaValue: string
-    onEntradaChange: (v: string) => void
-    onSaidaChange: (v: string) => void
-    obrigatorio?: boolean
-  }) {
-    const isPrimeiro = numero === 1
-    return (
-      <div className={`p-4 rounded-xl border ${isPrimeiro ? 'bg-muted/50 border-border' : 'bg-muted/30 border-border/50'}`}>
-        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2 text-foreground">
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isPrimeiro ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-            {numero}
-          </div>
-          {isPrimeiro ? 'Primeiro Período' : 'Segundo Período'}
-          {obrigatorio && <span className="text-xs font-normal text-muted-foreground">(obrigatório)</span>}
-        </h3>
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { id: entradaId, label: 'Entrada', value: entradaValue, onChange: onEntradaChange },
-            { id: saidaId,   label: 'Saída',   value: saidaValue,   onChange: onSaidaChange },
-          ].map(({ id, label, value, onChange }) => (
-            <FieldGroup key={id}>
-              <Field>
-                <FieldLabel htmlFor={id} className="text-foreground">{label}</FieldLabel>
+        </AnimatePresence>
+      </CardContent>
+    </Card>
+  )
+}
+ 
+// ─── PeriodoInput ─────────────────────────────────────────────────────────────
+ 
+function PeriodoInput({
+  numero,
+  entradaId,
+  saidaId,
+  entradaValue,
+  saidaValue,
+  onEntradaChange,
+  onSaidaChange,
+  obrigatorio,
+}: {
+  numero: 1 | 2
+  entradaId: string
+  saidaId: string
+  entradaValue: string
+  saidaValue: string
+  onEntradaChange: (v: string) => void
+  onSaidaChange: (v: string) => void
+  obrigatorio?: boolean
+}) {
+  const isPrimeiro = numero === 1
+ 
+  return (
+    <div className={`p-4 rounded-xl border ${isPrimeiro ? 'bg-muted/50 border-border' : 'bg-muted/30 border-border/50'}`}>
+      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2 text-foreground">
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isPrimeiro ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+          {numero}
+        </div>
+        {isPrimeiro ? 'Primeiro Período' : 'Segundo Período'}
+        {obrigatorio && <span className="text-xs font-normal text-muted-foreground">(obrigatório)</span>}
+      </h3>
+      <div className="grid grid-cols-2 gap-4">
+        {[
+          { id: entradaId, label: 'Entrada', value: entradaValue, onChange: onEntradaChange },
+          { id: saidaId,   label: 'Saída',   value: saidaValue,   onChange: onSaidaChange },
+        ].map(({ id, label, value, onChange }) => (
+          <FieldGroup key={id}>
+            <Field>
+              <FieldLabel htmlFor={id} className="text-foreground">{label}</FieldLabel>
+              <div className="relative">
                 <Input
                   id={id}
                   type="time"
@@ -367,201 +528,280 @@
                   onChange={(e) => onChange(e.target.value)}
                   className="text-center font-mono text-lg h-12"
                 />
-              </Field>
-            </FieldGroup>
-          ))}
-        </div>
+                {/* Botão "Agora" */}
+                <button
+                  type="button"
+                  onClick={() => onChange(getCurrentTimeString())}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-primary transition-colors px-1"
+                  tabIndex={-1}
+                  title="Usar horário atual"
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </Field>
+          </FieldGroup>
+        ))}
       </div>
-    )
+    </div>
+  )
+}
+ 
+// ─── JustificativaAlert (bug corrigido) ───────────────────────────────────────
+ 
+function JustificativaAlert({
+  justificativa,
+  onJustificativaChange,
+}: {
+  justificativa: string
+  onJustificativaChange: (v: string) => void
+}) {
+  // Rastreia qual opção está selecionada no Select, separado do valor final.
+  // Isso corrige o bug: antes, ao selecionar "Outro", o pai recebia '' e
+  // isOutro ficava false, nunca exibindo o campo de texto.
+  const [opcaoSelecionada, setOpcaoSelecionada] = useState<string>(() => {
+    const opcoesFixas = JUSTIFICATIVAS_HORA_EXTRA.filter((j) => j !== 'Outro')
+    return opcoesFixas.includes(justificativa) ? justificativa : justificativa ? 'Outro' : ''
+  })
+ 
+  const isOutro = opcaoSelecionada === 'Outro'
+ 
+  const handleSelectChange = (v: string) => {
+    setOpcaoSelecionada(v)
+    if (v !== 'Outro') {
+      // Opção fixa: repassa o valor diretamente ao pai
+      onJustificativaChange(v)
+    } else {
+      // "Outro" selecionado: limpa o valor final até o usuário digitar
+      onJustificativaChange('')
+    }
   }
-  function JustificativaAlert({
-    justificativa,
-    onJustificativaChange,
-  }: {
-    justificativa: string
-    onJustificativaChange: (v: string) => void
-  }) {
-    // Rastreia qual opção do Select está ativa, independente do valor final
-    const [opcaoSelecionada, setOpcaoSelecionada] = useState<string>(() => {
-      const isOpcaoFixa = JUSTIFICATIVAS_HORA_EXTRA
-        .filter(j => j !== 'Outro')
-        .includes(justificativa)
-      return isOpcaoFixa ? justificativa : justificativa ? 'Outro' : ''
+ 
+  const handleOutroChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Valor digitado vai direto ao pai como justificativa final
+    onJustificativaChange(e.target.value)
+  }
+ 
+  return (
+    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+      <Alert className="mb-4 border-amber-300 bg-amber-100/50">
+        <Info className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-amber-800">
+          Você está registrando mais de {formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)}.
+          Por favor, selecione uma justificativa.
+        </AlertDescription>
+      </Alert>
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="justificativa" className="text-foreground">
+            Justificativa para Hora Extra
+          </FieldLabel>
+          <Select value={opcaoSelecionada} onValueChange={handleSelectChange}>
+            <SelectTrigger className="h-12">
+              <SelectValue placeholder="Selecione uma justificativa" />
+            </SelectTrigger>
+            <SelectContent>
+              {JUSTIFICATIVAS_HORA_EXTRA.map((j) => (
+                <SelectItem key={j} value={j}>{j}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+ 
+        {/* Campo exibido corretamente ao selecionar "Outro" */}
+        <AnimatePresence>
+          {isOutro && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Field>
+                <FieldLabel htmlFor="outro-motivo" className="text-foreground">
+                  Descreva o motivo
+                </FieldLabel>
+                <Input
+                  id="outro-motivo"
+                  value={justificativa}
+                  onChange={handleOutroChange}
+                  placeholder="Descreva o motivo da hora extra..."
+                  className="h-12"
+                  autoFocus
+                />
+              </Field>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </FieldGroup>
+    </div>
+  )
+}
+ 
+// ─── Componente principal ─────────────────────────────────────────────────────
+ 
+export default function PontoPage() {
+  const { user } = useAuth()
+  const { addPonto, updatePonto, getPontoByDate } = useData()
+ 
+  const [mounted, setMounted] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date())
+  const [pontoSettings, setPontoSettings] = useState(() => getPontoSettings())
+  const [selectedDate, setSelectedDate] = useState(getTodayString())
+  const [errors, setErrors] = useState<string[]>([])
+ 
+  const pontoHoje = user ? getPontoByDate(user.id, selectedDate) : null
+ 
+  const [campos, setCampos] = useState<PeriodoFields>({
+    entrada1: pontoHoje?.entrada1 || '',
+    saida1:   pontoHoje?.saida1   || '',
+    entrada2: pontoHoje?.entrada2 || '',
+    saida2:   pontoHoje?.saida2   || '',
+  })
+  const [justificativa, setJustificativa] = useState(pontoHoje?.justificativaHoraExtra || '')
+ 
+  const setField = useCallback(
+    (field: keyof PeriodoFields) => (value: string) =>
+      setCampos((prev) => ({ ...prev, [field]: value })),
+    [],
+  )
+ 
+  // Efeitos
+  useEffect(() => {
+    setMounted(true)
+    setPontoSettings(getPontoSettings())
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+ 
+  useEffect(() => {
+    if (!pontoHoje) {
+      setCampos({ entrada1: '', saida1: '', entrada2: '', saida2: '' })
+      setJustificativa('')
+      return
+    }
+    setCampos({
+      entrada1: pontoHoje.entrada1 || '',
+      saida1:   pontoHoje.saida1   || '',
+      entrada2: pontoHoje.entrada2 || '',
+      saida2:   pontoHoje.saida2   || '',
     })
-  
-    const isOutro = opcaoSelecionada === 'Outro'
-  
-    const handleSelectChange = (v: string) => {
-      setOpcaoSelecionada(v)
-      if (v !== 'Outro') {
-        onJustificativaChange(v)   // valor fixo → passa direto ao pai
-      } else {
-        onJustificativaChange('')  // "Outro" → limpa até o texto ser digitado
+    setJustificativa(pontoHoje.justificativaHoraExtra || '')
+  }, [pontoHoje])
+ 
+  // Persistência de rascunho (não sobrescreve registros já salvos)
+  useEffect(() => {
+    if (!pontoHoje) {
+      sessionStorage.setItem(`ponto-draft-${selectedDate}`, JSON.stringify(campos))
+    }
+  }, [campos, selectedDate, pontoHoje])
+ 
+  // Restaura rascunho ao trocar de data (se não houver registro salvo)
+  useEffect(() => {
+    if (!pontoHoje) {
+      const draft = sessionStorage.getItem(`ponto-draft-${selectedDate}`)
+      if (draft) {
+        try { setCampos(JSON.parse(draft)) } catch { /* ignora */ }
       }
     }
-  
-    const handleOutroChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      onJustificativaChange(e.target.value)  // texto digitado → passa ao pai
-    }
-  
-    return (
-      <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
-        {/* ... Alert igual ... */}
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="justificativa">Justificativa para Hora Extra</FieldLabel>
-            <Select value={opcaoSelecionada} onValueChange={handleSelectChange}>
-              <SelectTrigger className="h-12">
-                <SelectValue placeholder="Selecione uma justificativa" />
-              </SelectTrigger>
-              <SelectContent>
-                {JUSTIFICATIVAS_HORA_EXTRA.map((j) => (
-                  <SelectItem key={j} value={j}>{j}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-  
-          {/* Agora renderiza corretamente quando opcaoSelecionada === 'Outro' */}
-          {isOutro && (
-            <Field>
-              <FieldLabel htmlFor="outro-motivo">Descreva o motivo</FieldLabel>
-              <Input
-                id="outro-motivo"
-                value={justificativa}         // ← valor vem do pai (fonte única de verdade)
-                onChange={handleOutroChange}
-                placeholder="Descreva o motivo da hora extra..."
-                className="h-12"
-                autoFocus
-              />
-            </Field>
-          )}
-        </FieldGroup>
-      </div>
-    )
-  }
-
-  // ─── Componente principal ─────────────────────────────────────────────────────
-
-  export default function PontoPage() {
-    const { user } = useAuth()
-    const { addPonto, updatePonto, getPontoByDate } = useData()
-
-    const [mounted, setMounted] = useState(false)
-    const [currentTime, setCurrentTime] = useState(new Date())
-    const [pontoSettings, setPontoSettings] = useState(getPontoSettings())
-    const [selectedDate, setSelectedDate] = useState(getTodayString())
-    const [errors, setErrors] = useState<string[]>([])
-
-    const pontoHoje = user ? getPontoByDate(user.id, selectedDate) : null
-
-    const [campos, setCampos] = useState<PeriodoFields>({
-      entrada1: pontoHoje?.entrada1 || '',
-      saida1:   pontoHoje?.saida1   || '',
-      entrada2: pontoHoje?.entrada2 || '',
-      saida2:   pontoHoje?.saida2   || '',
-    })
-    const [justificativa, setJustificativa] = useState(pontoHoje?.justificativaHoraExtra || '')
-
-    const setField = (field: keyof PeriodoFields) => (value: string) =>
-      setCampos((prev) => ({ ...prev, [field]: value }))
-
-    // Efeitos
-    useEffect(() => {
-      setMounted(true)
-      setPontoSettings(getPontoSettings())
-      const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-      return () => clearInterval(timer)
-    }, [])
-
-    useEffect(() => {
-      if (!pontoHoje) return
-      setCampos({
-        entrada1: pontoHoje.entrada1 || '',
-        saida1:   pontoHoje.saida1   || '',
-        entrada2: pontoHoje.entrada2 || '',
-        saida2:   pontoHoje.saida2   || '',
-      })
-      setJustificativa(pontoHoje.justificativaHoraExtra || '')
-    }, [pontoHoje])
-
-    // Derivados
-    const emRecesso = !!user && isInRecessPeriod(selectedDate, user.dataInicioRecesso, user.dataFimRecesso)
-
-    const totalMinutos = calculateDayTotal(
+  }, [selectedDate, pontoHoje])
+ 
+  // Derivados
+  const emRecesso = useMemo(
+    () => !!user && isInRecessPeriod(selectedDate, user.dataInicioRecesso, user.dataFimRecesso),
+    [user, selectedDate],
+  )
+ 
+  const totalMinutos = useMemo(
+    () => calculateDayTotal(
       campos.entrada1 || null,
       campos.saida1   || null,
       campos.entrada2 || null,
       campos.saida2   || null,
-    )
-
-    const precisaJustificativa = totalMinutos > LIMITE_MINUTOS_SEM_JUSTIFICATIVA
-
-    const { validate } = useValidatePonto(campos, justificativa, precisaJustificativa, pontoSettings.rejeitarMinutosZero)
-
-    // Submit
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault()
-
-      if (emRecesso) {
-        toast.error('Você está em período de recesso remunerado')
-        return
-      }
-
-      const erros = validate()
-      setErrors(erros)
-
-      if (erros.length > 0) {
-        toast.error('Corrija os erros antes de salvar')
-        return
-      }
-
-      if (!user) return
-
-      const pontoData = {
-        userId: user.id,
-        data: selectedDate,
-        entrada1: campos.entrada1 || null,
-        saida1:   campos.saida1   || null,
-        entrada2: campos.entrada2 || null,
-        saida2:   campos.saida2   || null,
-        totalMinutos,
-        observacao: null,
-        justificativaHoraExtra: precisaJustificativa ? justificativa : null,
-      }
-
-      if (pontoHoje) {
-        updatePonto(pontoHoje.id, pontoData)
-        toast.success('Ponto atualizado com sucesso!')
-      } else {
-        addPonto(pontoData)
-        toast.success('Ponto registrado com sucesso!')
-      }
+    ),
+    [campos],
+  )
+ 
+  const precisaJustificativa = totalMinutos > LIMITE_MINUTOS_SEM_JUSTIFICATIVA
+ 
+  const { validate } = useValidatePonto(
+    campos,
+    justificativa,
+    precisaJustificativa,
+    pontoSettings.rejeitarMinutosZero,
+  )
+ 
+  // Submit
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+ 
+    if (emRecesso) {
+      toast.error('Você está em período de recesso remunerado')
+      return
     }
-
-    if (emRecesso) return <RecessoCard dataFimRecesso={user!.dataFimRecesso ?? undefined} />
-
-    const animClass = (delay = 0) =>
-      `transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`
-
-    return (
-      <>
-        <PageHeader currentTime={currentTime} />
-
-        <main className="flex-1 p-4 md:p-6 bg-muted/30">
-          <div className="max-w-6xl mx-auto">
-            {/* Título */}
-            <div className={`mb-6 ${animClass()}`}>
-              <h2 className="text-2xl font-bold text-foreground">Ponto do Dia</h2>
-              <p className="text-muted-foreground">{formatDate(selectedDate)}</p>
-            </div>
-
-            {/* Seletor de data */}
-            <Card className={`mb-6 ${animClass()}`} style={{ transitionDelay: '50ms' }}>
+ 
+    const erros = validate()
+    setErrors(erros)
+ 
+    if (erros.length > 0) {
+      toast.error('Corrija os erros antes de salvar')
+      return
+    }
+ 
+    if (!user) return
+ 
+    const pontoData = {
+      userId: user.id,
+      data: selectedDate,
+      entrada1: campos.entrada1 || null,
+      saida1:   campos.saida1   || null,
+      entrada2: campos.entrada2 || null,
+      saida2:   campos.saida2   || null,
+      totalMinutos,
+      observacao: null,
+      justificativaHoraExtra: precisaJustificativa ? justificativa : null,
+    }
+ 
+    if (pontoHoje) {
+      updatePonto(pontoHoje.id, pontoData)
+      toast.success('Ponto atualizado com sucesso!')
+    } else {
+      addPonto(pontoData)
+      toast.success('Ponto registrado com sucesso!')
+    }
+ 
+    setErrors([])
+  }
+ 
+  if (emRecesso) return <RecessoCard dataFimRecesso={user!.dataFimRecesso ?? undefined} />
+ 
+  const fadeIn = (delay = 0) => ({
+    initial: { opacity: 0, y: 16 },
+    animate: mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 },
+    transition: { duration: 0.35, delay, ease: 'easeOut' },
+  })
+ 
+  return (
+    <>
+      <PageHeader currentTime={currentTime} />
+ 
+      <main className="flex-1 p-4 md:p-6 bg-muted/30">
+        <div className="max-w-6xl mx-auto">
+          {/* Título */}
+          <motion.div className="mb-6" {...fadeIn(0)}>
+            <h2 className="text-2xl font-bold text-foreground">Ponto do Dia</h2>
+            <p className="text-muted-foreground">{formatDate(selectedDate)}</p>
+          </motion.div>
+ 
+          {/* Seletor de data */}
+          <motion.div {...fadeIn(0.05)}>
+            <Card className="mb-6">
               <CardContent className="pt-6">
                 <FieldGroup>
                   <Field>
-                    <FieldLabel htmlFor="registro-data" className="text-foreground">Selecionar dia do mês</FieldLabel>
+                    <FieldLabel htmlFor="registro-data" className="text-foreground">
+                      Selecionar dia do mês
+                    </FieldLabel>
                     <Input
                       id="registro-data"
                       type="date"
@@ -572,15 +812,20 @@
                 </FieldGroup>
               </CardContent>
             </Card>
-
-            {/* Cards de totais e regras */}
-            <div className={`grid gap-6 mb-6 md:grid-cols-2 ${animClass()}`} style={{ transitionDelay: '100ms' }}>
-              <CardTotalDia totalMinutos={totalMinutos} precisaJustificativa={precisaJustificativa} />
-              <CardRegraPreenchimento />
-            </div>
-
-            {/* Formulário */}
-            <Card className={animClass()} style={{ transitionDelay: '200ms' }}>
+          </motion.div>
+ 
+          {/* Cards de totais e regras */}
+          <motion.div
+            className="grid gap-6 mb-6 md:grid-cols-2"
+            {...fadeIn(0.1)}
+          >
+            <CardTotalDia totalMinutos={totalMinutos} precisaJustificativa={precisaJustificativa} />
+            <CardRegraPreenchimento />
+          </motion.div>
+ 
+          {/* Formulário */}
+          <motion.div {...fadeIn(0.18)}>
+            <Card>
               <CardHeader>
                 <CardTitle className="text-foreground">Horários</CardTitle>
                 <CardDescription>Registre seus horários de entrada e saída</CardDescription>
@@ -606,22 +851,44 @@
                     onSaidaChange={setField('saida2')}
                     obrigatorio
                   />
-
-                  {precisaJustificativa && (
-                    <JustificativaAlert justificativa={justificativa} onJustificativaChange={setJustificativa} />
-                  )}
-
-                  {errors.length > 0 && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        <ul className="list-disc list-inside">
-                          {errors.map((error, i) => <li key={i}>{error}</li>)}
-                        </ul>
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
+ 
+                  <AnimatePresence>
+                    {precisaJustificativa && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        <JustificativaAlert
+                          justificativa={justificativa}
+                          onJustificativaChange={setJustificativa}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+ 
+                  <AnimatePresence>
+                    {errors.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                      >
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>
+                            <ul className="list-disc list-inside space-y-1">
+                              {errors.map((error, i) => (
+                                <li key={i}>{error}</li>
+                              ))}
+                            </ul>
+                          </AlertDescription>
+                        </Alert>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+ 
                   <Button
                     type="submit"
                     className="w-full h-12 text-base font-semibold transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
@@ -632,8 +899,9 @@
                 </form>
               </CardContent>
             </Card>
-          </div>
-        </main>
-      </>
-    )
-  }
+          </motion.div>
+        </div>
+      </main>
+    </>
+  )
+}
