@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
+import { useFy } from '@/lib/fy-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,7 +14,6 @@ import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { getPontoSettings } from '@/lib/ponto-settings'
 import {
   getTodayString,
   formatDate,
@@ -23,7 +23,8 @@ import {
   formatMinutesToDisplay,
   isInRecessPeriod,
 } from '@/lib/time-utils'
-import { LIMITE_MINUTOS_SEM_JUSTIFICATIVA, JUSTIFICATIVAS_HORA_EXTRA } from '@/lib/types'
+import { JUSTIFICATIVAS_HORA_EXTRA } from '@/lib/types'
+import type { PontoConfig } from '@/lib/types'
 import { Clock, AlertCircle, Save, Info, CheckCircle, Timer, Coffee } from 'lucide-react'
  
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -38,16 +39,16 @@ type PeriodoFields = {
 type EstadoClock = 'red' | 'yellow' | 'green'
  
 // ─── Constantes ───────────────────────────────────────────────────────────────
- 
-const META_DIARIA_MINUTOS = 360
- 
-const REGRAS_PREENCHIMENTO = [
-  { icon: AlertCircle, color: 'text-amber-500', texto: 'Formato HH:MM obrigatório' },
-  { icon: AlertCircle, color: 'text-amber-500', texto: 'Horários "fechados" (minutos = 00) não são aceitos' },
-  { icon: AlertCircle, color: 'text-amber-500', texto: 'Saída deve ser após a entrada' },
-  { icon: AlertCircle, color: 'text-amber-500', texto: 'Sem sobreposição de horários' },
-  { icon: Info,        color: 'text-sky-500',   texto: `Máximo de ${formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} sem justificativa` },
-]
+
+function buildRegrasPreenchimento(limiteMinutos: number) {
+  return [
+    { icon: AlertCircle, color: 'text-zinc-400', texto: 'Formato HH:MM obrigatório' },
+    { icon: AlertCircle, color: 'text-zinc-400', texto: 'Horários "fechados" (minutos = 00) não são aceitos' },
+    { icon: AlertCircle, color: 'text-zinc-400', texto: 'Saída deve ser após a entrada' },
+    { icon: AlertCircle, color: 'text-zinc-400', texto: 'Sem sobreposição de horários' },
+    { icon: Info,        color: 'text-blue-500',  texto: `Máximo de ${formatMinutesToDisplay(limiteMinutos)} sem justificativa` },
+  ]
+}
  
 // ─── Helpers ──────────────────────────────────────────────────────────────────
  
@@ -58,11 +59,6 @@ const hasClosedMinutes = (time: string): boolean => {
  
 const formatTime = (date: Date) =>
   date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
- 
-const getCurrentTimeString = (): string => {
-  const now = new Date()
-  return now.toTimeString().slice(0, 5)
-}
  
 // ─── Lógica do estado do relógio ──────────────────────────────────────────────
  
@@ -76,25 +72,21 @@ function getEstadoClock(minutos: number, meta: number): EstadoClock {
 const CLOCK_STATE_CONFIG: Record<EstadoClock, {
   ringColor: string
   waveColor: string
-  waveColorLight: string
   label: string
 }> = {
   red: {
     ringColor: 'border-red-500',
     waveColor: '#E24B4A',
-    waveColorLight: '#F09595',
     label: 'Início',
   },
   yellow: {
     ringColor: 'border-amber-400',
     waveColor: '#EF9F27',
-    waveColorLight: '#FAC775',
     label: 'Progresso',
   },
   green: {
     ringColor: 'border-green-500',
     waveColor: '#639922',
-    waveColorLight: '#97C459',
     label: 'Completo',
   },
 }
@@ -106,18 +98,19 @@ function useValidatePonto(
   justificativa: string,
   precisaJustificativa: boolean,
   rejeitarMinutosZero: boolean,
+  limiteMinutos: number,
 ) {
   const validate = useCallback((): string[] => {
     const { entrada1, saida1, entrada2, saida2 } = campos
     const erros: string[] = []
- 
+
     const periodos = [
       { label: 'Entrada 1', value: entrada1 },
       { label: 'Saída 1',   value: saida1 },
       { label: 'Entrada 2', value: entrada2 },
       { label: 'Saída 2',   value: saida2 },
     ]
- 
+
     for (const { label, value } of periodos) {
       if (!value) continue
       if (!isValidTimeFormat(value))
@@ -125,28 +118,28 @@ function useValidatePonto(
       if (rejeitarMinutosZero && hasClosedMinutes(value))
         erros.push(`${label}: minutos devem ser diferentes de :00`)
     }
- 
+
     const sequencias = [
       { anterior: entrada1, posterior: saida1,   msg: 'A Saída 1 deve ser após a Entrada 1' },
       { anterior: entrada2, posterior: saida2,   msg: 'A Saída 2 deve ser após a Entrada 2' },
       { anterior: saida1,   posterior: entrada2, msg: 'A Entrada 2 deve ser após a Saída 1' },
     ]
- 
+
     for (const { anterior, posterior, msg } of sequencias) {
       if (anterior && posterior && !isValidTimeSequence(anterior, posterior))
         erros.push(msg)
     }
- 
+
     if (!entrada1 || !saida1 || !entrada2 || !saida2)
       erros.push('Os campos dos dois períodos são obrigatórios')
- 
+
     if (precisaJustificativa && !justificativa)
-      erros.push(`Acima de ${formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} é necessário uma justificativa`)
- 
+      erros.push(`Acima de ${formatMinutesToDisplay(limiteMinutos)} é necessário uma justificativa`)
+
     return erros
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campos, justificativa, precisaJustificativa, rejeitarMinutosZero])
- 
+  }, [campos, justificativa, precisaJustificativa, rejeitarMinutosZero, limiteMinutos])
+
   return { validate }
 }
  
@@ -200,7 +193,9 @@ function RecessoCard({ dataFimRecesso }: { dataFimRecesso?: string }) {
   )
 }
  
-function CardRegraPreenchimento() {
+function CardRegraPreenchimento({ limiteMinutos }: { limiteMinutos: number }) {
+  const regras = buildRegrasPreenchimento(limiteMinutos)
+
   return (
     <Card className="border-zinc-200 h-full">
       <CardHeader className="pb-3">
@@ -208,7 +203,7 @@ function CardRegraPreenchimento() {
       </CardHeader>
       <CardContent>
         <ul className="space-y-3 text-base text-[#5f7897]">
-          {REGRAS_PREENCHIMENTO.map(({ icon: Icon, color, texto }) => (
+          {regras.map(({ icon: Icon, color, texto }) => (
             <li key={texto} className="flex items-center gap-2">
               <Icon className={`h-4 w-4 ${color}`} />
               {texto}
@@ -222,46 +217,48 @@ function CardRegraPreenchimento() {
  
 // ─── Relógio com waves ────────────────────────────────────────────────────────
  
+const WAVE_KEYFRAMES = `
+@keyframes wave-move {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes pulse-ring {
+  from { transform: scale(1); opacity: 0.6; }
+  to   { transform: scale(1.5); opacity: 0; }
+}
+`
+
+const WAVE_PATH =
+  'M0 10 C12.5 2,25 18,50 10 C62.5 2,75 18,100 10 C112.5 2,125 18,150 10 C162.5 2,175 18,200 10 L200 20 L0 20 Z'
+
+const ESTADO_BADGE_CLASS: Record<EstadoClock, string> = {
+  red: 'bg-red-100 text-red-700',
+  yellow: 'bg-amber-100 text-amber-700',
+  green: 'bg-green-100 text-green-700',
+}
+
 function WaveClock({ totalMinutos, meta }: { totalMinutos: number; meta: number }) {
   const progresso = Math.min((totalMinutos / meta) * 100, 100)
   const estado = getEstadoClock(totalMinutos, meta)
   const config = CLOCK_STATE_CONFIG[estado]
   const isComplete = estado === 'green'
- 
-  // Animação de wave via CSS keyframes inline
-  const waveStyle = `
-    @keyframes wave-move {
-      0%   { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
-    }
-    @keyframes pulse-ring {
-      0%   { transform: scale(1); opacity: 0.7; }
-      100% { transform: scale(1.4); opacity: 0; }
-    }
-  `
- 
   const fillHeight = `${Math.max(progresso, 4)}%`
- 
+
   return (
     <div className="flex flex-col items-center gap-2">
-      <style>{waveStyle}</style>
- 
-      {/* Anel pulsante no estado completo */}
+      <style>{WAVE_KEYFRAMES}</style>
+
       <div className="relative">
-        <AnimatePresence>
-          {isComplete && (
-            <motion.div
-              key="pulse"
-              className="absolute inset-0 rounded-full border-2 border-green-400 pointer-events-none"
-              initial={{ scale: 1, opacity: 0.7 }}
-              animate={{ scale: 1.5, opacity: 0 }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut' }}
-              style={{ zIndex: 0 }}
-            />
-          )}
-        </AnimatePresence>
- 
-        {/* Corpo do relógio */}
+        {isComplete && (
+          <div
+            className="absolute inset-0 rounded-full border-2 border-green-400 pointer-events-none"
+            style={{
+              zIndex: 0,
+              animation: 'pulse-ring 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+            }}
+          />
+        )}
+
         <motion.div
           className={`relative w-24 h-24 rounded-full border-4 overflow-hidden ${config.ringColor}`}
           animate={{ borderColor: config.waveColor }}
@@ -269,70 +266,37 @@ function WaveClock({ totalMinutos, meta }: { totalMinutos: number; meta: number 
           aria-label={`Progresso diário: ${Math.round(progresso)}%`}
           role="img"
         >
-          {/* Fundo escuro */}
           <div className="absolute inset-0 bg-slate-900" />
- 
-          {/* Água com wave */}
+
           <motion.div
-            className="absolute inset-x-0 bottom-0"
+            className="absolute inset-x-0 bottom-0 overflow-hidden"
             animate={{ height: fillHeight }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
-            style={{ overflow: 'hidden' }}
           >
-            {/* Wave SVG animada */}
             <div
               style={{
                 position: 'absolute',
-                top: -8,
+                top: -10,
                 left: 0,
                 width: '200%',
-                height: 16,
-                animation: 'wave-move 1.8s linear infinite',
+                height: 20,
+                animation: 'wave-move 2s linear infinite',
               }}
             >
               <svg
-                viewBox="0 0 200 16"
+                viewBox="0 0 200 20"
                 preserveAspectRatio="none"
-                style={{ width: '100%', height: '100%' }}
+                style={{ width: '100%', height: '100%', display: 'block' }}
               >
-                <path
-                  d="M0 8 C25 0, 50 16, 75 8 C100 0, 125 16, 150 8 C175 0, 200 16, 200 8 L200 16 L0 16 Z"
-                  fill={config.waveColor}
-                  opacity="0.8"
-                />
+                <path d={WAVE_PATH} fill={config.waveColor} />
               </svg>
             </div>
             <div
-              style={{
-                position: 'absolute',
-                top: -5,
-                left: 0,
-                width: '200%',
-                height: 12,
-                animation: 'wave-move 2.4s linear infinite reverse',
-                opacity: 0.5,
-              }}
-            >
-              <svg
-                viewBox="0 0 200 12"
-                preserveAspectRatio="none"
-                style={{ width: '100%', height: '100%' }}
-              >
-                <path
-                  d="M0 6 C30 0, 60 12, 90 6 C120 0, 150 12, 180 6 C190 0, 200 12, 200 6 L200 12 L0 12 Z"
-                  fill={config.waveColorLight}
-                />
-              </svg>
-            </div>
- 
-            {/* Fill sólido abaixo das waves */}
-            <div
-              className="absolute inset-x-0 bottom-0 top-6"
-              style={{ background: config.waveColor }}
+              className="absolute inset-x-0 bottom-0"
+              style={{ top: 10, background: config.waveColor }}
             />
           </motion.div>
- 
-          {/* Conteúdo central: % ou check */}
+
           <div className="absolute inset-0 flex items-center justify-center">
             <AnimatePresence mode="wait">
               {isComplete ? (
@@ -360,19 +324,12 @@ function WaveClock({ totalMinutos, meta }: { totalMinutos: number; meta: number 
           </div>
         </motion.div>
       </div>
- 
-      {/* Label de estado */}
+
       <motion.span
         key={estado}
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-          estado === 'red'
-            ? 'bg-red-100 text-red-700'
-            : estado === 'yellow'
-            ? 'bg-amber-100 text-amber-700'
-            : 'bg-green-100 text-green-700'
-        }`}
+        className={`text-xs font-medium px-2 py-0.5 rounded-full ${ESTADO_BADGE_CLASS[estado]}`}
       >
         {config.label}
       </motion.span>
@@ -385,13 +342,17 @@ function WaveClock({ totalMinutos, meta }: { totalMinutos: number; meta: number 
 function CardTotalDia({
   totalMinutos,
   precisaJustificativa,
+  metaDiaria,
+  limiteMinutos,
 }: {
   totalMinutos: number
   precisaJustificativa: boolean
+  metaDiaria: number
+  limiteMinutos: number
 }) {
-  const progresso = Math.min((totalMinutos / META_DIARIA_MINUTOS) * 100, 100)
-  const isComplete = totalMinutos >= META_DIARIA_MINUTOS
-  const estado = getEstadoClock(totalMinutos, META_DIARIA_MINUTOS)
+  const progresso = Math.min((totalMinutos / metaDiaria) * 100, 100)
+  const isComplete = totalMinutos >= metaDiaria
+  const estado = getEstadoClock(totalMinutos, metaDiaria)
  
   const barColor =
     estado === 'red' ? 'bg-red-500' : estado === 'yellow' ? 'bg-amber-400' : 'bg-green-500'
@@ -420,7 +381,7 @@ function CardTotalDia({
             {formatMinutesToDisplay(totalMinutos)}
           </motion.div>
           <div className="text-sm text-muted-foreground pb-1">
-            / {formatMinutesToDisplay(META_DIARIA_MINUTOS)} meta
+            / {formatMinutesToDisplay(metaDiaria)} meta
           </div>
         </div>
  
@@ -442,7 +403,7 @@ function CardTotalDia({
             </div>
  
             {/* Relógio com waves */}
-            <WaveClock totalMinutos={totalMinutos} meta={META_DIARIA_MINUTOS} />
+            <WaveClock totalMinutos={totalMinutos} meta={metaDiaria} />
           </div>
         </div>
  
@@ -452,11 +413,11 @@ function CardTotalDia({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-2"
+              className="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center gap-2"
             >
-              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-              <p className="text-sm text-amber-700">
-                Acima de {formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)} — justificativa obrigatória
+              <AlertCircle className="h-4 w-4 text-blue-600 shrink-0" />
+              <p className="text-sm text-blue-700">
+                Acima de {formatMinutesToDisplay(limiteMinutos)} — justificativa obrigatória
               </p>
             </motion.div>
           )}
@@ -520,25 +481,13 @@ function PeriodoInput({
           <FieldGroup key={id}>
             <Field>
               <FieldLabel htmlFor={id} className="text-foreground">{label}</FieldLabel>
-              <div className="relative">
-                <Input
-                  id={id}
-                  type="time"
-                  value={value}
-                  onChange={(e) => onChange(e.target.value)}
-                  className="text-center font-mono text-lg h-12"
-                />
-                {/* Botão "Agora" */}
-                <button
-                  type="button"
-                  onClick={() => onChange(getCurrentTimeString())}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-primary transition-colors px-1"
-                  tabIndex={-1}
-                  title="Usar horário atual"
-                >
-                  <Clock className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              <Input
+                id={id}
+                type="time"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="text-center font-mono text-lg h-12"
+              />
             </Field>
           </FieldGroup>
         ))}
@@ -552,9 +501,11 @@ function PeriodoInput({
 function JustificativaAlert({
   justificativa,
   onJustificativaChange,
+  limiteMinutos,
 }: {
   justificativa: string
   onJustificativaChange: (v: string) => void
+  limiteMinutos: number
 }) {
   // Rastreia qual opção está selecionada no Select, separado do valor final.
   // Isso corrige o bug: antes, ao selecionar "Outro", o pai recebia '' e
@@ -583,11 +534,11 @@ function JustificativaAlert({
   }
  
   return (
-    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
-      <Alert className="mb-4 border-amber-300 bg-amber-100/50">
-        <Info className="h-4 w-4 text-amber-600" />
-        <AlertDescription className="text-amber-800">
-          Você está registrando mais de {formatMinutesToDisplay(LIMITE_MINUTOS_SEM_JUSTIFICATIVA)}.
+    <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200/80">
+      <Alert className="mb-4 border-blue-200 bg-blue-100/40">
+        <Info className="h-4 w-4 text-blue-600" />
+        <AlertDescription className="text-blue-800">
+          Você está registrando mais de {formatMinutesToDisplay(limiteMinutos)}.
           Por favor, selecione uma justificativa.
         </AlertDescription>
       </Alert>
@@ -642,11 +593,12 @@ function JustificativaAlert({
  
 export default function PontoPage() {
   const { user } = useAuth()
-  const { addPonto, updatePonto, getPontoByDate } = useData()
+  const { addPonto, updatePonto, getPontoByDate, getActivePontoConfig } = useData()
+  const { pulseCelebrate, setAnimationPhase } = useFy()
+  const activeConfig = getActivePontoConfig()
  
   const [mounted, setMounted] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
-  const [pontoSettings, setPontoSettings] = useState(() => getPontoSettings())
   const [selectedDate, setSelectedDate] = useState(getTodayString())
   const [errors, setErrors] = useState<string[]>([])
  
@@ -669,7 +621,6 @@ export default function PontoPage() {
   // Efeitos
   useEffect(() => {
     setMounted(true)
-    setPontoSettings(getPontoSettings())
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
@@ -722,13 +673,14 @@ export default function PontoPage() {
     [campos],
   )
  
-  const precisaJustificativa = totalMinutos > LIMITE_MINUTOS_SEM_JUSTIFICATIVA
- 
+  const precisaJustificativa = totalMinutos > activeConfig.limiteMinutosSemJustificativa
+
   const { validate } = useValidatePonto(
     campos,
     justificativa,
     precisaJustificativa,
-    pontoSettings.rejeitarMinutosZero,
+    activeConfig.rejeitarMinutosZero,
+    activeConfig.limiteMinutosSemJustificativa,
   )
  
   // Submit
@@ -745,6 +697,7 @@ export default function PontoPage() {
  
     if (erros.length > 0) {
       toast.error('Corrija os erros antes de salvar')
+      setAnimationPhase('alert')
       return
     }
  
@@ -769,7 +722,8 @@ export default function PontoPage() {
       addPonto(pontoData)
       toast.success('Ponto registrado com sucesso!')
     }
- 
+
+    pulseCelebrate()
     setErrors([])
   }
  
@@ -819,8 +773,13 @@ export default function PontoPage() {
             className="grid gap-6 mb-6 md:grid-cols-2"
             {...fadeIn(0.1)}
           >
-            <CardTotalDia totalMinutos={totalMinutos} precisaJustificativa={precisaJustificativa} />
-            <CardRegraPreenchimento />
+            <CardTotalDia
+              totalMinutos={totalMinutos}
+              precisaJustificativa={precisaJustificativa}
+              metaDiaria={activeConfig.metaDiariaMinutos}
+              limiteMinutos={activeConfig.limiteMinutosSemJustificativa}
+            />
+            <CardRegraPreenchimento limiteMinutos={activeConfig.limiteMinutosSemJustificativa} />
           </motion.div>
  
           {/* Formulário */}
@@ -863,6 +822,7 @@ export default function PontoPage() {
                         <JustificativaAlert
                           justificativa={justificativa}
                           onJustificativaChange={setJustificativa}
+                          limiteMinutos={activeConfig.limiteMinutosSemJustificativa}
                         />
                       </motion.div>
                     )}
@@ -891,6 +851,7 @@ export default function PontoPage() {
  
                   <Button
                     type="submit"
+                    data-fy-anchor="fy-save-ponto"
                     className="w-full h-12 text-base font-semibold transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
                   >
                     <Save className="mr-2 h-5 w-5" />

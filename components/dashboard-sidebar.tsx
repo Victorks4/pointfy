@@ -31,11 +31,15 @@ import {
   Megaphone,
   FileBarChart2,
   SlidersHorizontal,
+  Target,
+  Sparkles,
 } from 'lucide-react'
+import { useFy } from '@/lib/fy-context'
 
 export function DashboardSidebar() {
   const { user, logout } = useAuth()
   const { getNotificacoesByUser } = useData()
+  const { restartOnboarding } = useFy()
   const pathname = usePathname()
   const router = useRouter()
 
@@ -95,6 +99,11 @@ export function DashboardSidebar() {
       title: 'Relatórios',
       href: '/dashboard/admin/relatorios',
       icon: FileBarChart2,
+    },
+    {
+      title: 'Desafios',
+      href: '/dashboard/admin/desafios',
+      icon: Target,
     },
     {
       title: 'Configurações',
@@ -205,7 +214,16 @@ export function DashboardSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-[#31435f] p-2">
+      <SidebarFooter className="border-t border-[#31435f] p-2 space-y-2">
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full justify-start gap-2 text-[#b8cce6] hover:text-white hover:bg-[#35506f] text-sm h-9 px-3"
+          onClick={() => restartOnboarding()}
+        >
+          <Sparkles className="h-4 w-4 shrink-0 text-sky-300" />
+          Tour com o Fy
+        </Button>
         <div className="flex items-center gap-3 p-2 rounded-xl bg-[#1e3047]/80">
           <Avatar className="h-10 w-10 ring-2 ring-blue-200/30">
             <AvatarFallback className="bg-[#2d4565] text-[#dce8f8] text-sm font-semibold">

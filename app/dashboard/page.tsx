@@ -7,24 +7,94 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
-import { formatMinutesToDisplay, getTodayString, formatDate } from '@/lib/time-utils'
+import { formatMinutesToDisplay, getTodayString, formatDate, calcularSequenciaAtual } from '@/lib/time-utils'
+import { computeProductivityScore } from '@/lib/productivity'
 import { Clock, TrendingUp, TrendingDown, Calendar, Bell, AlertCircle, ChevronRight, Zap, Flame, Trophy, Target, CircleCheck } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 
+function DesafiosSemanaCard() {
+  const { user } = useAuth()
+  const { getDesafiosSemanaAtual, getProgressoDesafio, getPontosByUser, atualizarProgressoDesafio } = useData()
+
+  const desafiosAtivos = getDesafiosSemanaAtual()
+  const pontos = user ? getPontosByUser(user.id) : []
+
+  const desafiosComProgresso = desafiosAtivos.map(desafio => {
+    const progresso = user ? getProgressoDesafio(user.id, desafio.id) : undefined
+
+    let progressoCalculado = progresso?.progressoAtual ?? 0
+
+    if (user && desafio.tipo !== 'custom') {
+      const pontosNaSemana = pontos.filter(p => p.data >= desafio.dataInicio && p.data <= desafio.dataFim)
+
+      if (desafio.tipo === 'meta_horas') {
+        const totalMinutos = pontosNaSemana.reduce((acc, p) => acc + p.totalMinutos, 0)
+        progressoCalculado = Math.round(totalMinutos / 60)
+      } else if (desafio.tipo === 'streak') {
+        progressoCalculado = pontosNaSemana.length
+      } else if (desafio.tipo === 'pontualidade') {
+        progressoCalculado = pontosNaSemana.filter(p => {
+          if (!p.entrada1) return false
+          const [h] = p.entrada1.split(':').map(Number)
+          return h < 9 || (h === 9 && p.entrada1 === '09:00')
+        }).length
+      }
+
+      const concluido = progressoCalculado >= desafio.meta
+      atualizarProgressoDesafio(user.id, desafio.id, progressoCalculado, concluido)
+    }
+
+    const percentual = desafio.meta > 0 ? Math.min((progressoCalculado / desafio.meta) * 100, 100) : 0
+    const concluido = progressoCalculado >= desafio.meta
+
+    return { ...desafio, progressoCalculado, percentual, concluido }
+  })
+
+  return (
+    <Card className="bg-white border-zinc-200 hover:shadow-lg transition-all">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-zinc-900 flex items-center gap-2">
+          <Target className="h-4 w-4 text-indigo-600" />
+          Desafios da Semana
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {desafiosComProgresso.length === 0 ? (
+          <p className="text-xs text-zinc-500 py-2">Nenhum desafio ativo esta semana.</p>
+        ) : (
+          desafiosComProgresso.map(desafio => (
+            <div
+              key={desafio.id}
+              className="flex flex-col gap-1 rounded-md border border-zinc-200 px-3 py-2"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-800">{desafio.titulo}</span>
+                {desafio.concluido && <CircleCheck className="h-4 w-4 text-green-600" />}
+              </div>
+              <Progress
+                value={desafio.percentual}
+                className="h-1.5 bg-zinc-200 [&>div]:bg-indigo-500"
+              />
+              <div className="flex items-center justify-between text-xs text-zinc-500">
+                <span>{desafio.progressoCalculado}/{desafio.meta}</span>
+                {desafio.recompensa && <span>{desafio.recompensa}</span>}
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function DashboardPage() {
   const { user } = useAuth()
-  const { getPontosByUser, getBancoHoras, getNotificacoesByUser, getPontoByDate } = useData()
+  const { getPontosByUser, getBancoHoras, getNotificacoesByUser, getPontoByDate, getActivePontoConfig } = useData()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
-  const [desafiosConcluidos, setDesafiosConcluidos] = useState({
-    metaDiaria: false,
-    semAtraso: false,
-    justificouExtra: false,
-  })
-
   useEffect(() => {
     if (user?.cargo === 'admin') {
       router.replace('/dashboard/admin')
@@ -46,35 +116,11 @@ export default function DashboardPage() {
 
   const totalHorasMes = pontos.reduce((acc, p) => acc + p.totalMinutos, 0)
   
-  // Calcular progresso do dia (6h = 360min é a meta)
-  const metaDiaria = 360
+  const activeConfig = getActivePontoConfig()
+  const metaDiaria = activeConfig.metaDiariaMinutos
   const progressoDia = pontoHoje ? Math.min((pontoHoje.totalMinutos / metaDiaria) * 100, 100) : 0
-  const diasComMeta = pontos.filter((ponto) => ponto.totalMinutos >= metaDiaria).length
-  const diasComExtra = pontos.filter((ponto) => ponto.totalMinutos > 370).length
-  const nivelXp = Math.min(Math.round((diasComMeta / Math.max(pontos.length || 1, 1)) * 100), 100)
-
-  const calcularSequenciaAtual = () => {
-    if (pontos.length === 0) return 0
-
-    const datasUnicasOrdenadas = Array.from(new Set(pontos.map((p) => p.data))).sort((a, b) =>
-      new Date(b).getTime() - new Date(a).getTime()
-    )
-
-    let streak = 1
-    for (let i = 1; i < datasUnicasOrdenadas.length; i++) {
-      const anterior = new Date(`${datasUnicasOrdenadas[i - 1]}T00:00:00`)
-      const atual = new Date(`${datasUnicasOrdenadas[i]}T00:00:00`)
-      const diffDias = Math.round((anterior.getTime() - atual.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDias === 1) {
-        streak += 1
-      } else {
-        break
-      }
-    }
-    return streak
-  }
-
-  const streakAtual = calcularSequenciaAtual()
+  const streakAtual = calcularSequenciaAtual(pontos.map(p => p.data))
+  const productivity = computeProductivityScore(pontos, streakAtual, metaDiaria)
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -203,7 +249,10 @@ export default function DashboardPage() {
         </div>
 
         <div className={`grid gap-4 md:grid-cols-3 mb-6 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '450ms' }}>
-          <Card className="bg-white border-zinc-200 hover:shadow-lg transition-all">
+          <Card
+            data-fy-anchor="fy-streak"
+            className="bg-white border-zinc-200 hover:shadow-lg transition-all"
+          >
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-zinc-900 flex items-center gap-2">
                 <Flame className="h-4 w-4 text-orange-500" />
@@ -220,53 +269,46 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-zinc-900 flex items-center gap-2">
                 <Trophy className="h-4 w-4 text-amber-500" />
-                Nível de Produtividade
+                Nível: {productivity.tier.label}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-zinc-900">{nivelXp}%</p>
-              <Progress value={nivelXp} className="mt-2 h-2 bg-zinc-200 [&>div]:bg-amber-500" />
-              <p className="text-xs text-zinc-600 mt-1">{diasComMeta} dia(s) com meta completa.</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-bold text-zinc-900">{productivity.score}%</p>
+                {productivity.nextTier && (
+                  <span className="text-xs text-zinc-500">
+                    próx: {productivity.nextTier.minScore}%
+                  </span>
+                )}
+              </div>
+              <Progress
+                value={productivity.score}
+                className="mt-2 h-2 bg-zinc-200 [&>div]:bg-amber-500"
+              />
+              <div className="mt-3 space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500 flex items-center gap-1">
+                    <Flame className="h-3 w-3" /> Consistência
+                  </span>
+                  <span className="font-medium text-zinc-700">{productivity.breakdown.consistency}%</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500 flex items-center gap-1">
+                    <Target className="h-3 w-3" /> Meta diária
+                  </span>
+                  <span className="font-medium text-zinc-700">{productivity.breakdown.goalCompletion}%</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500 flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Pontualidade
+                  </span>
+                  <span className="font-medium text-zinc-700">{productivity.breakdown.punctuality}%</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-zinc-200 hover:shadow-lg transition-all">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-zinc-900 flex items-center gap-2">
-                <Target className="h-4 w-4 text-indigo-600" />
-                Desafios do Dia
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setDesafiosConcluidos((prev) => ({ ...prev, metaDiaria: !prev.metaDiaria }))}
-                className="w-full flex items-center justify-between rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-100 transition-colors"
-              >
-                <span>Completar 6h no dia</span>
-                {desafiosConcluidos.metaDiaria && <CircleCheck className="h-4 w-4 text-green-600" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDesafiosConcluidos((prev) => ({ ...prev, semAtraso: !prev.semAtraso }))}
-                className="w-full flex items-center justify-between rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-100 transition-colors"
-              >
-                <span>Sem atrasos no primeiro período</span>
-                {desafiosConcluidos.semAtraso && <CircleCheck className="h-4 w-4 text-green-600" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDesafiosConcluidos((prev) => ({ ...prev, justificouExtra: !prev.justificouExtra }))}
-                className="w-full flex items-center justify-between rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-100 transition-colors"
-              >
-                <span>Justificar hora extra corretamente</span>
-                {desafiosConcluidos.justificouExtra && <CircleCheck className="h-4 w-4 text-green-600" />}
-              </button>
-              <p className="text-xs text-zinc-600 pt-1">
-                Bônus: {diasComExtra} dia(s) com produtividade acima de {formatMinutesToDisplay(370)}.
-              </p>
-            </CardContent>
-          </Card>
+          <DesafiosSemanaCard />
         </div>
 
         {/* Ações Rápidas */}

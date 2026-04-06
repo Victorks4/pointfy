@@ -141,9 +141,6 @@ export function calculateRecessEnd(startDate: string): string {
   return start.toISOString().split('T')[0]
 }
 
-/**
- * Verifica se o recesso está próximo (dentro de 7 dias)
- */
 export function isRecessApproaching(
   recessStart: string | null,
   daysAhead: number = 7
@@ -157,36 +154,31 @@ export function isRecessApproaching(
   return diffDays > 0 && diffDays <= daysAhead
 }
 
-/**
- * Divide um percentual (0..100) em 3 faixas iguais (0-1/3, 1/3-2/3, 2/3-1).
- * Retorna [faixa0, faixa1, faixa2] onde cada valor está em (0..33.333...).
- */
-export function splitPercentIntoThreeBands(percent: number): [number, number, number] {
-  const EPS = 1e-6
-  const value = Math.max(0, Math.min(percent, 100))
-  const band = 100 / 3
+const MS_PER_DAY = 1000 * 60 * 60 * 24
 
-  const normalize = (n: number) => (Math.abs(n) < EPS ? 0 : n)
-
-  const band0 = normalize(Math.min(value, band))
-  const band1 = normalize(Math.min(Math.max(value - band, 0), band))
-  const band2 = normalize(Math.min(Math.max(value - band * 2, 0), band))
-
-  return [band0, band1, band2]
+function toLocalMidnight(dateString: string): Date {
+  return new Date(`${dateString}T00:00:00`)
 }
 
-/**
- * Determina a cor do progresso por faixa de horas na meta diária (padrão 6h / 360min).
- * Faixa (0..meta):
- * - vermelho: 0..(meta/3) inclusive
- * - amarelo: (meta/3)..(2*meta/3) inclusive
- * - azul: (2*meta/3)..meta
- */
-export function getWaveBandClassByMinutes(totalMinutes: number, metaMinutes: number = 360): string {
-  const clamped = Math.max(0, Math.min(totalMinutes, metaMinutes))
-  const bandMinutes = metaMinutes / 3
+export function calcularSequenciaAtual(dates: string[]): number {
+  if (dates.length === 0) return 0
 
-  if (clamped <= bandMinutes) return 'wave-red'
-  if (clamped <= bandMinutes * 2) return 'wave-yellow'
-  return 'wave-blue'
+  const today = toLocalMidnight(getTodayString())
+  const uniqueDates = [...new Set(dates)]
+    .sort((a, b) => toLocalMidnight(b).getTime() - toLocalMidnight(a).getTime())
+
+  const mostRecent = toLocalMidnight(uniqueDates[0])
+  const daysSinceLast = Math.round((today.getTime() - mostRecent.getTime()) / MS_PER_DAY)
+
+  if (daysSinceLast > 1) return 0
+
+  let streak = 1
+  for (let i = 1; i < uniqueDates.length; i++) {
+    const prev = toLocalMidnight(uniqueDates[i - 1])
+    const curr = toLocalMidnight(uniqueDates[i])
+    const diff = Math.round((prev.getTime() - curr.getTime()) / MS_PER_DAY)
+    if (diff !== 1) break
+    streak++
+  }
+  return streak
 }

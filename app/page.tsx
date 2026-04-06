@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -212,6 +213,19 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
+
+          <div className="mt-6 flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
+            <Image
+              src="/fy-mascote.png"
+              alt="Fy, guia do Pontify"
+              width={44}
+              height={44}
+              className="shrink-0 object-contain"
+            />
+            <p className="text-sm text-blue-950/85 leading-snug text-left">
+              Depois do login, o <strong>Fy</strong> te guia no primeiro acesso — tour curto no menu lateral ou no botão flutuante.
+            </p>
+          </div>
 
           {/* Info mobile */}
           <div className="lg:hidden mt-8 p-4 rounded-xl bg-muted/50 border border-border">

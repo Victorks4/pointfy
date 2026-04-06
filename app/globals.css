@@ -127,182 +127,23 @@
   }
 }
 
-@keyframes wave {
+.fy-spotlight-active {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: inherit;
+  animation: fy-spotlight-pulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 45%, transparent);
+}
+
+@keyframes fy-spotlight-pulse {
   0%,
   100% {
-    transform: translateY(0);
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 35%, transparent);
   }
   50% {
-    transform: translateY(-4px);
+    box-shadow: 0 0 20px 2px color-mix(in oklch, var(--primary) 25%, transparent);
   }
 }
 
-@keyframes wave-slide {
-  0% {
-    transform: translateX(-25%);
-  }
-  100% {
-    transform: translateX(25%);
-  }
-}
-
-@keyframes wave-shine {
-  0% {
-    transform: translateX(-120%);
-  }
-  100% {
-    transform: translateX(220%);
-  }
-}
-
-@keyframes ring-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.45;
-  }
-  50% {
-    transform: scale(1.06);
-    opacity: 0.85;
-  }
-}
-
-.wave-progress-track {
-  position: relative;
-  height: 0.75rem;
-  width: 100%;
-  overflow: hidden;
-  border-radius: 9999px;
-  background: #dbeafe;
-}
-
-.wave-progress-fill {
-  position: relative;
-  height: 100%;
-  min-width: 0;
-  overflow: hidden;
-  border-radius: 9999px;
-  /* A cor do preenchimento é definida por variantes (wave-progress-fill-*) */
-  background: transparent;
-}
-
-.wave-progress-fill::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    -45deg,
-    rgb(255 255 255 / 0.25) 0px,
-    rgb(255 255 255 / 0.25) 8px,
-    transparent 8px,
-    transparent 16px
-  );
-  animation: wave-slide 2.2s linear infinite;
-}
-
-.wave-progress-shine {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 35%;
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
-  animation: wave-shine 2.4s ease-in-out infinite;
-}
-
-.wave-water {
-  animation: wave 1.8s ease-in-out infinite;
-}
-
-.wave-ring {
-  animation: ring-pulse 2.4s ease-in-out infinite;
-}
-
-.wave-ring-delayed {
-  animation: ring-pulse 2.4s ease-in-out infinite 1.2s;
-}
-
-.wave-progress-fill-red {
-  background: linear-gradient(90deg, #dc2626 0%, #ef4444 55%, #f87171 100%);
-}
-
-.wave-progress-fill-yellow {
-  background: linear-gradient(90deg, #ca8a04 0%, #eab308 55%, #facc15 100%);
-}
-
-.wave-progress-fill-blue {
-  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 55%, #60a5fa 100%);
-}
-
-.wave-red {
-  background: #fef2f2;
-  border-color: #fca5a5;
-}
-
-/* Cores do relógio/segmentos são definidas por classes diretas
-   (ex.: wave-water-base-red). Evitamos seletores parentais para não
-   sobrescrever segmentos segmentados. */
-
-.wave-water-base-red {
-  background: rgb(239 68 68 / 0.72);
-}
-
-.wave-water-red {
-  background: rgb(248 113 113 / 0.62);
-}
-
-.wave-red .wave-ring,
-.wave-red .wave-ring-delayed {
-  border-color: rgb(248 113 113 / 0.6);
-}
-
-.wave-red .wave-text {
-  color: #7f1d1d;
-}
-
-.wave-yellow {
-  background: #fffbeb;
-  border-color: #fcd34d;
-}
-
-/* (ver comentário acima) */
-
-.wave-water-base-yellow {
-  background: rgb(234 179 8 / 0.72);
-}
-
-.wave-water-yellow {
-  background: rgb(250 204 21 / 0.62);
-}
-
-.wave-yellow .wave-ring,
-.wave-yellow .wave-ring-delayed {
-  border-color: rgb(250 204 21 / 0.56);
-}
-
-.wave-yellow .wave-text {
-  color: #854d0e;
-}
-
-.wave-blue {
-  background: #eff6ff;
-  border-color: #93c5fd;
-}
-
-/* (ver comentário acima) */
-
-.wave-water-base-blue {
-  background: rgb(59 130 246 / 0.72);
-}
-
-.wave-water-blue {
-  background: rgb(96 165 250 / 0.62);
-}
-
-.wave-blue .wave-ring,
-.wave-blue .wave-ring-delayed {
-  border-color: rgb(96 165 250 / 0.56);
-}
-
-.wave-blue .wave-text {
-  color: #1e3a8a;
-}

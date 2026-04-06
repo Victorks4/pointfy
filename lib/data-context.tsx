@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import type { PontoRegistro, Justificativa, Notificacao, User, BancoHoras } from './types'
+import type { PontoRegistro, Justificativa, Notificacao, User, BancoHoras, DesafioSemanal, DesafioProgresso, PontoConfig } from './types'
 import { MINUTOS_COMPENSACAO } from './types'
 
 interface DataContextType {
@@ -36,11 +36,42 @@ interface DataContextType {
   // Banco de Horas por período (mês/ano)
   getBancoHorasPorPeriodo: (userId: string, year: string, month: string) => number
   calcularBancoHorasPorPeriodo: (userId: string, year: string, month: string) => number
+
+  // Desafios Semanais
+  desafios: DesafioSemanal[]
+  addDesafio: (desafio: Omit<DesafioSemanal, 'id' | 'createdAt'>) => void
+  updateDesafio: (id: string, desafio: Partial<DesafioSemanal>) => void
+  deleteDesafio: (id: string) => void
+  getDesafiosSemanaAtual: () => DesafioSemanal[]
+
+  // Progresso de Desafios
+  desafioProgressos: DesafioProgresso[]
+  getProgressoDesafio: (userId: string, desafioId: string) => DesafioProgresso | undefined
+  atualizarProgressoDesafio: (userId: string, desafioId: string, progressoAtual: number, concluido: boolean) => void
+
+  // Configurações de Ponto
+  pontoConfigs: PontoConfig[]
+  addPontoConfig: (config: Omit<PontoConfig, 'id' | 'createdAt'>) => void
+  updatePontoConfig: (id: string, config: Partial<PontoConfig>) => void
+  deletePontoConfig: (id: string) => void
+  getActivePontoConfig: () => PontoConfig
 }
 
 const DataContext = createContext<DataContextType | null>(null)
 
-// Dados mock iniciais
+const DEFAULT_PONTO_CONFIG: PontoConfig = {
+  id: 'default',
+  nome: 'Padrão (6h/dia)',
+  metaDiariaMinutos: 360,
+  limiteMinutosSemJustificativa: 370,
+  rejeitarMinutosZero: true,
+  formatoDecimal: 'americano',
+  horarioEntradaEsperado: '09:00',
+  ativo: true,
+  padrao: true,
+  createdAt: new Date().toISOString(),
+}
+
 const MOCK_USUARIOS: User[] = [
   {
     id: '1',
@@ -82,6 +113,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   ])
   const [usuarios, setUsuarios] = useState<User[]>(MOCK_USUARIOS)
+  const [desafios, setDesafios] = useState<DesafioSemanal[]>([])
+  const [desafioProgressos, setDesafioProgressos] = useState<DesafioProgresso[]>([])
+  const [pontoConfigs, setPontoConfigs] = useState<PontoConfig[]>([DEFAULT_PONTO_CONFIG])
 
   // Funções de Ponto
   const addPonto = (ponto: Omit<PontoRegistro, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -227,6 +261,108 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return calcularBancoHoras(userId)
   }
 
+  const addDesafio = (desafio: Omit<DesafioSemanal, 'id' | 'createdAt'>) => {
+    const newDesafio: DesafioSemanal = {
+      ...desafio,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    }
+    setDesafios(prev => [...prev, newDesafio])
+  }
+
+  const updateDesafio = (id: string, update: Partial<DesafioSemanal>) => {
+    setDesafios(prev => prev.map(d => (d.id === id ? { ...d, ...update } : d)))
+  }
+
+  const deleteDesafio = (id: string) => {
+    setDesafios(prev => prev.filter(d => d.id !== id))
+    setDesafioProgressos(prev => prev.filter(dp => dp.desafioId !== id))
+  }
+
+  const getDesafiosSemanaAtual = (): DesafioSemanal[] => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return desafios.filter(d => {
+      if (!d.ativo) return false
+      const inicio = new Date(`${d.dataInicio}T00:00:00`)
+      const fim = new Date(`${d.dataFim}T23:59:59`)
+      return today >= inicio && today <= fim
+    })
+  }
+
+  const getProgressoDesafio = (userId: string, desafioId: string) => {
+    return desafioProgressos.find(dp => dp.userId === userId && dp.desafioId === desafioId)
+  }
+
+  const atualizarProgressoDesafio = (
+    userId: string,
+    desafioId: string,
+    progressoAtual: number,
+    concluido: boolean,
+  ) => {
+    setDesafioProgressos(prev => {
+      const existing = prev.find(dp => dp.userId === userId && dp.desafioId === desafioId)
+      if (existing) {
+        return prev.map(dp =>
+          dp.id === existing.id
+            ? { ...dp, progressoAtual, concluido, concluidoEm: concluido ? new Date().toISOString() : null }
+            : dp
+        )
+      }
+      return [...prev, {
+        id: Date.now().toString(),
+        desafioId,
+        userId,
+        progressoAtual,
+        concluido,
+        concluidoEm: concluido ? new Date().toISOString() : null,
+      }]
+    })
+  }
+
+  const addPontoConfig = (config: Omit<PontoConfig, 'id' | 'createdAt'>) => {
+    const newConfig: PontoConfig = {
+      ...config,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    }
+    if (newConfig.ativo) {
+      setPontoConfigs(prev => prev.map(c => ({ ...c, ativo: false })).concat(newConfig))
+    } else {
+      setPontoConfigs(prev => [...prev, newConfig])
+    }
+  }
+
+  const updatePontoConfig = (id: string, update: Partial<PontoConfig>) => {
+    setPontoConfigs(prev => {
+      let configs = prev.map(c => (c.id === id ? { ...c, ...update } : c))
+      if (update.ativo === true) {
+        configs = configs.map(c => (c.id === id ? c : { ...c, ativo: false }))
+      }
+      return configs
+    })
+  }
+
+  const deletePontoConfig = (id: string) => {
+    setPontoConfigs(prev => {
+      const target = prev.find(c => c.id === id)
+      if (target?.padrao) return prev
+      const remaining = prev.filter(c => c.id !== id)
+      if (target?.ativo && remaining.length > 0) {
+        const defaultConfig = remaining.find(c => c.padrao)
+        if (defaultConfig) {
+          return remaining.map(c => (c.id === defaultConfig.id ? { ...c, ativo: true } : c))
+        }
+        return remaining.map((c, i) => (i === 0 ? { ...c, ativo: true } : c))
+      }
+      return remaining
+    })
+  }
+
+  const getActivePontoConfig = (): PontoConfig => {
+    return pontoConfigs.find(c => c.ativo) ?? pontoConfigs.find(c => c.padrao) ?? DEFAULT_PONTO_CONFIG
+  }
+
   return (
     <DataContext.Provider value={{
       pontos,
@@ -249,7 +385,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       calcularBancoHoras,
       getBancoHorasPorPeriodo: (userId: string, year: string, month: string) =>
         calcularBancoHorasPorPeriodo(userId, year, month),
-      calcularBancoHorasPorPeriodo
+      calcularBancoHorasPorPeriodo,
+      desafios,
+      addDesafio,
+      updateDesafio,
+      deleteDesafio,
+      getDesafiosSemanaAtual,
+      desafioProgressos,
+      getProgressoDesafio,
+      atualizarProgressoDesafio,
+      pontoConfigs,
+      addPontoConfig,
+      updatePontoConfig,
+      deletePontoConfig,
+      getActivePontoConfig,
     }}>
       {children}
     </DataContext.Provider>

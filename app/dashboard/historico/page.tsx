@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { formatDate, formatMinutesToDisplay } from '@/lib/time-utils'
-import { LIMITE_MINUTOS_SEM_JUSTIFICATIVA } from '@/lib/types'
 import { Calendar, TrendingUp, TrendingDown } from 'lucide-react'
 
 const MESES = [
@@ -31,7 +30,8 @@ const MESES = [
 
 export default function HistoricoPage() {
   const { user } = useAuth()
-  const { usuarios, getPontosByUser, getBancoHoras } = useData()
+  const { usuarios, getPontosByUser, getBancoHoras, getActivePontoConfig } = useData()
+  const activeConfig = getActivePontoConfig()
   const searchParams = useSearchParams()
 
   const currentYear = new Date().getFullYear()
@@ -184,7 +184,7 @@ export default function HistoricoPage() {
                           {formatMinutesToDisplay(ponto.totalMinutos)}
                         </TableCell>
                         <TableCell>
-                          {ponto.totalMinutos > LIMITE_MINUTOS_SEM_JUSTIFICATIVA && ponto.justificativaHoraExtra && (
+                          {ponto.totalMinutos > activeConfig.limiteMinutosSemJustificativa && ponto.justificativaHoraExtra && (
                             <Badge variant="outline" className="text-xs">
                               {ponto.justificativaHoraExtra}
                             </Badge>

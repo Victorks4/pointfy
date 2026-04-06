@@ -4,6 +4,8 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
+import { FyGuide } from '@/components/fy-guide'
+import { FyProvider } from '@/lib/fy-context'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -38,12 +40,15 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <DashboardSidebar />
-      <SidebarInset>
-        <div className="flex flex-1 flex-col">
-          {children}
-        </div>
-      </SidebarInset>
+      <FyProvider userId={user.id} isAdmin={user.cargo === 'admin'}>
+        <DashboardSidebar />
+        <SidebarInset>
+          <div className="flex flex-1 flex-col pb-24 md:pb-10">
+            {children}
+          </div>
+          <FyGuide />
+        </SidebarInset>
+      </FyProvider>
     </SidebarProvider>
   )
 }

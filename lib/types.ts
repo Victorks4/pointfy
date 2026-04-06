@@ -56,6 +56,50 @@ export interface BancoHoras {
   mesAno: string // YYYY-MM
 }
 
+export type TipoDesafio = 'meta_horas' | 'streak' | 'pontualidade' | 'custom'
+
+export interface DesafioSemanal {
+  id: string
+  titulo: string
+  descricao: string
+  tipo: TipoDesafio
+  meta: number
+  recompensa: string
+  dataInicio: string
+  dataFim: string
+  ativo: boolean
+  createdAt: string
+}
+
+export interface DesafioProgresso {
+  id: string
+  desafioId: string
+  userId: string
+  progressoAtual: number
+  concluido: boolean
+  concluidoEm: string | null
+}
+
+export interface PontoConfig {
+  id: string
+  nome: string
+  metaDiariaMinutos: number
+  limiteMinutosSemJustificativa: number
+  rejeitarMinutosZero: boolean
+  formatoDecimal: 'americano' | 'brasileiro'
+  horarioEntradaEsperado: string
+  ativo: boolean
+  padrao: boolean
+  createdAt: string
+}
+
+export const TIPO_DESAFIO_LABELS: Record<TipoDesafio, string> = {
+  meta_horas: 'Meta de Horas',
+  streak: 'Sequência',
+  pontualidade: 'Pontualidade',
+  custom: 'Personalizado',
+}
+
 // Justificativas pré-definidas para hora extra
 export const JUSTIFICATIVAS_HORA_EXTRA = [
   'Alinhado com a coordenação',
