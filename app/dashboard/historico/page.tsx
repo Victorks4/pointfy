@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
@@ -30,9 +30,10 @@ const MESES = [
 
 export default function HistoricoPage() {
   const { user } = useAuth()
-  const { usuarios, getPontosByUser, getBancoHoras, getActivePontoConfig } = useData()
+  const { usuarios, getPontosByUser, getBancoHoras, getActivePontoConfig, getEstagiariosDoGestor } = useData()
   const activeConfig = getActivePontoConfig()
   const searchParams = useSearchParams()
+  const router = useRouter()
 
   const currentYear = new Date().getFullYear()
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0')
@@ -41,7 +42,32 @@ export default function HistoricoPage() {
   const [selectedYear, setSelectedYear] = useState(String(currentYear))
 
   const requestedUserId = searchParams.get('userId')
-  const targetUserId = user?.cargo === 'admin' && requestedUserId ? requestedUserId : user?.id
+  const idsVinculadosAoGestor = useMemo(() => {
+    if (user?.cargo !== 'gestor') return null
+    return new Set(getEstagiariosDoGestor(user.id).map((e) => e.id))
+  }, [user?.cargo, user?.id, getEstagiariosDoGestor])
+
+  const targetUserId = (() => {
+    if (!user) return undefined
+    if (user.cargo === 'admin' && requestedUserId) return requestedUserId
+    if (user.cargo === 'gestor' && requestedUserId && idsVinculadosAoGestor?.has(requestedUserId)) {
+      return requestedUserId
+    }
+    if (user.cargo === 'estagiario') return user.id
+    return undefined
+  })()
+
+  useEffect(() => {
+    if (user?.cargo !== 'gestor') return
+    if (!requestedUserId) {
+      router.replace('/dashboard/gestor')
+      return
+    }
+    if (!idsVinculadosAoGestor?.has(requestedUserId)) {
+      router.replace('/dashboard/gestor')
+    }
+  }, [user?.cargo, requestedUserId, idsVinculadosAoGestor, router])
+
   const targetUser = targetUserId ? usuarios.find((u) => u.id === targetUserId) : null
 
   const pontos = targetUserId ? getPontosByUser(targetUserId) : []
@@ -57,6 +83,10 @@ export default function HistoricoPage() {
 
   // Gerar anos disponíveis
   const years = Array.from({ length: 5 }, (_, i) => String(currentYear - i))
+
+  if (user?.cargo === 'gestor' && !targetUserId) {
+    return null
+  }
 
   return (
     <>
@@ -75,7 +105,9 @@ export default function HistoricoPage() {
           <p className="text-muted-foreground">
             {user?.cargo === 'admin'
               ? 'Visualização administrativa de registros do estagiário'
-              : 'Visualize seus registros anteriores'}
+              : user?.cargo === 'gestor'
+                ? 'Histórico do estagiário vinculado a você'
+                : 'Visualize seus registros anteriores'}
           </p>
         </div>
 

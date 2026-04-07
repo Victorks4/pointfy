@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { findDemoLoginUser } from '@/lib/demo-users'
 import type { User } from './types'
 
 interface AuthContextType {
@@ -11,36 +12,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
-
-// Dados mock para demonstração
-const MOCK_USERS: (User & { senha: string })[] = [
-  {
-    id: '1',
-    email: 'admin@empresa.com',
-    ra: 'ADM001',
-    nome: 'Administrador',
-    cargo: 'admin',
-    departamento: 'RH',
-    cargaHorariaSemanal: 2400, // 40h
-    dataInicioRecesso: null,
-    dataFimRecesso: null,
-    createdAt: new Date().toISOString(),
-    senha: 'admin123'
-  },
-  {
-    id: '2',
-    email: 'estagiario@empresa.com',
-    ra: 'EST001',
-    nome: 'João Silva',
-    cargo: 'estagiario',
-    departamento: 'TI',
-    cargaHorariaSemanal: 1800, // 30h
-    dataInicioRecesso: null,
-    dataFimRecesso: null,
-    createdAt: new Date().toISOString(),
-    senha: 'est123'
-  }
-]
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -56,18 +27,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = async (email: string, senha: string): Promise<boolean> => {
-    // Simular delay de API
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const foundUser = MOCK_USERS.find(u => u.email === email && u.senha === senha)
-    
+    await new Promise((resolve) => setTimeout(resolve, 280))
+
+    const foundUser = findDemoLoginUser(email, senha)
     if (foundUser) {
-      const { senha: _, ...userWithoutPassword } = foundUser
-      setUser(userWithoutPassword)
-      sessionStorage.setItem('currentUser', JSON.stringify(userWithoutPassword))
+      setUser(foundUser)
+      sessionStorage.setItem('currentUser', JSON.stringify(foundUser))
       return true
     }
-    
+
     return false
   }
 

@@ -133,8 +133,8 @@
   outline: 2px solid var(--primary);
   outline-offset: 3px;
   border-radius: inherit;
-  animation: fy-spotlight-pulse 1.5s ease-in-out infinite;
-  box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 45%, transparent);
+  animation: fy-spotlight-pulse 2.25s ease-in-out infinite;
+  box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 30%, transparent);
 }
 
 .fy-spotlight-active.fy-spotlight-tour-boost {
@@ -144,10 +144,10 @@
 @keyframes fy-spotlight-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 35%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 22%, transparent);
   }
   50% {
-    box-shadow: 0 0 20px 2px color-mix(in oklch, var(--primary) 25%, transparent);
+    box-shadow: 0 0 12px 1px color-mix(in oklch, var(--primary) 18%, transparent);
   }
 }
 
@@ -157,12 +157,12 @@
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-11px);
+    transform: translateY(-6px);
   }
 }
 
 .animate-fy-pet-jump {
-  animation: fy-pet-jump 1.15s ease-in-out infinite;
+  animation: fy-pet-jump 1.45s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

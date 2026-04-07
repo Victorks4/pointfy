@@ -131,14 +131,14 @@ export function DashboardSidebar() {
             <Clock className="w-5 h-5" />
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-sm text-white">PontoDigital</span>
-            <span className="text-xs text-[#8ea2bd]">Gestão de Ponto</span>
+            <span className="font-bold text-sm text-white">Pontify</span>
+            <span className="text-xs text-[#8ea2bd]">Gestão de Ponto Digital</span>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent className="px-2">
-        {user?.cargo !== 'admin' && (
+        {user?.cargo === 'estagiario' && (
           <SidebarGroup data-fy-anchor="fy-sidebar-menu">
             <SidebarGroupLabel className="text-[#9db0c9] text-xs uppercase tracking-wider">
               Menu Principal
@@ -173,6 +173,38 @@ export function DashboardSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {user?.cargo === 'gestor' && (
+          <SidebarGroup data-fy-anchor="fy-sidebar-gestor">
+            <SidebarGroupLabel className="text-[#9db0c9] text-xs uppercase tracking-wider">
+              Coordenação
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === '/dashboard/gestor' || pathname.startsWith('/dashboard/gestor/')}
+                    className={`group relative transition-all duration-200 text-[#d7e2f2] ${pathname === '/dashboard/gestor' || pathname.startsWith('/dashboard/gestor/') ? 'bg-[#344a64]' : 'hover:bg-[#31455f]'}`}
+                  >
+                    <Link href="/dashboard/gestor" className="flex items-center gap-3">
+                      <div
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          pathname === '/dashboard/gestor' || pathname.startsWith('/dashboard/gestor/')
+                            ? 'bg-[#2f73e0] text-white'
+                            : 'group-hover:bg-[#35506f] text-[#a8bbd4]'
+                        }`}
+                      >
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <span className="flex-1">Meus estagiários</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -221,7 +253,11 @@ export function DashboardSidebar() {
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-sm font-semibold text-[#e6effa] truncate">{user?.nome}</span>
             <span className="text-xs text-[#8ea2bd] capitalize">
-              {user?.cargo === 'admin' ? 'Administrador' : 'Estagiário'}
+              {user?.cargo === 'admin'
+                ? 'Administrador'
+                : user?.cargo === 'gestor'
+                  ? 'Gestor'
+                  : 'Estagiário'}
             </span>
           </div>
           <Button

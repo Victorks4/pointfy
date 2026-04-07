@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth-context'
 import {
   FY_ADMIN_FIRST_VISIT_FLOW,
   FY_FIRST_VISIT_FLOW,
+  FY_GESTOR_FIRST_VISIT_FLOW,
   getFyOnboardingStorageKey,
   fyPathnameMatchesRoute,
   type FyOnboardingStep,
@@ -25,7 +26,7 @@ type FyTourContextValue = {
   uiMode: FyUiMode
   tourStepIndex: number
   flow: FyOnboardingStep[]
-  variant: 'estagiario' | 'admin'
+  variant: 'estagiario' | 'admin' | 'gestor'
   hasCompletedOnboarding: boolean
   startTourFromMenu: () => void
   nextTourStep: () => void
@@ -56,8 +57,14 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
-  const variant: 'estagiario' | 'admin' = user?.cargo === 'admin' ? 'admin' : 'estagiario'
-  const flow = variant === 'admin' ? FY_ADMIN_FIRST_VISIT_FLOW : FY_FIRST_VISIT_FLOW
+  const variant: 'estagiario' | 'admin' | 'gestor' =
+    user?.cargo === 'admin' ? 'admin' : user?.cargo === 'gestor' ? 'gestor' : 'estagiario'
+  const flow =
+    variant === 'admin'
+      ? FY_ADMIN_FIRST_VISIT_FLOW
+      : variant === 'gestor'
+        ? FY_GESTOR_FIRST_VISIT_FLOW
+        : FY_FIRST_VISIT_FLOW
 
   const [uiMode, setUiMode] = useState<FyUiMode>('hydrating')
   const [tourStepIndex, setTourStepIndex] = useState(0)
@@ -66,7 +73,14 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
   const storageKey = user ? getFyOnboardingStorageKey(user.id, variant) : ''
 
   useEffect(() => {
-    if (!user || !storageKey) return
+    if (!user) return
+    if (user.cargo === 'gestor') {
+      setHasCompletedOnboarding(true)
+      setUiMode('fab')
+      setTourStepIndex(0)
+      return
+    }
+    if (!storageKey) return
     const done = globalThis.localStorage.getItem(storageKey) === '1'
     setHasCompletedOnboarding(done)
     if (done) {

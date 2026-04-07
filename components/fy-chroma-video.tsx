@@ -56,6 +56,8 @@ export function FyChromaVideo({ src, className, canvasBaseWidth = 280, layout = 
 
     let raf = 0
     let layoutReady = false
+    let frameTick = 0
+    const chromaEveryNthFrame = layout === 'fab' ? 2 : 1
 
     const applyLayout = () => {
       const vw = video.videoWidth
@@ -75,7 +77,9 @@ export function FyChromaVideo({ src, className, canvasBaseWidth = 280, layout = 
     video.addEventListener('loadedmetadata', applyLayout)
 
     const frame = () => {
-      if (layoutReady && video.readyState >= 2) {
+      frameTick += 1
+      const runChroma = frameTick % chromaEveryNthFrame === 0
+      if (runChroma && layoutReady && video.readyState >= 2) {
         const vw = video.videoWidth
         const vh = video.videoHeight
         const sx = vw * FY_VIDEO_CROP_LEFT_RATIO
@@ -102,7 +106,7 @@ export function FyChromaVideo({ src, className, canvasBaseWidth = 280, layout = 
       video.removeEventListener('loadeddata', play)
       video.removeEventListener('loadedmetadata', applyLayout)
     }
-  }, [src, chromaEnabled, effectiveBaseWidth])
+  }, [src, chromaEnabled, effectiveBaseWidth, layout])
 
   return (
     <div

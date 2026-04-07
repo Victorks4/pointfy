@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
-import { FY_NAME, getFyDockRotationTips, resolveFyBubbleMessage } from '@/lib/fy-mascot'
+import { FY_NAME, getFyDockRotationTips, resolveFyBubbleMessage, type FyTipRole } from '@/lib/fy-mascot'
 import { useFyTour } from '@/lib/fy-tour-context'
 import { calcularSequenciaAtual, getTodayString } from '@/lib/time-utils'
 import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
@@ -69,7 +69,12 @@ function useTourSidebarOpen(anchorId: string | null | undefined, active: boolean
 
   useEffect(() => {
     if (!active || !anchorId) return
-    if (anchorId !== 'fy-sidebar-menu' && anchorId !== 'fy-sidebar-admin') return
+    if (
+      anchorId !== 'fy-sidebar-menu' &&
+      anchorId !== 'fy-sidebar-admin' &&
+      anchorId !== 'fy-sidebar-gestor'
+    )
+      return
     if (isMobile) {
       setOpenMobile(true)
       return
@@ -90,6 +95,8 @@ export function FyGuide() {
   const [tipIndex, setTipIndex] = useState(0)
 
   const isAdmin = user?.cargo === 'admin'
+  const isGestor = user?.cargo === 'gestor'
+  const fyTipRole: FyTipRole = isAdmin ? 'admin' : isGestor ? 'gestor' : 'estagiario'
   const hasPontoHoje = Boolean(user && getPontoByDate(user.id, getTodayString()))
   const unreadNotifications = user ? getNotificacoesByUser(user.id).filter((n) => !n.lida).length : 0
   const pontos = user ? getPontosByUser(user.id) : []
@@ -103,16 +110,17 @@ export function FyGuide() {
       resolveFyBubbleMessage({
         pathname,
         isAdmin: Boolean(isAdmin),
+        isGestor: Boolean(isGestor),
         hasPontoHoje,
         unreadNotifications,
       }),
-    [pathname, isAdmin, hasPontoHoje, unreadNotifications],
+    [pathname, isAdmin, isGestor, hasPontoHoje, unreadNotifications],
   )
 
   const tips = useMemo(() => {
-    const roleTips = [...getFyDockRotationTips(Boolean(isAdmin))]
+    const roleTips = [...getFyDockRotationTips(fyTipRole)]
     return [bubble.text, ...roleTips]
-  }, [bubble.text, isAdmin])
+  }, [bubble.text, fyTipRole])
 
   useEffect(() => {
     setMounted(true)
@@ -133,11 +141,11 @@ export function FyGuide() {
 
   const contextualAnchorId = useMemo(() => {
     if (tour.isTourActive) return null
-    if (isAdmin) return null
+    if (isAdmin || isGestor) return null
     if (pathname.startsWith('/dashboard/ponto') && !hasPontoHoje) return 'fy-save-ponto'
     if (pathname === '/dashboard' && streakAtual >= 3) return 'fy-streak'
     return null
-  }, [tour.isTourActive, isAdmin, pathname, hasPontoHoje, streakAtual])
+  }, [tour.isTourActive, isAdmin, isGestor, pathname, hasPontoHoje, streakAtual])
 
   useEffect(() => {
     if (!mounted || typeof document === 'undefined') return
@@ -157,7 +165,7 @@ export function FyGuide() {
 
   if (!mounted || tour.uiMode === 'hydrating') return null
 
-  const dashboardHref = isAdmin ? '/dashboard/admin' : '/dashboard'
+  const dashboardHref = isAdmin ? '/dashboard/admin' : isGestor ? '/dashboard/gestor' : '/dashboard'
 
   if (tour.uiMode === 'entrance') {
     return null
@@ -186,7 +194,7 @@ export function FyGuide() {
             >
               Ir para o painel
             </DropdownMenuItem>
-            {!isAdmin ? (
+            {!isAdmin && !isGestor ? (
               <DropdownMenuItem
                 onSelect={() => {
                   router.push('/dashboard/ponto')

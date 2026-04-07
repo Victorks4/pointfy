@@ -35,6 +35,8 @@ export default function LoginPage() {
         const parsedUser = savedUser ? JSON.parse(savedUser) : null;
         if (parsedUser?.cargo === "admin") {
           router.push("/dashboard/admin");
+        } else if (parsedUser?.cargo === "gestor") {
+          router.push("/dashboard/gestor");
         } else {
           router.push("/dashboard");
         }
@@ -238,6 +240,9 @@ export default function LoginPage() {
               </p>
               <p className="text-center">
                 <strong>Estagiário:</strong> estagiario@empresa.com / est123
+              </p>
+              <p className="text-center">
+                <strong>Gestor:</strong> gestor@empresa.com / gestor123
               </p>
             </div>
           </div>

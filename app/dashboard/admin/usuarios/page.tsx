@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { formatDate, formatMinutesToDisplay, calculateRecessEnd, isRecessApproaching } from '@/lib/time-utils'
 import { DIAS_RECESSO } from '@/lib/types'
-import { UserPlus, Users, Calendar, Info, AlertCircle, Search } from 'lucide-react'
+import { UserPlus, Users, Calendar, Info, AlertCircle, Search, Shield } from 'lucide-react'
 
 const DEPARTAMENTOS = [
   'TI',
@@ -35,6 +35,7 @@ const CARGAS_HORARIAS = [
   { value: '1200', label: '20h semanais' },
   { value: '1500', label: '25h semanais' },
   { value: '1800', label: '30h semanais' },
+  { value: '2400', label: '40h semanais' },
 ]
 
 export default function UsuariosAdminPage() {
@@ -56,14 +57,31 @@ export default function UsuariosAdminPage() {
   const [departamento, setDepartamento] = useState('')
   const [cargaHoraria, setCargaHoraria] = useState('')
   const [dataRecesso, setDataRecesso] = useState('')
+  const [novoCargoCadastro, setNovoCargoCadastro] = useState<'estagiario' | 'gestor'>('estagiario')
+  const [novoGestorId, setNovoGestorId] = useState<string>('_none')
+  const [gestorVinculoId, setGestorVinculoId] = useState<string>('_none')
 
   const selectedUser = selectedUserId ? usuarios.find((u) => u.id === selectedUserId) ?? null : null
 
+  const resetNovoUsuarioForm = () => {
+    setNome('')
+    setEmail('')
+    setRa('')
+    setDepartamento('')
+    setCargaHoraria('')
+    setDataRecesso('')
+    setNovoCargoCadastro('estagiario')
+    setNovoGestorId('_none')
+  }
+
   // Verificar se é admin
   useEffect(() => {
-    if (user && user.cargo !== 'admin') {
-      router.push('/dashboard')
+    if (!user || user.cargo === 'admin') return
+    if (user.cargo === 'gestor') {
+      router.replace('/dashboard/gestor')
+      return
     }
+    router.replace('/dashboard')
   }, [user, router])
 
   // Verificar recessos próximos e criar notificações
@@ -80,7 +98,8 @@ export default function UsuariosAdminPage() {
     return null
   }
 
-  const estagiarios = usuarios.filter(u => u.cargo === 'estagiario')
+  const estagiarios = usuarios.filter((u) => u.cargo === 'estagiario')
+  const gestoresLista = usuarios.filter((u) => u.cargo === 'gestor')
   const estagiariosFiltrados = estagiarios.filter((u) => {
     const departamentoOk = !departamentoFiltro || u.departamento.toLowerCase().includes(departamentoFiltro.toLowerCase())
     const buscaOk =
@@ -109,34 +128,38 @@ export default function UsuariosAdminPage() {
       return
     }
 
-    const dataFimRecesso = dataRecesso ? calculateRecessEnd(dataRecesso) : null
-
-    addUsuario({
-      nome,
-      email,
-      ra,
-      cargo: 'estagiario',
-      departamento,
-      cargaHorariaSemanal: parseInt(cargaHoraria),
-      dataInicioRecesso: dataRecesso || null,
-      dataFimRecesso,
-    })
-
-    // Se tem recesso programado, criar notificação para o usuário
-    if (dataRecesso) {
-      // Em um sistema real, isso seria feito quando o usuário for criado no banco
-      console.log(`[v0] Recesso programado: ${dataRecesso} a ${dataFimRecesso}`)
+    if (novoCargoCadastro === 'gestor') {
+      addUsuario({
+        nome,
+        email,
+        ra,
+        cargo: 'gestor',
+        departamento,
+        cargaHorariaSemanal: parseInt(cargaHoraria, 10),
+        dataInicioRecesso: null,
+        dataFimRecesso: null,
+      })
+      toast.success(`Gestor ${nome} cadastrado com sucesso!`)
+    } else {
+      const dataFimRecesso = dataRecesso ? calculateRecessEnd(dataRecesso) : null
+      addUsuario({
+        nome,
+        email,
+        ra,
+        cargo: 'estagiario',
+        departamento,
+        cargaHorariaSemanal: parseInt(cargaHoraria, 10),
+        dataInicioRecesso: dataRecesso || null,
+        dataFimRecesso,
+        gestorId: novoGestorId === '_none' ? null : novoGestorId,
+      })
+      if (dataRecesso) {
+        console.log(`[v0] Recesso programado: ${dataRecesso} a ${dataFimRecesso}`)
+      }
+      toast.success(`Estagiário ${nome} cadastrado com sucesso!`)
     }
 
-    toast.success(`Usuário ${nome} cadastrado com sucesso!`)
-
-    // Limpar formulário
-    setNome('')
-    setEmail('')
-    setRa('')
-    setDepartamento('')
-    setCargaHoraria('')
-    setDataRecesso('')
+    resetNovoUsuarioForm()
     setIsDialogOpen(false)
   }
 
@@ -169,6 +192,9 @@ export default function UsuariosAdminPage() {
     setDepartamento(usuario.departamento)
     setCargaHoraria(String(usuario.cargaHorariaSemanal))
     setDataRecesso(usuario.dataInicioRecesso || '')
+    setGestorVinculoId(
+      usuario.cargo === 'estagiario' ? (usuario.gestorId ?? '_none') : '_none',
+    )
     setIsEditMode(false)
     setIsActionDialogOpen(true)
   }
@@ -198,15 +224,26 @@ export default function UsuariosAdminPage() {
 
     const dataFimRecesso = dataRecesso ? calculateRecessEnd(dataRecesso) : null
 
-    updateUsuario(selectedUser.id, {
+    const patch: Parameters<typeof updateUsuario>[1] = {
       nome,
       email,
       ra,
       departamento,
-      cargaHorariaSemanal: parseInt(cargaHoraria),
-      dataInicioRecesso: dataRecesso || null,
-      dataFimRecesso,
-    })
+      cargaHorariaSemanal: parseInt(cargaHoraria, 10),
+    }
+
+    if (selectedUser.cargo === 'estagiario') {
+      patch.dataInicioRecesso = dataRecesso || null
+      patch.dataFimRecesso = dataFimRecesso
+      patch.gestorId = gestorVinculoId === '_none' ? null : gestorVinculoId
+    }
+
+    if (selectedUser.cargo === 'gestor') {
+      patch.dataInicioRecesso = null
+      patch.dataFimRecesso = null
+    }
+
+    updateUsuario(selectedUser.id, patch)
 
     toast.success('Usuário atualizado com sucesso!')
     setIsEditMode(false)
@@ -235,12 +272,16 @@ export default function UsuariosAdminPage() {
             <h2 className="text-2xl font-bold text-foreground">
               Usuários
             </h2>
-            <p className="text-muted-foreground">
-              Gerencie os estagiários do sistema
-            </p>
+            <p className="text-muted-foreground">Estagiários, gestores e vínculos entre eles</p>
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open)
+              if (!open) resetNovoUsuarioForm()
+            }}
+          >
             <DialogTrigger asChild>
               <Button>
                 <UserPlus className="mr-2 h-4 w-4" />
@@ -249,14 +290,33 @@ export default function UsuariosAdminPage() {
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Cadastrar Novo Estagiário</DialogTitle>
-                <DialogDescription>
-                  Preencha os dados do novo estagiário
-                </DialogDescription>
+                <DialogTitle>Cadastrar usuário</DialogTitle>
+                <DialogDescription>Estagiário (com vínculo opcional ao gestor) ou gestor</DialogDescription>
               </DialogHeader>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="tipo-cadastro">Tipo</FieldLabel>
+                    <Select
+                      value={novoCargoCadastro}
+                      onValueChange={(v) => {
+                        setNovoCargoCadastro(v as 'estagiario' | 'gestor')
+                        if (v === 'gestor') {
+                          setDataRecesso('')
+                          setNovoGestorId('_none')
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="tipo-cadastro">
+                        <SelectValue placeholder="Tipo de usuário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="estagiario">Estagiário</SelectItem>
+                        <SelectItem value="gestor">Gestor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
                   <Field>
                     <FieldLabel htmlFor="nome">Nome Completo</FieldLabel>
                     <Input
@@ -323,30 +383,52 @@ export default function UsuariosAdminPage() {
                     </Select>
                   </Field>
 
-                  <Field>
-                    <FieldLabel htmlFor="dataRecesso">Data do Recesso Remunerado (Opcional)</FieldLabel>
-                    <Input
-                      id="dataRecesso"
-                      type="date"
-                      value={dataRecesso}
-                      onChange={(e) => setDataRecesso(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      O recesso terá duração de {DIAS_RECESSO} dias a partir desta data
-                    </p>
-                  </Field>
+                  {novoCargoCadastro === 'estagiario' ? (
+                    <>
+                      <Field>
+                        <FieldLabel htmlFor="gestor-responsavel">Gestor responsável (opcional)</FieldLabel>
+                        <Select value={novoGestorId} onValueChange={setNovoGestorId}>
+                          <SelectTrigger id="gestor-responsavel">
+                            <SelectValue placeholder="Selecione o gestor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_none">Sem gestor</SelectItem>
+                            {gestoresLista.map((g) => (
+                              <SelectItem key={g.id} value={g.id}>
+                                {g.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="dataRecesso">Data do Recesso Remunerado (Opcional)</FieldLabel>
+                        <Input
+                          id="dataRecesso"
+                          type="date"
+                          value={dataRecesso}
+                          onChange={(e) => setDataRecesso(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          O recesso terá duração de {DIAS_RECESSO} dias a partir desta data
+                        </p>
+                      </Field>
+                    </>
+                  ) : null}
                 </FieldGroup>
 
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    O cargo será definido como Estagiário. Outros cargos serão implementados futuramente.
+                    {novoCargoCadastro === 'gestor'
+                      ? 'Gestores acompanham estagiários vinculados no painel Meus estagiários.'
+                      : 'Vincule um gestor para o estagiário aparecer na lista dele.'}
                   </AlertDescription>
                 </Alert>
 
                 <Button type="submit" className="w-full">
                   <UserPlus className="mr-2 h-4 w-4" />
-                  Cadastrar Estagiário
+                  {novoCargoCadastro === 'gestor' ? 'Cadastrar gestor' : 'Cadastrar estagiário'}
                 </Button>
               </form>
             </DialogContent>
@@ -354,14 +436,24 @@ export default function UsuariosAdminPage() {
         </div>
 
         {/* Estatísticas */}
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total de Estagiários</CardTitle>
+              <CardTitle className="text-sm font-medium">Estagiários</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{estagiarios.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Gestores</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{gestoresLista.length}</div>
             </CardContent>
           </Card>
 
@@ -429,12 +521,16 @@ export default function UsuariosAdminPage() {
                       <TableHead>Departamento</TableHead>
                       <TableHead>Carga Horária</TableHead>
                       <TableHead>Banco de Horas</TableHead>
+                      <TableHead>Gestor</TableHead>
                       <TableHead>Recesso</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {estagiariosFiltrados.map((u) => {
                       const bancoHoras = getBancoHoras(u.id)
+                      const gestorNome = u.gestorId
+                        ? usuarios.find((x) => x.id === u.gestorId)?.nome ?? '—'
+                        : '—'
                       const emRecesso = u.dataInicioRecesso && new Date(u.dataInicioRecesso) <= new Date() && new Date(u.dataFimRecesso || '') >= new Date()
                       const recessoProximo = isRecessApproaching(u.dataInicioRecesso)
 
@@ -461,6 +557,9 @@ export default function UsuariosAdminPage() {
                             <span className={`font-semibold ${bancoHoras >= 0 ? 'text-green-600' : 'text-destructive'}`}>
                               {formatMinutesToDisplay(bancoHoras)}
                             </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground max-w-[140px] truncate" title={gestorNome}>
+                            {gestorNome}
                           </TableCell>
                           <TableCell>
                             {emRecesso ? (
@@ -536,6 +635,55 @@ export default function UsuariosAdminPage() {
           </CardContent>
         </Card>
 
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Lista de gestores</CardTitle>
+            <CardDescription>Quem pode acompanhar estagiários vinculados</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {gestoresLista.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Nenhum gestor cadastrado. Use &quot;Novo usuário&quot; e escolha o tipo Gestor.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>RA</TableHead>
+                      <TableHead>Departamento</TableHead>
+                      <TableHead>Carga</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {gestoresLista.map((g) => (
+                      <TableRow key={g.id}>
+                        <TableCell className="font-medium">
+                          <button
+                            type="button"
+                            onClick={() => openUserActions(g.id)}
+                            className="text-primary hover:underline text-left"
+                          >
+                            {g.nome}
+                          </button>
+                        </TableCell>
+                        <TableCell>{g.email}</TableCell>
+                        <TableCell>{g.ra}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{g.departamento}</Badge>
+                        </TableCell>
+                        <TableCell>{formatMinutesToDisplay(g.cargaHorariaSemanal)}/sem</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
@@ -543,23 +691,27 @@ export default function UsuariosAdminPage() {
                 {selectedUser ? `Ações de ${selectedUser.nome}` : 'Ações do usuário'}
               </DialogTitle>
               <DialogDescription>
-                Visualize histórico, edite informações ou exclua o perfil do estagiário.
+                {selectedUser?.cargo === 'estagiario'
+                  ? 'Histórico, edição e exclusão do estagiário.'
+                  : 'Edição e exclusão do perfil do gestor.'}
               </DialogDescription>
             </DialogHeader>
 
             {!isEditMode ? (
               <div className="space-y-3">
-                <Button
-                  type="button"
-                  className="w-full"
-                  onClick={() => {
-                    if (!selectedUser) return
-                    setIsActionDialogOpen(false)
-                    router.push(`/dashboard/historico?userId=${selectedUser.id}`)
-                  }}
-                >
-                  Visualizar Histórico
-                </Button>
+                {selectedUser?.cargo === 'estagiario' ? (
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={() => {
+                      if (!selectedUser) return
+                      setIsActionDialogOpen(false)
+                      router.push(`/dashboard/historico?userId=${selectedUser.id}`)
+                    }}
+                  >
+                    Visualizar Histórico
+                  </Button>
+                ) : null}
                 <Button type="button" variant="outline" className="w-full" onClick={() => setIsEditMode(true)}>
                   Editar Usuário
                 </Button>
@@ -612,15 +764,37 @@ export default function UsuariosAdminPage() {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field>
-                    <FieldLabel htmlFor="edit-recesso">Data do Recesso</FieldLabel>
-                    <Input
-                      id="edit-recesso"
-                      type="date"
-                      value={dataRecesso}
-                      onChange={(e) => setDataRecesso(e.target.value)}
-                    />
-                  </Field>
+                  {selectedUser != null && selectedUser.cargo === 'estagiario' ? (
+                    <>
+                      <Field>
+                        <FieldLabel htmlFor="edit-gestor">Gestor responsável</FieldLabel>
+                        <Select value={gestorVinculoId} onValueChange={setGestorVinculoId}>
+                          <SelectTrigger id="edit-gestor">
+                            <SelectValue placeholder="Gestor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_none">Sem gestor</SelectItem>
+                            {gestoresLista
+                              .filter((g) => g.id !== selectedUser.id)
+                              .map((g) => (
+                                <SelectItem key={g.id} value={g.id}>
+                                  {g.nome}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="edit-recesso">Data do Recesso</FieldLabel>
+                        <Input
+                          id="edit-recesso"
+                          type="date"
+                          value={dataRecesso}
+                          onChange={(e) => setDataRecesso(e.target.value)}
+                        />
+                      </Field>
+                    </>
+                  ) : null}
                 </FieldGroup>
                 <div className="flex gap-2">
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setIsEditMode(false)}>

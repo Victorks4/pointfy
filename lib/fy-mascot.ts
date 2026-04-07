@@ -75,8 +75,20 @@ export const FY_DOCK_TIPS_ADMIN: string[] = [
   'Painel geral + drill-down por estagiário no histórico/admin ajuda a priorizar quem precisa de suporte.',
 ]
 
-export function getFyDockRotationTips(isAdmin: boolean): readonly string[] {
-  return isAdmin ? FY_DOCK_TIPS_ADMIN : FY_DOCK_TIPS_ESTAGIARIO
+export const FY_DOCK_TIPS_GESTOR: string[] = [
+  'Seu painel reúne só estagiários vinculados a você; o administrador define esse vínculo no cadastro.',
+  'Alterne entre Resumo, registros e histórico para ver o dia e o mês sem misturar perfis.',
+  'Banco de horas e sequência ajudam a perceber padrões antes de conversar com o estagiário.',
+  'Abra o histórico completo pelo atalho quando precisar do mesmo filtro por mês da tela principal.',
+  'Justificativas pendentes ou respondidas aparecem na aba dedicada; combine com as notificações do estagiário.',
+]
+
+export type FyTipRole = 'estagiario' | 'admin' | 'gestor'
+
+export function getFyDockRotationTips(role: FyTipRole): readonly string[] {
+  if (role === 'admin') return FY_DOCK_TIPS_ADMIN
+  if (role === 'gestor') return FY_DOCK_TIPS_GESTOR
+  return FY_DOCK_TIPS_ESTAGIARIO
 }
 
 export type FyOnboardingStep = {
@@ -93,6 +105,7 @@ export function fyPathnameMatchesRoute(pathname: string, route: string | null): 
   if (!route) return true
   if (pathname === route) return true
   if (route === '/dashboard' && pathname.startsWith('/dashboard/admin')) return false
+  if (route === '/dashboard' && pathname.startsWith('/dashboard/gestor')) return false
   return pathname.startsWith(`${route}/`)
 }
 
@@ -195,12 +208,18 @@ export const FY_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
 
 export const FY_ONBOARDING_STORAGE_PREFIX = 'pointfy:fyOnboardingCompleted'
 
-export function getFyOnboardingStorageKey(userId: string, variant: 'estagiario' | 'admin'): string {
+export function getFyOnboardingStorageKey(
+  userId: string,
+  variant: 'estagiario' | 'admin' | 'gestor',
+): string {
   return `${FY_ONBOARDING_STORAGE_PREFIX}:${variant}:${userId}`
 }
 
 /** Dispensa temporária do tour na sessão (fechou o diálogo sem concluir). */
-export function getFyOnboardingSessionDismissKey(userId: string, variant: 'estagiario' | 'admin'): string {
+export function getFyOnboardingSessionDismissKey(
+  userId: string,
+  variant: 'estagiario' | 'admin' | 'gestor',
+): string {
   return `pointfy:fyOnboardingDismissedSession:${variant}:${userId}`
 }
 
@@ -288,12 +307,47 @@ export const FY_ADMIN_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
   },
 ]
 
+export const FY_GESTOR_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
+  {
+    id: 'gestor-painel',
+    ordem: 1,
+    titulo: 'Painel do gestor',
+    mensagem:
+      'Aqui você escolhe o estagiário vinculado a você e acompanha ponto, histórico, justificativas e atividades em um só lugar.',
+    rotaSugerida: '/dashboard/gestor',
+    anchorId: 'fy-gestor-panel',
+  },
+  {
+    id: 'gestor-menu',
+    ordem: 2,
+    titulo: 'Menu',
+    mensagem: 'O atalho “Meus estagiários” fica na barra lateral. Use o botão do Fy para rever este tour quando quiser.',
+    rotaSugerida: null,
+    anchorId: 'fy-sidebar-gestor',
+  },
+  {
+    id: 'gestor-fim',
+    ordem: 3,
+    titulo: 'Pronto',
+    mensagem: 'Bom acompanhamento. Qualquer dúvida, o administrador ajusta vínculos e cadastros.',
+    rotaSugerida: '/dashboard/gestor',
+    anchorId: null,
+  },
+]
+
 export type FyRouteHint = {
   emotion: FyEmotion
   text: string
 }
 
 const FY_ROUTE_HINTS: { prefix: string; hint: FyRouteHint }[] = [
+  {
+    prefix: '/dashboard/gestor',
+    hint: {
+      emotion: 'neutro',
+      text: 'Selecione um estagiário na lista e use as abas para ver resumo, registros, histórico e justificativas.',
+    },
+  },
   { prefix: '/dashboard/ponto', hint: { emotion: 'neutro', text: 'Preenche os quatro horários e salva. Se passar do limite, escolhe justificativa antes.' } },
   { prefix: '/dashboard/historico', hint: { emotion: 'neutro', text: 'Confere totais por mês e o histórico de cada dia.' } },
   { prefix: '/dashboard/justificativas', hint: { emotion: 'neutro', text: 'Envia ou acompanha justificativas. Resposta vem pelo fluxo do admin.' } },
@@ -323,6 +377,7 @@ export function pickStableQuickMessage(pathname: string, emotion: FyEmotion): st
 function pathnameMatchesPrefix(pathname: string, prefix: string): boolean {
   if (pathname === prefix) return true
   if (prefix === '/dashboard' && pathname.startsWith('/dashboard/admin')) return false
+  if (prefix === '/dashboard' && pathname.startsWith('/dashboard/gestor')) return false
   return pathname.startsWith(`${prefix}/`)
 }
 
@@ -335,6 +390,7 @@ export function resolveFyRouteHint(pathname: string): FyRouteHint | null {
 export function resolveFyBubbleMessage(input: {
   pathname: string
   isAdmin: boolean
+  isGestor: boolean
   hasPontoHoje: boolean
   unreadNotifications: number
 }): FyRouteHint {
@@ -348,7 +404,12 @@ export function resolveFyBubbleMessage(input: {
     }
   }
 
-  if (!input.isAdmin && !input.hasPontoHoje && !input.pathname.startsWith('/dashboard/ponto')) {
+  if (
+    !input.isAdmin &&
+    !input.isGestor &&
+    !input.hasPontoHoje &&
+    !input.pathname.startsWith('/dashboard/ponto')
+  ) {
     const day = new Date().getDay()
     if (day >= 1 && day <= 5) {
       return { emotion: 'atencao', text: 'Ainda não registrou ponto hoje? Leva um minuto no menu “Registrar Ponto”.' }

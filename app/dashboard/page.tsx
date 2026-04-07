@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
 import { useRouter } from 'next/navigation'
@@ -13,47 +13,86 @@ import { Clock, TrendingUp, TrendingDown, Calendar, Bell, AlertCircle, ChevronRi
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import type { DesafioSemanal, PontoRegistro } from '@/lib/types'
+
+function desafioProgressoFromPontos(
+  desafio: DesafioSemanal,
+  pontosNaSemana: PontoRegistro[],
+  progressoArmazenado: number | undefined,
+): { progressoCalculado: number; concluido: boolean } {
+  if (desafio.tipo === 'custom') {
+    const progressoCalculado = progressoArmazenado ?? 0
+    return { progressoCalculado, concluido: progressoCalculado >= desafio.meta }
+  }
+
+  let progressoCalculado = 0
+  if (desafio.tipo === 'meta_horas') {
+    const totalMinutos = pontosNaSemana.reduce((acc, p) => acc + p.totalMinutos, 0)
+    progressoCalculado = Math.round(totalMinutos / 60)
+  } else if (desafio.tipo === 'streak') {
+    progressoCalculado = pontosNaSemana.length
+  } else if (desafio.tipo === 'pontualidade') {
+    progressoCalculado = pontosNaSemana.filter((p) => {
+      if (!p.entrada1) return false
+      const [h] = p.entrada1.split(':').map(Number)
+      return h < 9 || (h === 9 && p.entrada1 === '09:00')
+    }).length
+  }
+
+  return { progressoCalculado, concluido: progressoCalculado >= desafio.meta }
+}
 
 function DesafiosSemanaCard() {
   const { user } = useAuth()
-  const { getDesafiosSemanaAtual, getProgressoDesafio, getPontosByUser, atualizarProgressoDesafio } = useData()
+  const { desafios, pontos, getProgressoDesafio, atualizarProgressoDesafio } = useData()
 
-  const desafiosAtivos = getDesafiosSemanaAtual()
-  const pontos = user ? getPontosByUser(user.id) : []
+  const desafiosAtivos = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return desafios.filter((d) => {
+      if (!d.ativo) return false
+      const inicio = new Date(`${d.dataInicio}T00:00:00`)
+      const fim = new Date(`${d.dataFim}T23:59:59`)
+      return today >= inicio && today <= fim
+    })
+  }, [desafios])
 
-  const desafiosComProgresso = desafiosAtivos.map(desafio => {
-    const progresso = user ? getProgressoDesafio(user.id, desafio.id) : undefined
+  const pontosUser = useMemo(
+    () => (user ? pontos.filter((p) => p.userId === user.id) : []),
+    [user, pontos],
+  )
 
-    let progressoCalculado = progresso?.progressoAtual ?? 0
+  const desafiosComProgresso = useMemo(() => {
+    if (!user) return []
+    return desafiosAtivos.map((desafio) => {
+      const pontosNaSemana = pontosUser.filter(
+        (p) => p.data >= desafio.dataInicio && p.data <= desafio.dataFim,
+      )
+      const stored = getProgressoDesafio(user.id, desafio.id)?.progressoAtual
+      const { progressoCalculado, concluido } = desafioProgressoFromPontos(
+        desafio,
+        pontosNaSemana,
+        stored,
+      )
+      const percentual = desafio.meta > 0 ? Math.min((progressoCalculado / desafio.meta) * 100, 100) : 0
+      return { ...desafio, progressoCalculado, percentual, concluido }
+    })
+  }, [user, desafiosAtivos, pontosUser, getProgressoDesafio])
 
-    if (user && desafio.tipo !== 'custom') {
-      const pontosNaSemana = pontos.filter(p => p.data >= desafio.dataInicio && p.data <= desafio.dataFim)
-
-      if (desafio.tipo === 'meta_horas') {
-        const totalMinutos = pontosNaSemana.reduce((acc, p) => acc + p.totalMinutos, 0)
-        progressoCalculado = Math.round(totalMinutos / 60)
-      } else if (desafio.tipo === 'streak') {
-        progressoCalculado = pontosNaSemana.length
-      } else if (desafio.tipo === 'pontualidade') {
-        progressoCalculado = pontosNaSemana.filter(p => {
-          if (!p.entrada1) return false
-          const [h] = p.entrada1.split(':').map(Number)
-          return h < 9 || (h === 9 && p.entrada1 === '09:00')
-        }).length
-      }
-
-      const concluido = progressoCalculado >= desafio.meta
+  useEffect(() => {
+    if (!user) return
+    for (const desafio of desafiosAtivos) {
+      if (desafio.tipo === 'custom') continue
+      const pontosNaSemana = pontosUser.filter(
+        (p) => p.data >= desafio.dataInicio && p.data <= desafio.dataFim,
+      )
+      const { progressoCalculado, concluido } = desafioProgressoFromPontos(desafio, pontosNaSemana, undefined)
       atualizarProgressoDesafio(user.id, desafio.id, progressoCalculado, concluido)
     }
-
-    const percentual = desafio.meta > 0 ? Math.min((progressoCalculado / desafio.meta) * 100, 100) : 0
-    const concluido = progressoCalculado >= desafio.meta
-
-    return { ...desafio, progressoCalculado, percentual, concluido }
-  })
+  }, [user, desafiosAtivos, pontosUser, atualizarProgressoDesafio])
 
   return (
-    <Card className="bg-white border-zinc-200 hover:shadow-lg transition-all">
+    <Card className="bg-white border-zinc-200 transition-shadow duration-200 hover:shadow-md">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-zinc-900 flex items-center gap-2">
           <Target className="h-4 w-4 text-indigo-600" />
@@ -100,12 +139,16 @@ export default function DashboardPage() {
       router.replace('/dashboard/admin')
       return
     }
+    if (user?.cargo === 'gestor') {
+      router.replace('/dashboard/gestor')
+      return
+    }
     setMounted(true)
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [router, user?.cargo])
 
-  if (user?.cargo === 'admin') {
+  if (user?.cargo === 'admin' || user?.cargo === 'gestor') {
     return null
   }
 

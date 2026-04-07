@@ -1,6 +1,6 @@
 // Tipos do Sistema de Ponto
 
-export type UserRole = 'estagiario' | 'admin'
+export type UserRole = 'estagiario' | 'admin' | 'gestor'
 
 export interface User {
   id: string
@@ -13,6 +13,8 @@ export interface User {
   dataInicioRecesso: string | null
   dataFimRecesso: string | null
   createdAt: string
+  /** Estagiário vinculado a um gestor (cadastro pelo admin). */
+  gestorId?: string | null
 }
 
 export interface PontoRegistro {

@@ -13,7 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { formatMinutesToDisplay, formatDate } from '@/lib/time-utils'
+import type { User } from '@/lib/types'
 import { Users, Clock, TrendingUp, TrendingDown, Calendar, Search } from 'lucide-react'
+
+type EstagiarioComMetricas = User & {
+  horasMes: number
+  bancoHoras: number
+  diasTrabalhados: number
+}
 
 const MESES = [
   { value: '01', label: 'Janeiro' },
@@ -45,9 +52,12 @@ export default function AdminPage() {
 
   // Verificar se é admin
   useEffect(() => {
-    if (user && user.cargo !== 'admin') {
-      router.push('/dashboard')
+    if (!user || user.cargo === 'admin') return
+    if (user.cargo === 'gestor') {
+      router.replace('/dashboard/gestor')
+      return
     }
+    router.replace('/dashboard')
   }, [user, router])
 
   if (user?.cargo !== 'admin') {
@@ -64,7 +74,7 @@ export default function AdminPage() {
 
   // Calcular estatísticas por usuário
   const usuariosEstagiarios = usuarios.filter(u => u.cargo === 'estagiario')
-  const usuariosComDados = usuariosEstagiarios.map(usuario => {
+  const usuariosComDados: EstagiarioComMetricas[] = usuariosEstagiarios.map((usuario) => {
     const pontosUsuario = pontos.filter(p => {
       const [ano, mes] = p.data.split('-')
       return p.userId === usuario.id && ano === selectedYear && mes === selectedMonth
@@ -99,10 +109,10 @@ export default function AdminPage() {
     })
 
   // Dialog de opções administrativas
-  const [selectedUser, setSelectedUser] = useState(null)
+  const [selectedUser, setSelectedUser] = useState<EstagiarioComMetricas | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const handleUserClick = (user) => {
-    setSelectedUser(user)
+  const handleUserClick = (row: EstagiarioComMetricas) => {
+    setSelectedUser(row)
     setDialogOpen(true)
   }
   const handleCloseDialog = () => {
@@ -290,7 +300,10 @@ export default function AdminPage() {
                 <div className="flex flex-col gap-3">
                   <button
                     className="w-full py-2 px-4 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
-                    onClick={() => { router.push(`/dashboard/historico?user=${selectedUser.id}`); handleCloseDialog(); }}
+                    onClick={() => {
+                      router.push(`/dashboard/historico?userId=${selectedUser.id}`)
+                      handleCloseDialog()
+                    }}
                   >
                     Ver histórico de ponto
                   </button>
