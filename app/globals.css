@@ -137,6 +137,10 @@
   box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 45%, transparent);
 }
 
+.fy-spotlight-active.fy-spotlight-tour-boost {
+  z-index: 43;
+}
+
 @keyframes fy-spotlight-pulse {
   0%,
   100% {
@@ -144,6 +148,96 @@
   }
   50% {
     box-shadow: 0 0 20px 2px color-mix(in oklch, var(--primary) 25%, transparent);
+  }
+}
+
+@keyframes fy-pet-jump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-11px);
+  }
+}
+
+.animate-fy-pet-jump {
+  animation: fy-pet-jump 1.15s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fy-pet-jump {
+    animation: none;
+  }
+}
+
+@keyframes fy-entrance-float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate(-50%, -52%) scale(1.08);
+    opacity: 0.85;
+  }
+}
+
+@keyframes fy-entrance-float-delayed {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.65;
+  }
+}
+
+@keyframes fy-entrance-rise {
+  0% {
+    transform: translateY(12px) scale(0.6);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-28px) scale(1);
+    opacity: 0.95;
+  }
+}
+
+@keyframes fy-tour-arrow-flow {
+  to {
+    stroke-dashoffset: -56;
+  }
+}
+
+.fy-entrance-orb {
+  animation: fy-entrance-float 2.8s ease-in-out infinite;
+}
+
+.fy-entrance-orb-delayed {
+  animation: fy-entrance-float-delayed 3.2s ease-in-out infinite 0.4s both;
+}
+
+.fy-entrance-particle {
+  animation: fy-entrance-rise 2.4s ease-out infinite;
+}
+
+.fy-tour-arrow-dash {
+  animation: fy-tour-arrow-flow 1.8s linear infinite;
+  stroke-dashoffset: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fy-entrance-orb,
+  .fy-entrance-orb-delayed,
+  .fy-entrance-particle,
+  .fy-tour-arrow-dash {
+    animation: none;
   }
 }
 

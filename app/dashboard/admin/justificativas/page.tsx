@@ -23,7 +23,7 @@ export default function AdminJustificativasPage() {
       </header>
 
       <main className="flex-1 p-4 md:p-6">
-        <Card>
+        <Card data-fy-anchor="fy-admin-justificativas-main">
           <CardHeader>
             <CardTitle>Gestão de justificativas</CardTitle>
             <CardDescription>

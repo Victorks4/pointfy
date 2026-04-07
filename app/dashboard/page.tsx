@@ -149,7 +149,10 @@ export default function DashboardPage() {
 
       <main className="flex-1 p-4 md:p-6 bg-zinc-50">
         {/* Header com saudação */}
-        <div className={`mb-6 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+        <div
+          data-fy-anchor="fy-dashboard-hero"
+          className={`mb-6 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}
+        >
           <div className="flex items-center gap-2 mb-1">
             <Zap className="h-5 w-5 text-gray-500 animate-pulse" />
             <h2 className="text-2xl font-bold text-black">
@@ -312,7 +315,11 @@ export default function DashboardPage() {
         </div>
 
         {/* Ações Rápidas */}
-        <div className={`grid gap-4 md:grid-cols-2 lg:grid-cols-3 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '500ms' }}>
+        <div
+          data-fy-anchor="fy-dashboard-actions"
+          className={`grid gap-4 md:grid-cols-2 lg:grid-cols-3 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          style={{ transitionDelay: '500ms' }}
+        >
           <Card className="group hover:shadow-lg border-2 border-blue-200 hover:border-blue-400 transition-all duration-300 bg-gradient-to-br from-blue-50 to-white">
             <CardHeader>
               <div className="flex items-center gap-3">

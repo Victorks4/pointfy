@@ -144,6 +144,7 @@ export default function JustificativasPage() {
           </CardContent>
         </Card>
 
+        <div data-fy-anchor="fy-justificativas-panel" className="space-y-6">
         <Tabs defaultValue="atestado" className="max-w-2xl">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="atestado">
@@ -353,6 +354,7 @@ export default function JustificativasPage() {
             )}
           </CardContent>
         </Card>
+        </div>
       </main>
     </>
   )

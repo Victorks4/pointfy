@@ -5,6 +5,8 @@
 
 export const FY_NAME = 'Fy'
 
+export type FyAnimationPhase = 'idle' | 'pointing' | 'explaining' | 'alert' | 'celebrate'
+
 export const FY_SYSTEM_PROMPT = `Você é o Fy, mascote do sistema Pontify — plataforma de registro de ponto para estagiários do SENAI.
 
 Seu papel é ajudar usuários a registrar ponto corretamente e a usar o sistema com confiança.
@@ -55,6 +57,15 @@ export type FyOnboardingStep = {
   mensagem: string
   rotaSugerida: string | null
   ordem: number
+  /** `data-fy-anchor` na UI; `null` = só balão, sem highlight. */
+  anchorId: string | null
+}
+
+export function fyPathnameMatchesRoute(pathname: string, route: string | null): boolean {
+  if (!route) return true
+  if (pathname === route) return true
+  if (route === '/dashboard' && pathname.startsWith('/dashboard/admin')) return false
+  return pathname.startsWith(`${route}/`)
 }
 
 /**
@@ -67,72 +78,90 @@ export const FY_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
     ordem: 1,
     titulo: 'Oi, eu sou o Fy',
     mensagem:
-      'Sou o guia do Pontify. Vou te mostrar o básico em poucos passos — sem enrolação.',
+      'Sou o guia do Pontify. Vou te mostrar onde registrar ponto, justificar e acompanhar sua sequência — passo a passo.',
     rotaSugerida: '/dashboard',
+    anchorId: 'fy-dashboard-hero',
   },
   {
     id: 'menu-lateral',
     ordem: 2,
     titulo: 'Menu lateral',
     mensagem:
-      'Todas as áreas ficam aqui: ponto, histórico, justificativas e notificações. É só clicar.',
+      'Aqui ficam todas as áreas: Dashboard, Registrar Ponto, Histórico, Justificativas e Notificações. Toque no item para navegar.',
     rotaSugerida: null,
+    anchorId: 'fy-sidebar-menu',
   },
   {
     id: 'registrar-ponto',
     ordem: 3,
     titulo: 'Registrar ponto',
     mensagem:
-      'Em “Registro de ponto” você preenche os horários do dia e salva. Use o relógio do sistema para não errar o formato.',
+      'Aqui você registra seu expediente: preencha entrada e saída em HH:MM e use “Registrar Ponto” sempre que iniciar ou encerrar períodos.',
     rotaSugerida: '/dashboard/ponto',
+    anchorId: 'fy-ponto-form',
   },
   {
     id: 'regras-horario',
     ordem: 4,
     titulo: 'Regras rápidas',
     mensagem:
-      'Horário no formato HH:MM, saída depois da entrada, sem sobrepor períodos. Se passar do limite, a justificativa vira obrigatória.',
+      'Formato HH:MM, saída depois da entrada, sem horários sobrepostos. Passou do limite sem justificativa? O sistema pede motivo antes de salvar.',
     rotaSugerida: '/dashboard/ponto',
+    anchorId: 'fy-ponto-regras',
   },
   {
     id: 'justificativas',
     ordem: 5,
     titulo: 'Justificativas',
     mensagem:
-      'Se precisar justificar hora extra ou enviar algo formal, use a área de justificativas. O admin vê e responde por lá.',
+      'Atestados e compensações entram aqui. O administrador analisa e você acompanha o retorno nesta mesma área.',
     rotaSugerida: '/dashboard/justificativas',
+    anchorId: 'fy-justificativas-panel',
   },
   {
     id: 'historico',
     ordem: 6,
     titulo: 'Histórico',
     mensagem:
-      'No histórico você revisa dias anteriores e totais. Bom para conferir antes de falar com o RH.',
+      'Veja dias anteriores, filtre por mês e confira totais e banco de horas antes de falar com o RH ou a coordenação.',
     rotaSugerida: '/dashboard/historico',
+    anchorId: 'fy-historico-panel',
+  },
+  {
+    id: 'sequencia',
+    ordem: 7,
+    titulo: 'Sequência',
+    mensagem:
+      'Sua sequência de dias com registro aparece aqui. Manter constância ajuda no engajamento e nos desafios da semana.',
+    rotaSugerida: '/dashboard',
+    anchorId: 'fy-streak',
   },
   {
     id: 'notificacoes',
-    ordem: 7,
+    ordem: 8,
     titulo: 'Notificações',
     mensagem:
-      'Avisos importantes aparecem nas notificações. Vale dar uma passada de vez em quando.',
+      'Avisos da equipe e lembretes ficam centralizados aqui. Abra com frequência para não perder comunicados importantes.',
     rotaSugerida: '/dashboard/notificacoes',
+    anchorId: 'fy-notificacoes-panel',
   },
   {
     id: 'lembrete-diario',
-    ordem: 8,
-    titulo: 'Não esquecer',
+    ordem: 9,
+    titulo: 'Atalhos no Dashboard',
     mensagem:
-      'Dica: define um lembrete no celular no horário que você costuma chegar ou sair. O Pontify registra, mas o hábito é seu.',
-    rotaSugerida: null,
+      'No Dashboard você tem atalhos para ponto, justificativas e histórico. Combine com um lembrete no celular no horário do estágio.',
+    rotaSugerida: '/dashboard',
+    anchorId: 'fy-dashboard-actions',
   },
   {
     id: 'encerramento',
-    ordem: 9,
+    ordem: 10,
     titulo: 'Pronto',
     mensagem:
-      'Qualquer dúvida, me chama de novo pelo guia. Bons estudos e bom estágio!',
+      'Fico no botão no canto: abra o menu para ir ao Dashboard, bater ponto ou rever este tour. Bom trabalho!',
     rotaSugerida: '/dashboard',
+    anchorId: null,
   },
 ]
 
@@ -153,64 +182,81 @@ export const FY_ADMIN_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
     ordem: 1,
     titulo: 'Painel administrativo',
     mensagem:
-      'Como admin, você gerencia usuários, avisos e regras de ponto. O Fy resume o que importa em cada área.',
+      'Você gerencia usuários, avisos, relatórios, desafios e regras de ponto. Vou apontar cada módulo no menu e na tela.',
     rotaSugerida: '/dashboard/admin',
+    anchorId: 'fy-admin-hero',
+  },
+  {
+    id: 'admin-menu',
+    ordem: 2,
+    titulo: 'Menu admin',
+    mensagem:
+      'Todo o painel administrativo está nesta coluna: Usuários, Notificações, Relatórios, Desafios, Configurações e Justificativas.',
+    rotaSugerida: null,
+    anchorId: 'fy-sidebar-admin',
   },
   {
     id: 'admin-usuarios',
-    ordem: 2,
+    ordem: 3,
     titulo: 'Usuários',
     mensagem:
-      'Cadastre e edite estagiários, cargas horárias e recesso. Tudo que impacta o ponto passa por aqui.',
+      'Cadastre e mantenha estagiários, departamentos e dados alinhados ao estágio. Alterações aqui refletem no registro de ponto.',
     rotaSugerida: '/dashboard/admin/usuarios',
+    anchorId: 'fy-admin-usuarios-main',
   },
   {
     id: 'admin-notificacoes',
-    ordem: 3,
+    ordem: 4,
     titulo: 'Notificações',
     mensagem:
-      'Envie avisos para a equipe. Eles aparecem na área de notificações de cada estagiário.',
+      'Envie comunicados claros e curtos. Cada estagiário vê os avisos na área de notificações do app.',
     rotaSugerida: '/dashboard/admin/notificacoes',
+    anchorId: 'fy-admin-notificacoes-main',
   },
   {
     id: 'admin-relatorios',
-    ordem: 4,
+    ordem: 5,
     titulo: 'Relatórios',
     mensagem:
-      'Exporte e analise registros. Use para conferência com o RH ou coordenação.',
+      'Filtre períodos e exporte dados para fechar o mês com o RH ou a coordenação.',
     rotaSugerida: '/dashboard/admin/relatorios',
+    anchorId: 'fy-admin-relatorios-main',
   },
   {
     id: 'admin-desafios',
-    ordem: 5,
+    ordem: 6,
     titulo: 'Desafios semanais',
     mensagem:
-      'Crie metas semanais para engajar o time. Acompanhe o progresso no dashboard dos estagiários.',
+      'Defina metas semanais; o time acompanha o progresso no próprio dashboard.',
     rotaSugerida: '/dashboard/admin/desafios',
+    anchorId: 'fy-admin-desafios-main',
   },
   {
     id: 'admin-config',
-    ordem: 6,
+    ordem: 7,
     titulo: 'Configurações de ponto',
     mensagem:
-      'Perfis de meta diária, limite para justificativa e regras de minutos. Só uma config fica ativa por vez.',
+      'Meta diária, limite para justificativa e regras de minutos: só uma configuração ativa por vez — alterações valem para todos.',
     rotaSugerida: '/dashboard/admin/configuracoes-ponto',
+    anchorId: 'fy-admin-config-main',
   },
   {
     id: 'admin-justificativas',
-    ordem: 7,
+    ordem: 8,
     titulo: 'Justificativas (admin)',
     mensagem:
-      'Revista e responda solicitações dos estagiários nesta fila.',
+      'Analise e responda solicitações; o estagiário vê o retorno no painel dele.',
     rotaSugerida: '/dashboard/admin/justificativas',
+    anchorId: 'fy-admin-justificativas-main',
   },
   {
     id: 'admin-fim',
-    ordem: 8,
+    ordem: 9,
     titulo: 'Pronto',
     mensagem:
-      'Dúvidas sobre o sistema? O Fy continua no canto da tela para lembrar atalhos e boas práticas.',
+      'Use o botão do Fy no canto para atalhos ou rever este tour quando precisar.',
     rotaSugerida: '/dashboard/admin',
+    anchorId: null,
   },
 ]
 

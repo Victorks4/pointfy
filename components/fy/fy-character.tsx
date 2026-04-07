@@ -4,7 +4,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
-import type { FyAnimationPhase } from '@/lib/fy-context'
+import type { FyAnimationPhase } from '@/lib/fy-mascot'
 
 const GREY_PANEL = '#e4e6eb'
 const BLUE_BODY = '#2563eb'

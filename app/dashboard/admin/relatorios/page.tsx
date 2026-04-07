@@ -126,7 +126,7 @@ export default function AdminRelatoriosPage() {
         <h1 className="text-lg font-semibold">Relatórios</h1>
       </header>
 
-      <main className="flex-1 p-4 md:p-6 space-y-6">
+      <main data-fy-anchor="fy-admin-relatorios-main" className="flex-1 p-4 md:p-6 space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Filtros</CardTitle>

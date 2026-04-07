@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
-import { useFy } from '@/lib/fy-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -197,7 +196,7 @@ function CardRegraPreenchimento({ limiteMinutos }: { limiteMinutos: number }) {
   const regras = buildRegrasPreenchimento(limiteMinutos)
 
   return (
-    <Card className="border-zinc-200 h-full">
+    <Card data-fy-anchor="fy-ponto-regras" className="border-zinc-200 h-full">
       <CardHeader className="pb-3">
         <CardTitle className="text-xl text-zinc-900">Regras de Preenchimento</CardTitle>
       </CardHeader>
@@ -594,7 +593,6 @@ function JustificativaAlert({
 export default function PontoPage() {
   const { user } = useAuth()
   const { addPonto, updatePonto, getPontoByDate, getActivePontoConfig } = useData()
-  const { pulseCelebrate, setAnimationPhase } = useFy()
   const activeConfig = getActivePontoConfig()
  
   const [mounted, setMounted] = useState(false)
@@ -723,7 +721,6 @@ export default function PontoPage() {
       toast.success('Ponto registrado com sucesso!')
     }
 
-    pulseCelebrate()
     setErrors([])
   }
  
@@ -784,7 +781,7 @@ export default function PontoPage() {
  
           {/* Formulário */}
           <motion.div {...fadeIn(0.18)}>
-            <Card>
+            <Card data-fy-anchor="fy-ponto-form">
               <CardHeader>
                 <CardTitle className="text-foreground">Horários</CardTitle>
                 <CardDescription>Registre seus horários de entrada e saída</CardDescription>

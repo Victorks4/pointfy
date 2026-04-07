@@ -72,7 +72,7 @@ export default function AdminNotificacoesPage() {
         <h1 className="text-lg font-semibold">Notificações</h1>
       </header>
 
-      <main className="flex-1 p-4 md:p-6 space-y-6">
+      <main data-fy-anchor="fy-admin-notificacoes-main" className="flex-1 p-4 md:p-6 space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Enviar nova notificação</CardTitle>

@@ -121,7 +121,7 @@ export default function AdminPage() {
       </header>
 
       <main className="flex-1 p-4 md:p-6">
-        <div className="mb-6">
+        <div data-fy-anchor="fy-admin-hero" className="mb-6">
           <h2 className="text-2xl font-bold text-foreground">
             Visão Geral
           </h2>

@@ -229,7 +229,7 @@ export default function UsuariosAdminPage() {
         <h1 className="text-lg font-semibold">Gestão de Usuários</h1>
       </header>
 
-      <main className="flex-1 p-4 md:p-6">
+      <main data-fy-anchor="fy-admin-usuarios-main" className="flex-1 p-4 md:p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-foreground">

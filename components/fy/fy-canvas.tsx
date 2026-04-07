@@ -3,7 +3,7 @@
 import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { FyCharacter } from '@/components/fy/fy-character'
-import type { FyAnimationPhase } from '@/lib/fy-context'
+import type { FyAnimationPhase } from '@/lib/fy-mascot'
 
 export type FyCanvasProps = {
   phase: FyAnimationPhase

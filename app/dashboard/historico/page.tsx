@@ -67,6 +67,7 @@ export default function HistoricoPage() {
       </header>
 
       <main className="flex-1 p-4 md:p-6">
+        <div data-fy-anchor="fy-historico-panel" className="space-y-6">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-foreground">
             Histórico de Pontos {targetUser ? `- ${targetUser.nome}` : ''}
@@ -202,6 +203,7 @@ export default function HistoricoPage() {
             )}
           </CardContent>
         </Card>
+        </div>
       </main>
     </>
   )

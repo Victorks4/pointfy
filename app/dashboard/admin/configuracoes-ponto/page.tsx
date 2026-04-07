@@ -178,7 +178,7 @@ export default function AdminConfiguracoesPontoPage() {
         <h1 className="text-lg font-semibold">Configurações de Ponto</h1>
       </header>
 
-      <main className="flex-1 p-4 md:p-6 space-y-6">
+      <main data-fy-anchor="fy-admin-config-main" className="flex-1 p-4 md:p-6 space-y-6">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">

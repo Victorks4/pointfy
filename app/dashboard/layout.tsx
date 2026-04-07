@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
 import { FyGuide } from '@/components/fy-guide'
-import { FyProvider } from '@/lib/fy-context'
+import { FyTourOverlay } from '@/components/fy-tour-overlay'
+import { FyTourProvider } from '@/lib/fy-tour-context'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -40,15 +41,14 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <FyProvider userId={user.id} isAdmin={user.cargo === 'admin'}>
-        <DashboardSidebar />
-        <SidebarInset>
-          <div className="flex flex-1 flex-col pb-24 md:pb-10">
-            {children}
-          </div>
+      <DashboardSidebar />
+      <SidebarInset>
+        <FyTourProvider>
+          <div className="flex flex-1 flex-col pb-24 md:pb-10">{children}</div>
+          <FyTourOverlay />
           <FyGuide />
-        </SidebarInset>
-      </FyProvider>
+        </FyTourProvider>
+      </SidebarInset>
     </SidebarProvider>
   )
 }

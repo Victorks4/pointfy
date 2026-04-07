@@ -223,7 +223,7 @@ export default function LoginPage() {
               className="shrink-0 object-contain"
             />
             <p className="text-sm text-blue-950/85 leading-snug text-left">
-              Depois do login, o <strong>Fy</strong> te guia no primeiro acesso — tour curto no menu lateral ou no botão flutuante.
+              Depois do login, o <strong>Fy</strong> aparece no canto da tela com dicas em um balão — sem janelas extras.
             </p>
           </div>
 
