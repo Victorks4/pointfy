@@ -14,7 +14,7 @@ Seu papel é ajudar usuários a registrar ponto corretamente e a usar o sistema 
 Regras:
 - Seja direto e amigável.
 - Evite textos longos; prefira 1–3 frases curtas.
-- Use linguagem simples e natural para jovens estudantes.
+- Use linguagem simples e natural para jovens estagiários.
 - Seja motivador, sem exagerar nem soar artificial.
 - Nunca seja irritante, invasivo ou culpabilize o usuário.
 - Se não souber algo específico da empresa, diga que o RH ou o coordenador pode confirmar.
@@ -31,17 +31,17 @@ export type FyEmotion = 'alegria' | 'aviso' | 'atencao' | 'neutro'
 export const FY_QUICK_MESSAGES: Record<FyEmotion, string[]> = {
   alegria: [
     'Tudo certo por aqui. Bora registrar o ponto?',
-    'Meta do dia no radar — você está indo bem.',
+    'Meta do dia no radar, você está indo bem!',
     'Ponto salvo. Bom trabalho!',
   ],
   aviso: [
     'Passou do limite sem justificativa? Escolha uma opção antes de salvar.',
     'Confere os horários: saída precisa ser depois da entrada.',
-    'Minutos em :00 podem estar bloqueados — ajuste se precisar.',
+    'Minutos em :00 podem estar bloqueados, ajuste se precisar.',
   ],
   atencao: [
     'Ainda não bateu ponto hoje. Leva só um minuto.',
-    'Dá uma olhada nas notificações — pode ter algo importante.',
+    'Dá uma olhada nas notificações, pode ter algo importante.',
     'Primeira vez? Abre o menu e explora com calma.',
   ],
   neutro: [
@@ -49,6 +49,34 @@ export const FY_QUICK_MESSAGES: Record<FyEmotion, string[]> = {
     'Dúvida sobre o ponto? Pergunta.',
     'Histórico e relatórios ficam no menu lateral.',
   ],
+}
+
+/** Dicas no dock do Fy para estagiários: produtividade, pontuação e hábitos. */
+export const FY_DOCK_TIPS_ESTAGIARIO: string[] = [
+  'Sua pontuação no dashboard mistura consistência (sequência), bater a meta diária e pontualidade — cada parte vale.',
+  'Manter dias seguidos com registro sobe sua sequência; isso pesa forte no cálculo de produtividade.',
+  'Bater a meta de horas do dia ajuda o score: revise o card de nível e o que falta para o próximo tier.',
+  'Chegar e registrar perto do horário combinado melhora a nota de pontualidade — use o relógio do sistema.',
+  'Desafios da semana somam com seu ritmo: acompanhe o progresso nos cards do dashboard.',
+  'Histórico e banco de horas mostram o retrato real do mês; confira antes de falar com o RH.',
+  'Justificativa bem preenchida evita atrito: descreva o contexto com clareza quando precisar.',
+  'Pequena rotina vence: abrir o Pontify no mesmo horário do estágio vira hábito em poucas semanas.',
+]
+
+/** Dicas no dock do Fy para administradores: gestão, comunicação e regras. */
+export const FY_DOCK_TIPS_ADMIN: string[] = [
+  'Alinhe mudanças de configuração de ponto com o RH: meta e limite de justificativa valem para todos os estagiários.',
+  'Relatórios filtrados por mês e exportação em PDF ajudam a fechar o período com a coordenação.',
+  'Notificações curtas e objetivas têm mais leitura; use para avisos que realmente precisam de ação.',
+  'Na fila de justificativas, respostas claras reduzem ida e volta, o estagiário vê o retorno no painel dele.',
+  'Usuários com departamento e carga horária corretos evitam erro no fechamento de horas.',
+  'Desafios semanais funcionam melhor com meta realista e prazo visível para o time acompanhar.',
+  'Antes de publicar uma nova regra, revise quem está em recesso ou período especial nos cadastros.',
+  'Painel geral + drill-down por estagiário no histórico/admin ajuda a priorizar quem precisa de suporte.',
+]
+
+export function getFyDockRotationTips(isAdmin: boolean): readonly string[] {
+  return isAdmin ? FY_DOCK_TIPS_ADMIN : FY_DOCK_TIPS_ESTAGIARIO
 }
 
 export type FyOnboardingStep = {
@@ -78,7 +106,7 @@ export const FY_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
     ordem: 1,
     titulo: 'Oi, eu sou o Fy',
     mensagem:
-      'Sou o guia do Pontify. Vou te mostrar onde registrar ponto, justificar e acompanhar sua sequência — passo a passo.',
+      'Sou o guia do Pontify. Vou te mostrar onde registrar ponto, justificar e acompanhar sua sequência, passo a passo.',
     rotaSugerida: '/dashboard',
     anchorId: 'fy-dashboard-hero',
   },

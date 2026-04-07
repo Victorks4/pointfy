@@ -4,12 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
-import {
-  FY_ADMIN_FIRST_VISIT_FLOW,
-  FY_FIRST_VISIT_FLOW,
-  FY_NAME,
-  resolveFyBubbleMessage,
-} from '@/lib/fy-mascot'
+import { FY_NAME, getFyDockRotationTips, resolveFyBubbleMessage } from '@/lib/fy-mascot'
 import { useFyTour } from '@/lib/fy-tour-context'
 import { calcularSequenciaAtual, getTodayString } from '@/lib/time-utils'
 import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
@@ -23,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { FyChromaVideo } from '@/components/fy-chroma-video'
-import { Sparkles, Minimize2, ChevronLeft, ChevronRight, Route } from 'lucide-react'
+import { Minimize2, ChevronLeft, ChevronRight, Route } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const VIDEO_SRC = '/Video_teste_Fy.mp4'
@@ -103,8 +98,6 @@ export function FyGuide() {
     [pontos],
   )
 
-  const flowStatic = useMemo(() => (isAdmin ? FY_ADMIN_FIRST_VISIT_FLOW : FY_FIRST_VISIT_FLOW), [isAdmin])
-
   const bubble = useMemo(
     () =>
       resolveFyBubbleMessage({
@@ -117,9 +110,9 @@ export function FyGuide() {
   )
 
   const tips = useMemo(() => {
-    const tourLines = flowStatic.map((s) => s.mensagem)
-    return [bubble.text, ...tourLines]
-  }, [flowStatic, bubble.text])
+    const roleTips = [...getFyDockRotationTips(Boolean(isAdmin))]
+    return [bubble.text, ...roleTips]
+  }, [bubble.text, isAdmin])
 
   useEffect(() => {
     setMounted(true)
@@ -177,11 +170,12 @@ export function FyGuide() {
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
-              size="icon"
-              className="pointer-events-auto h-14 w-14 rounded-full border border-sky-300/80 bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg shadow-sky-900/25 ring-2 ring-sky-200/60 hover:scale-105 hover:from-sky-400 hover:to-blue-500"
+              variant="outline"
+              className="pointer-events-auto h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-sky-600 bg-white p-0 shadow-md shadow-sky-900/10 transition-transform hover:scale-105 hover:bg-white focus-visible:ring-2 focus-visible:ring-sky-500"
               aria-label={`Menu do ${FY_NAME}: atalhos e tour`}
             >
-              <Sparkles className="h-6 w-6" aria-hidden />
+              <span className="sr-only">Abrir menu do assistente</span>
+              <FyChromaVideo src={VIDEO_SRC} layout="fab" canvasBaseWidth={128} className="pointer-events-none" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="end" className="w-56">

@@ -15,12 +15,15 @@ type FyChromaVideoProps = {
   src: string
   className?: string
   canvasBaseWidth?: number
+  /** Botão circular FAB: fundo branco no pai; vídeo dançando dentro do círculo. */
+  layout?: 'default' | 'fab'
 }
 
-export function FyChromaVideo({ src, className, canvasBaseWidth = 280 }: FyChromaVideoProps) {
+export function FyChromaVideo({ src, className, canvasBaseWidth = 280, layout = 'default' }: FyChromaVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chromaEnabled = isFyVideoChromaEnabled()
+  const effectiveBaseWidth = layout === 'fab' ? Math.min(canvasBaseWidth, 132) : canvasBaseWidth
 
   useEffect(() => {
     const video = videoRef.current
@@ -64,8 +67,8 @@ export function FyChromaVideo({ src, className, canvasBaseWidth = 280 }: FyChrom
       const sh = vh * (1 - FY_VIDEO_CROP_TOP_RATIO - FY_VIDEO_CROP_BOTTOM_RATIO)
       if (sw < 2 || sh < 2) return
       const ar = sw / sh
-      canvas.width = canvasBaseWidth
-      canvas.height = Math.max(2, Math.round(canvasBaseWidth / ar))
+      canvas.width = effectiveBaseWidth
+      canvas.height = Math.max(2, Math.round(effectiveBaseWidth / ar))
       layoutReady = true
     }
 
@@ -99,12 +102,14 @@ export function FyChromaVideo({ src, className, canvasBaseWidth = 280 }: FyChrom
       video.removeEventListener('loadeddata', play)
       video.removeEventListener('loadedmetadata', applyLayout)
     }
-  }, [src, chromaEnabled, canvasBaseWidth])
+  }, [src, chromaEnabled, effectiveBaseWidth])
 
   return (
     <div
       className={cn(
-        'relative flex max-h-[min(42vh,240px)] w-[min(46vw,200px)] items-end justify-center sm:w-[min(40vw,220px)]',
+        layout === 'fab'
+          ? 'relative flex h-[3.5rem] w-[3.5rem] shrink-0 items-end justify-center overflow-hidden rounded-full bg-white'
+          : 'relative flex max-h-[min(42vh,240px)] w-[min(46vw,200px)] items-end justify-center sm:w-[min(40vw,220px)]',
         className,
       )}
     >
@@ -112,7 +117,11 @@ export function FyChromaVideo({ src, className, canvasBaseWidth = 280 }: FyChrom
         ref={videoRef}
         src={src}
         className={cn(
-          chromaEnabled ? 'pointer-events-none absolute h-px w-px opacity-0' : 'h-full w-full rounded-2xl object-contain',
+          chromaEnabled
+            ? 'pointer-events-none absolute h-px w-px opacity-0'
+            : layout === 'fab'
+              ? 'pointer-events-none h-full w-full -translate-x-2 scale-125 object-cover object-bottom'
+              : 'h-full w-full rounded-2xl object-contain',
         )}
         loop
         muted
@@ -123,7 +132,11 @@ export function FyChromaVideo({ src, className, canvasBaseWidth = 280 }: FyChrom
       {chromaEnabled ? (
         <canvas
           ref={canvasRef}
-          className="h-full max-h-[240px] w-auto max-w-full rounded-2xl object-contain"
+          className={cn(
+            layout === 'fab'
+              ? 'h-full max-h-[3.5rem] w-full max-w-[3.5rem] -translate-x-2 rounded-full object-cover object-bottom'
+              : 'h-full max-h-[240px] w-auto max-w-full rounded-2xl object-contain',
+          )}
           aria-hidden
         />
       ) : null}
