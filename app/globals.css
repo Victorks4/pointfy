@@ -171,6 +171,188 @@
   }
 }
 
+/* Fy — saída lenta e teatral em direção ao FAB (canto inferior direito) */
+@keyframes fy-bubble-suck-to-fab {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+    filter: blur(0) saturate(1);
+  }
+  18% {
+    transform: translate(-6px, 2px) scale(1.04) rotate(-3deg);
+    opacity: 1;
+  }
+  38% {
+    transform: translate(-14px, -18px) scale(1.02) rotate(2deg);
+    opacity: 1;
+  }
+  58% {
+    transform: translate(4px, 8px) scale(0.92) rotate(-1deg);
+    opacity: 0.98;
+  }
+  78% {
+    transform: translate(14px, 36px) scale(0.45) rotate(4deg);
+    opacity: 0.65;
+    filter: blur(0.5px) saturate(1.05);
+  }
+  100% {
+    transform: translate(22px, 58px) scale(0.08) rotate(6deg);
+    opacity: 0;
+    filter: blur(2px) saturate(1.1);
+  }
+}
+
+@keyframes fy-mascot-dive-to-fab {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+    filter: blur(0) brightness(1) saturate(1);
+  }
+  12% {
+    transform: translate(-8px, -6px) scale(1.02) rotate(-4deg);
+    opacity: 1;
+  }
+  28% {
+    transform: translate(-22px, -32px) scale(1.14) rotate(-14deg);
+    opacity: 1;
+    filter: blur(0) brightness(1.08) saturate(1.05);
+  }
+  42% {
+    transform: translate(-12px, -18px) scale(1.06) rotate(-8deg);
+    opacity: 1;
+  }
+  55% {
+    transform: translate(4px, 6px) scale(0.92) rotate(6deg);
+    opacity: 1;
+  }
+  68% {
+    transform: translate(22px, 20px) scale(0.62) rotate(-5deg);
+    opacity: 0.98;
+  }
+  80% {
+    transform: translate(38px, 36px) scale(0.32) rotate(8deg);
+    opacity: 0.88;
+    filter: blur(0.5px) brightness(1.06);
+  }
+  92% {
+    transform: translate(50px, 50px) scale(0.12) rotate(-3deg);
+    opacity: 0.45;
+    filter: blur(1.5px) brightness(1.12);
+  }
+  100% {
+    transform: translate(58px, 58px) scale(0.03) rotate(0deg);
+    opacity: 0;
+    filter: blur(4px) brightness(1.2);
+  }
+}
+
+@keyframes fy-exit-portal-ring {
+  0% {
+    transform: scale(0.25) rotate(0deg);
+    opacity: 0;
+  }
+  22% {
+    opacity: 0.4;
+  }
+  48% {
+    transform: scale(1) rotate(8deg);
+    opacity: 0.55;
+  }
+  72% {
+    transform: scale(1.25) rotate(-4deg);
+    opacity: 0.28;
+  }
+  100% {
+    transform: scale(1.55) rotate(0deg);
+    opacity: 0;
+  }
+}
+
+@keyframes fy-exit-portal-core {
+  0% {
+    transform: scale(0.15);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.35;
+  }
+  55% {
+    transform: scale(0.95);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+
+@keyframes fy-exit-portal-glow {
+  0% {
+    transform: scale(0.35);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.38;
+  }
+  70% {
+    transform: scale(1.2);
+    opacity: 0.22;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+.fy-exit-bubble {
+  animation: fy-bubble-suck-to-fab 1.65s cubic-bezier(0.4, 0.02, 0.15, 1) forwards;
+  transform-origin: 92% 100%;
+  will-change: transform, opacity, filter;
+}
+
+.fy-exit-mascot {
+  animation: fy-mascot-dive-to-fab 2.45s cubic-bezier(0.37, 0.02, 0.22, 1) 0.55s forwards;
+  transform-origin: 90% 100%;
+  will-change: transform, opacity, filter;
+}
+
+.fy-exit-bubble-reduced,
+.fy-exit-mascot-reduced {
+  animation: fy-exit-fade-only 0.55s ease-out forwards;
+}
+
+@keyframes fy-exit-fade-only {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.fy-exit-portal-ring {
+  transform-origin: 100% 100%;
+  animation: fy-exit-portal-ring 2.85s cubic-bezier(0.35, 0.55, 0.2, 1) forwards;
+}
+
+.fy-exit-portal-core {
+  transform-origin: 100% 100%;
+  animation: fy-exit-portal-core 2.65s cubic-bezier(0.4, 0.2, 0.25, 1) 0.15s both;
+}
+
+.fy-exit-portal-glow {
+  transform-origin: 100% 100%;
+  animation: fy-exit-portal-glow 2.95s cubic-bezier(0.33, 0.5, 0.25, 1) 0.08s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fy-exit-portal-ring,
+  .fy-exit-portal-core,
+  .fy-exit-portal-glow {
+    animation: fy-exit-fade-only 0.28s ease-out forwards;
+  }
+}
+
 @keyframes fy-entrance-float {
   0%,
   100% {

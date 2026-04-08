@@ -43,7 +43,8 @@ type FyTourContextValue = {
 const FyTourContext = createContext<FyTourContextValue | null>(null)
 
 const ENTRANCE_MS = 2600
-const EXIT_MS = 720
+/** Duração total da saída (balão + delay + mergulho do mascote) — ver `.fy-exit-mascot` em globals.css */
+const EXIT_MS = 3000
 
 export function useFyTour(): FyTourContextValue {
   const ctx = useContext(FyTourContext)
@@ -155,9 +156,11 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const collapseToFab = useCallback(() => {
-    if (hasCompletedOnboarding) {
+    if (!hasCompletedOnboarding) return
+    setUiMode('exiting')
+    globalThis.setTimeout(() => {
       setUiMode('fab')
-    }
+    }, EXIT_MS)
   }, [hasCompletedOnboarding])
 
   const currentStep = flow[tourStepIndex]

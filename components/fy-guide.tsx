@@ -18,7 +18,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { FyChromaVideo } from '@/components/fy-chroma-video'
-import { Minimize2, ChevronLeft, ChevronRight, Route } from 'lucide-react'
+import { FyFaqDialog } from '@/components/fy-faq-dialog'
+import { Minimize2, ChevronLeft, ChevronRight, Route, CircleHelp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const VIDEO_SRC = '/Video_teste_Fy.mp4'
@@ -93,6 +94,7 @@ export function FyGuide() {
 
   const [mounted, setMounted] = useState(false)
   const [tipIndex, setTipIndex] = useState(0)
+  const [faqOpen, setFaqOpen] = useState(false)
 
   const isAdmin = user?.cargo === 'admin'
   const isGestor = user?.cargo === 'gestor'
@@ -173,55 +175,69 @@ export function FyGuide() {
 
   if (tour.uiMode === 'fab') {
     return (
-      <div className="fixed bottom-5 right-5 z-[51] flex flex-col items-end gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              className="pointer-events-auto h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-sky-600 bg-white p-0 shadow-md shadow-sky-900/10 transition-transform hover:scale-105 hover:bg-white focus-visible:ring-2 focus-visible:ring-sky-500"
-              aria-label={`Menu do ${FY_NAME}: atalhos e tour`}
-            >
-              <span className="sr-only">Abrir menu do assistente</span>
-              <FyChromaVideo src={VIDEO_SRC} layout="fab" canvasBaseWidth={128} className="pointer-events-none" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="end" className="w-56">
-            <DropdownMenuItem
-              onSelect={() => {
-                router.push(dashboardHref)
-              }}
-            >
-              Ir para o painel
-            </DropdownMenuItem>
-            {!isAdmin && !isGestor ? (
+      <>
+        <div className="fixed bottom-5 right-5 z-[51] flex flex-col items-end gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  'pointer-events-auto h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-sky-600 bg-white p-0 shadow-md shadow-sky-900/10 transition-transform hover:scale-105 hover:bg-white focus-visible:ring-2 focus-visible:ring-sky-500',
+                  !prefersReducedMotion && 'origin-bottom-right animate-in zoom-in-95 fade-in duration-700',
+                )}
+                aria-label={`Menu do ${FY_NAME}: atalhos e tour`}
+              >
+                <span className="sr-only">Abrir menu do assistente</span>
+                <FyChromaVideo src={VIDEO_SRC} layout="fab" canvasBaseWidth={128} className="pointer-events-none" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" className="w-56">
               <DropdownMenuItem
                 onSelect={() => {
-                  router.push('/dashboard/ponto')
+                  router.push(dashboardHref)
                 }}
               >
-                Bater ponto
+                Ir para o painel
               </DropdownMenuItem>
-            ) : null}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => {
-                tour.startTourFromMenu()
-              }}
-            >
-              <Route className="mr-2 h-4 w-4" />
-              Ver tour com o Fy
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => {
-                tour.expandDock()
-              }}
-            >
-              Abrir mascote (dicas do Fy)
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+              {!isAdmin && !isGestor ? (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    router.push('/dashboard/ponto')
+                  }}
+                >
+                  Bater ponto
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => {
+                  setFaqOpen(true)
+                }}
+              >
+                <CircleHelp className="mr-2 h-4 w-4" />
+                Perguntas frequentes
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  tour.startTourFromMenu()
+                }}
+              >
+                <Route className="mr-2 h-4 w-4" />
+                Ver tour com o Fy
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  tour.expandDock()
+                }}
+              >
+                Abrir mascote (dicas do Fy)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <FyFaqDialog open={faqOpen} onOpenChange={setFaqOpen} role={fyTipRole} />
+      </>
     )
   }
 
@@ -234,18 +250,21 @@ export function FyGuide() {
   const isLastTourStep = tour.isTourActive && tour.tourStepIndex >= tour.flow.length - 1
 
   return (
+    <>
     <aside
       data-fy-pet-dock
       aria-label={`${FY_NAME}, assistente do Pontify`}
       className={cn(
         'fixed bottom-5 right-5 z-[51] flex max-w-[min(calc(100vw-1.25rem),22rem)] flex-col items-end gap-2',
+        tour.uiMode === 'exiting' && 'overflow-visible',
         tour.isTourActive || tour.uiMode === 'dock' ? 'pointer-events-auto' : 'pointer-events-none',
       )}
     >
       <div
         className={cn(
           'relative w-full rounded-2xl border border-sky-200/90 bg-white/95 shadow-lg shadow-sky-900/10 ring-1 ring-sky-100 backdrop-blur-sm',
-          tour.uiMode === 'exiting' && 'animate-out fade-out zoom-out-95 duration-500',
+          tour.uiMode === 'exiting' &&
+            (prefersReducedMotion ? 'fy-exit-bubble-reduced' : 'fy-exit-bubble'),
           !tour.isTourActive &&
             tour.uiMode !== 'dock' &&
             tour.uiMode !== 'exiting' &&
@@ -288,10 +307,33 @@ export function FyGuide() {
               <Button type="button" variant="ghost" size="sm" className="text-slate-500" onClick={() => tour.skipTour()}>
                 Pular tour
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="gap-1 text-sky-700"
+                onClick={() => setFaqOpen(true)}
+              >
+                <CircleHelp className="h-4 w-4" />
+                Dúvidas
+              </Button>
             </div>
           ) : null}
           {tour.uiMode === 'dock' && !tour.isTourActive ? (
-            <div className="mt-2 flex justify-end border-t border-sky-100 pt-2">
+            <div className="mt-2 flex flex-wrap items-center justify-end gap-1 border-t border-sky-100 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="gap-1 text-sky-700"
+                onClick={() => setFaqOpen(true)}
+              >
+                <CircleHelp className="h-4 w-4" />
+                Dúvidas
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="text-sky-700" onClick={() => tour.startTourFromMenu()}>
+                Ver tour
+              </Button>
               <Button
                 type="button"
                 variant="ghost"
@@ -301,9 +343,6 @@ export function FyGuide() {
               >
                 <Minimize2 className="h-4 w-4" />
                 Minimizar
-              </Button>
-              <Button type="button" variant="ghost" size="sm" className="text-sky-700" onClick={() => tour.startTourFromMenu()}>
-                Ver tour
               </Button>
             </div>
           ) : null}
@@ -316,13 +355,16 @@ export function FyGuide() {
 
       <div
         className={cn(
-          prefersReducedMotion ? '' : 'animate-fy-pet-jump',
-          tour.uiMode === 'exiting' && 'animate-out fade-out slide-out-to-bottom-4 duration-500',
+          tour.uiMode !== 'exiting' && !prefersReducedMotion && 'animate-fy-pet-jump',
+          tour.uiMode === 'exiting' &&
+            (prefersReducedMotion ? 'fy-exit-mascot-reduced' : 'fy-exit-mascot'),
           !tour.isTourActive && tour.uiMode !== 'exiting' && 'pointer-events-none',
         )}
       >
         <FyChromaVideo src={VIDEO_SRC} className="drop-shadow-xl" />
       </div>
     </aside>
+    <FyFaqDialog open={faqOpen} onOpenChange={setFaqOpen} role={fyTipRole} />
+    </>
   )
 }

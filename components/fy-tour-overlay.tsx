@@ -189,9 +189,23 @@ export function FyTourOverlay() {
 
       {uiMode === 'exiting' ? (
         <div
-          className="pointer-events-none fixed inset-0 z-[44] bg-gradient-to-t from-sky-500/15 to-transparent animate-out fade-out duration-500"
+          className="pointer-events-none fixed inset-0 z-[44] overflow-hidden"
           aria-hidden
-        />
+        >
+          <div
+            className={cn(
+              'absolute inset-0 bg-gradient-to-t from-sky-500/20 via-sky-400/5 to-transparent animate-out fade-out duration-[3000ms]',
+              prefersReducedMotion && 'duration-500',
+            )}
+          />
+          {!prefersReducedMotion ? (
+            <>
+              <div className="fy-exit-portal-ring absolute bottom-4 right-4 h-32 w-32 rounded-full border-2 border-sky-300/70 shadow-[0_0_40px_rgba(56,189,248,0.45)]" />
+              <div className="fy-exit-portal-core absolute bottom-7 right-7 h-16 w-16 rounded-full bg-gradient-to-br from-sky-200/90 to-cyan-300/80 blur-[2px]" />
+              <div className="fy-exit-portal-glow absolute bottom-2 right-2 h-24 w-24 rounded-full bg-sky-400/25 blur-3xl" />
+            </>
+          ) : null}
+        </div>
       ) : null}
     </>
   )

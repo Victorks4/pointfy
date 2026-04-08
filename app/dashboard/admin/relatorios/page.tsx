@@ -15,7 +15,7 @@ import { downloadRelatorioEstagiariosPdf, downloadRelatorioUsuarioPdf } from '@/
 
 export default function AdminRelatoriosPage() {
   const { user } = useAuth()
-  const { usuarios, pontos, getBancoHorasPorPeriodo } = useData()
+  const { usuarios, pontos, getBancoHorasPorPeriodo, getFolhaPontoMensal, getAssinaturaUsuario } = useData()
   const [departamento, setDepartamento] = useState('')
 
   const currentYear = new Date().getFullYear()
@@ -102,6 +102,13 @@ export default function AdminRelatoriosPage() {
 
     const bancoHorasMinutos = getBancoHorasPorPeriodo(userId, selectedYear, selectedMonth)
 
+    const folha = getFolhaPontoMensal(userId, periodoKey)
+    const gestorUsuario = usuario.gestorId
+      ? usuarios.find((u) => u.id === usuario.gestorId)
+      : undefined
+    const assinaturaGestor = usuario.gestorId ? getAssinaturaUsuario(usuario.gestorId) : undefined
+    const assinaturaEstagiario = getAssinaturaUsuario(userId)
+
     downloadRelatorioUsuarioPdf({
       titulo: 'Relatório do Estagiário',
       periodoLabel,
@@ -113,6 +120,14 @@ export default function AdminRelatoriosPage() {
       bancoHorasMinutos,
       pontos: pontosUsuario,
       filename: `relatorio-${usuario.ra}-${periodoKey}.pdf`,
+      assinaturas: {
+        gestorNome: gestorUsuario?.nome ?? 'Gestor',
+        estagiarioNome: usuario.nome,
+        gestorDataUrl: assinaturaGestor?.dataUrl ?? null,
+        estagiarioDataUrl: assinaturaEstagiario?.dataUrl ?? null,
+        gestorAssinouEm: folha?.gestorAssinouEm ?? null,
+        estagiarioAssinouEm: folha?.estagiarioAssinouEm ?? null,
+      },
     })
   }
 

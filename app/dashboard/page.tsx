@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import type { DesafioSemanal, PontoRegistro } from '@/lib/types'
+import { EstagiarioFolhaPontoCard } from '@/components/folha-ponto-assinatura-cards'
 
 function desafioProgressoFromPontos(
   desafio: DesafioSemanal,
@@ -206,6 +207,12 @@ export default function DashboardPage() {
             {formatDate(getTodayString())} - Vamos acompanhar seu dia
           </p>
         </div>
+
+        {user && user.cargo === 'estagiario' ? (
+          <div className="mb-6">
+            <EstagiarioFolhaPontoCard estagiario={user} />
+          </div>
+        ) : null}
 
         {/* Cards de Resumo */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">

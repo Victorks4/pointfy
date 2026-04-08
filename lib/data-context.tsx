@@ -9,7 +9,18 @@ import {
   type ReactNode,
 } from 'react'
 import { cloneDemoUsersForDataState } from '@/lib/demo-users'
-import type { PontoRegistro, Justificativa, Notificacao, User, DesafioSemanal, DesafioProgresso, PontoConfig } from './types'
+import type {
+  PontoRegistro,
+  Justificativa,
+  Notificacao,
+  User,
+  DesafioSemanal,
+  DesafioProgresso,
+  PontoConfig,
+  AssinaturaSalva,
+  FolhaPontoMensal,
+} from './types'
+import { isPeriodoAssinaturaFolhaPonto, mesAnoFechamentoAtual } from '@/lib/folha-ponto-assinatura'
 
 interface DataContextType {
   pontos: PontoRegistro[]
@@ -53,6 +64,17 @@ interface DataContextType {
   updatePontoConfig: (id: string, config: Partial<PontoConfig>) => void
   deletePontoConfig: (id: string) => void
   getActivePontoConfig: () => PontoConfig
+
+  salvarAssinaturaUsuario: (userId: string, dataUrl: string) => void
+  getAssinaturaUsuario: (userId: string) => AssinaturaSalva | undefined
+  getFolhaPontoMensal: (estagiarioId: string, mesAno: string) => FolhaPontoMensal | undefined
+  registrarAssinaturaGestorFolha: (
+    estagiarioId: string,
+    gestorId: string,
+  ) => { ok: true } | { ok: false; reason: string }
+  registrarAssinaturaEstagiarioFolha: (
+    estagiarioId: string,
+  ) => { ok: true } | { ok: false; reason: string }
 }
 
 const DataContext = createContext<DataContextType | null>(null)
@@ -88,6 +110,111 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [desafios, setDesafios] = useState<DesafioSemanal[]>([])
   const [desafioProgressos, setDesafioProgressos] = useState<DesafioProgresso[]>([])
   const [pontoConfigs, setPontoConfigs] = useState<PontoConfig[]>([DEFAULT_PONTO_CONFIG])
+  const [assinaturasPorUsuarioId, setAssinaturasPorUsuarioId] = useState<Record<string, AssinaturaSalva>>({})
+  const [folhasPontoMensal, setFolhasPontoMensal] = useState<FolhaPontoMensal[]>([])
+
+  const salvarAssinaturaUsuario = useCallback((userId: string, dataUrl: string) => {
+    setAssinaturasPorUsuarioId((prev) => ({
+      ...prev,
+      [userId]: { dataUrl, atualizadoEm: new Date().toISOString() },
+    }))
+  }, [])
+
+  const getAssinaturaUsuario = useCallback(
+    (userId: string) => assinaturasPorUsuarioId[userId],
+    [assinaturasPorUsuarioId],
+  )
+
+  const getFolhaPontoMensal = useCallback(
+    (estagiarioId: string, mesAno: string) =>
+      folhasPontoMensal.find((f) => f.estagiarioId === estagiarioId && f.mesAno === mesAno),
+    [folhasPontoMensal],
+  )
+
+  const registrarAssinaturaGestorFolha = useCallback(
+    (estagiarioId: string, gestorId: string): { ok: true } | { ok: false; reason: string } => {
+      const agora = new Date()
+      if (!isPeriodoAssinaturaFolhaPonto(agora)) {
+        return { ok: false, reason: 'fora_do_periodo' }
+      }
+      const est = usuarios.find((u) => u.id === estagiarioId)
+      if (!est || est.cargo !== 'estagiario' || est.gestorId !== gestorId) {
+        return { ok: false, reason: 'nao_autorizado' }
+      }
+      if (!assinaturasPorUsuarioId[gestorId]) {
+        return { ok: false, reason: 'gestor_sem_assinatura' }
+      }
+      const mesAno = mesAnoFechamentoAtual(agora)
+      setFolhasPontoMensal((prev) => {
+        const i = prev.findIndex((f) => f.estagiarioId === estagiarioId && f.mesAno === mesAno)
+        if (i >= 0) {
+          const row = prev[i]
+          if (row.gestorAssinouEm) return prev
+          const next = [...prev]
+          next[i] = { ...row, gestorAssinouEm: new Date().toISOString() }
+          return next
+        }
+        return [
+          ...prev,
+          {
+            id: `${Date.now()}-${estagiarioId}`,
+            estagiarioId,
+            gestorId,
+            mesAno,
+            gestorAssinouEm: new Date().toISOString(),
+            estagiarioAssinouEm: null,
+          },
+        ]
+      })
+      return { ok: true }
+    },
+    [usuarios, assinaturasPorUsuarioId],
+  )
+
+  const registrarAssinaturaEstagiarioFolha = useCallback(
+    (estagiarioId: string): { ok: true } | { ok: false; reason: string } => {
+      const agora = new Date()
+      if (!isPeriodoAssinaturaFolhaPonto(agora)) {
+        return { ok: false, reason: 'fora_do_periodo' }
+      }
+      const est = usuarios.find((u) => u.id === estagiarioId)
+      if (!est || est.cargo !== 'estagiario') {
+        return { ok: false, reason: 'nao_autorizado' }
+      }
+      if (!assinaturasPorUsuarioId[estagiarioId]) {
+        return { ok: false, reason: 'estagiario_sem_assinatura' }
+      }
+      const gestorIdEstagiario = est.gestorId
+      if (!gestorIdEstagiario) {
+        return { ok: false, reason: 'sem_gestor' }
+      }
+      const mesAno = mesAnoFechamentoAtual(agora)
+      setFolhasPontoMensal((prev) => {
+        const i = prev.findIndex((f) => f.estagiarioId === estagiarioId && f.mesAno === mesAno)
+        if (i >= 0) {
+          const row = prev[i]
+          if (row.estagiarioAssinouEm) return prev
+          if (row.gestorId !== gestorIdEstagiario) return prev
+          const next = [...prev]
+          next[i] = { ...row, estagiarioAssinouEm: new Date().toISOString() }
+          return next
+        }
+        return [
+          ...prev,
+          {
+            id: `${Date.now()}-${estagiarioId}`,
+            estagiarioId,
+            gestorId: gestorIdEstagiario,
+            mesAno,
+            gestorAssinouEm: null,
+            estagiarioAssinouEm: new Date().toISOString(),
+          },
+        ]
+      })
+      return { ok: true }
+    },
+    [usuarios, assinaturasPorUsuarioId],
+  )
 
   const addPonto = useCallback((ponto: Omit<PontoRegistro, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newPonto: PontoRegistro = {
@@ -393,6 +520,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updatePontoConfig,
         deletePontoConfig,
         getActivePontoConfig,
+        salvarAssinaturaUsuario,
+        getAssinaturaUsuario,
+        getFolhaPontoMensal,
+        registrarAssinaturaGestorFolha,
+        registrarAssinaturaEstagiarioFolha,
       }) satisfies DataContextType,
     [
       pontos,
@@ -429,6 +561,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updatePontoConfig,
       deletePontoConfig,
       getActivePontoConfig,
+      salvarAssinaturaUsuario,
+      getAssinaturaUsuario,
+      getFolhaPontoMensal,
+      registrarAssinaturaGestorFolha,
+      registrarAssinaturaEstagiarioFolha,
     ],
   )
 

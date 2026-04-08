@@ -58,6 +58,22 @@ export interface BancoHoras {
   mesAno: string // YYYY-MM
 }
 
+/** Assinatura em PNG (data URL) guardada no cliente — demo sem backend. */
+export interface AssinaturaSalva {
+  dataUrl: string
+  atualizadoEm: string
+}
+
+/** Controle de assinaturas da folha de ponto mensal por estagiário. */
+export interface FolhaPontoMensal {
+  id: string
+  estagiarioId: string
+  gestorId: string
+  mesAno: string
+  gestorAssinouEm: string | null
+  estagiarioAssinouEm: string | null
+}
+
 export type TipoDesafio = 'meta_horas' | 'streak' | 'pontualidade' | 'custom'
 
 export interface DesafioSemanal {

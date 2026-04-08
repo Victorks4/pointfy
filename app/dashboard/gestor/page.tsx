@@ -22,6 +22,7 @@ import {
 } from '@/lib/time-utils'
 import { Calendar, Clock, FileText, Bell, User, TrendingUp, TrendingDown, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { GestorFolhaPontoCard } from '@/components/folha-ponto-assinatura-cards'
 
 const MESES = [
   { value: '01', label: 'Janeiro' },
@@ -209,6 +210,8 @@ export default function GestorDashboardPage() {
                   </Link>
                 </Button>
               </div>
+
+              {user ? <GestorFolhaPontoCard gestor={user} estagiario={selected} /> : null}
 
               <Tabs defaultValue="resumo" className="w-full">
                 <TabsList className="flex w-full flex-wrap h-auto gap-1 bg-muted/50 p-1">
