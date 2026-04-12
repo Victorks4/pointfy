@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { Clock, User, Lock, ArrowRight } from "lucide-react";
+import { LoginLeftPanel } from "@/components/login-left-panel";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -51,87 +52,52 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex">
-      {/* Painel Esquerdo - Decorativo */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 relative overflow-hidden">
-        {/* Elementos decorativos geométricos */}
-        <div className="absolute inset-0">
-          {/* Quadrado rotacionado superior esquerdo */}
-          <div
-            className={`absolute -top-10 -left-10 w-32 h-32 border-2 border-white/20 rotate-45 transition-all duration-1000 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10"}`}
-          />
-
-          {/* Quadrado rotacionado meio esquerdo */}
-          <div
-            className={`absolute top-1/4 left-10 w-20 h-20 border-2 border-white/30 rotate-12 transition-all duration-1000 delay-200 ${mounted ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}
-          />
-
-          {/* Losango inferior esquerdo */}
-          <div
-            className={`absolute bottom-20 left-20 w-16 h-16 bg-white/10 rotate-45 transition-all duration-1000 delay-400 ${mounted ? "opacity-100 scale-100" : "opacity-0 scale-50"}`}
-          />
-
-          {/* Quadrado grande inferior */}
-          <div
-            className={`absolute -bottom-20 left-1/3 w-40 h-40 border-2 border-white/15 rotate-45 transition-all duration-1000 delay-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
-          />
-
-          {/* Círculo decorativo */}
-          <div
-            className={`absolute top-1/3 right-10 w-24 h-24 rounded-full border-2 border-white/20 transition-all duration-1000 delay-500 ${mounted ? "opacity-100 scale-100" : "opacity-0 scale-50"}`}
-          />
+    <main className="flex min-h-dvh w-full max-w-full flex-col lg:min-h-dvh lg:flex-row lg:items-stretch">
+      <LoginLeftPanel mounted={mounted}>
+        <div
+          className={`mb-auto flex items-center gap-3 pt-8 transition-all duration-700 ${mounted ? "translate-y-0 opacity-100" : "-translate-y-5 opacity-0"}`}
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
+            <Clock className="h-5 w-5" />
+          </div>
+          <span className="text-lg font-semibold">PONTIFY</span>
         </div>
 
-        {/* Conteúdo do painel esquerdo */}
-        <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-white">
-          {/* Logo */}
-          <div
-            className={`flex items-center gap-3 mb-auto pt-8 transition-all duration-700 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-5"}`}
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <h1
+            className={`mb-4 text-4xl font-bold transition-all delay-200 duration-700 ${mounted ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"}`}
           >
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm">
-              <Clock className="w-5 h-5" />
-            </div>
-            <span className="font-semibold text-lg">PONTIFY</span>
-          </div>
+            Bem-vindo de volta!
+          </h1>
+          <p
+            className={`mb-8 max-w-xs text-white/80 transition-all delay-300 duration-700 ${mounted ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"}`}
+          >
+            Para continuar conectado conosco, faça login com suas credenciais
+            pessoais
+          </p>
 
-          {/* Texto de boas-vindas */}
-          <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <h1
-              className={`text-4xl font-bold mb-4 transition-all duration-700 delay-200 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"}`}
-            >
-              Bem-vindo de volta!
-            </h1>
-            <p
-              className={`text-white/80 max-w-xs mb-8 transition-all duration-700 delay-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"}`}
-            >
-              Para continuar conectado conosco, faça login com suas credenciais
-              pessoais
-            </p>
-
-            {/* Informações de teste */}
-            <div
-              className={`bg-white/10 backdrop-blur-sm rounded-xl p-4 text-sm transition-all duration-700 delay-400 ${mounted ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
-            >
-              <p className="font-medium mb-2">Credenciais de teste:</p>
-              <div className="space-y-1 text-white/90 text-left">
-                <p>
-                  <span className="text-white/60">Admin:</span>{" "}
-                  admin@empresa.com / admin123
-                </p>
-                <p>
-                  <span className="text-white/60">Estagiário:</span>{" "}
-                  estagiario@empresa.com / est123
-                </p>
-              </div>
+          <div
+            className={`rounded-xl bg-white/10 p-4 text-sm backdrop-blur-sm transition-all delay-400 duration-700 ${mounted ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}
+          >
+            <p className="mb-2 font-medium">Credenciais de teste:</p>
+            <div className="space-y-1 text-left text-white/90">
+              <p>
+                <span className="text-white/60">Admin:</span>{" "}
+                admin@empresa.com / admin123
+              </p>
+              <p>
+                <span className="text-white/60">Estagiário:</span>{" "}
+                estagiario@empresa.com / est123
+              </p>
             </div>
           </div>
-
-          <div className="mb-8" />
         </div>
-      </div>
+
+        <div className="mb-8" />
+      </LoginLeftPanel>
 
       {/* Painel Direito - Formulário */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background">
+      <div className="flex min-h-dvh flex-1 flex-col items-center justify-center bg-background p-8 lg:min-h-0">
         <div
           className={`w-full max-w-md transition-all duration-700 delay-200 ${mounted ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}
         >

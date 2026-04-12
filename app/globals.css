@@ -423,3 +423,126 @@
   }
 }
 
+/* Login hero — left panel motion (pointer + ambient) */
+.login-hero-root {
+  --login-nx: 0.5;
+  --login-ny: 0.5;
+  --login-glow: 0;
+}
+
+.login-hero-aurora {
+  background:
+    radial-gradient(
+      ellipse 85% 70% at calc(8% + var(--login-nx) * 84%) calc(5% + var(--login-ny) * 90%),
+      rgba(255, 255, 255, 0.2),
+      transparent 52%
+    ),
+    radial-gradient(
+      ellipse 60% 50% at calc(92% - var(--login-nx) * 35%) calc(88% - var(--login-ny) * 40%),
+      rgba(147, 197, 253, 0.18),
+      transparent 50%
+    );
+  transition: background 0.35s ease-out;
+}
+
+.login-hero-vignette {
+  background: radial-gradient(ellipse 95% 85% at 50% 45%, transparent 30%, rgba(15, 23, 42, 0.35) 100%);
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+}
+
+.login-hero-mesh {
+  color: rgba(255, 255, 255, 0.35);
+  opacity: calc(0.55 + var(--login-glow) * 0.2);
+  transition: opacity 0.45s ease-out;
+}
+
+.login-hero-path {
+  stroke-dasharray: 6 18;
+  animation: login-hero-dash 16s linear infinite;
+}
+
+.login-hero-path-delayed {
+  animation-duration: 22s;
+  animation-direction: reverse;
+}
+
+@keyframes login-hero-dash {
+  to {
+    stroke-dashoffset: -120;
+  }
+}
+
+@keyframes login-hero-breathe {
+  0%,
+  100% {
+    opacity: 0.95;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 14px rgba(191, 219, 254, 0.35));
+  }
+}
+
+.login-hero-breathe {
+  animation: login-hero-breathe 5.5s ease-in-out infinite;
+}
+
+.login-hero-breathe-delayed {
+  animation-delay: -2.6s;
+}
+
+.login-hero-particle-drift {
+  animation: login-hero-particle-drift 7.5s ease-in-out infinite;
+}
+
+@keyframes login-hero-particle-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(4px, -6px);
+  }
+  66% {
+    transform: translate(-3px, 4px);
+  }
+}
+
+.login-hero-frame {
+  transition:
+    border-color 0.45s ease-out,
+    box-shadow 0.45s ease-out,
+    background-color 0.45s ease-out;
+}
+
+.login-hero-root:hover .login-hero-frame {
+  border-color: rgba(255, 255, 255, 0.38);
+  box-shadow: 0 0 28px rgba(147, 197, 253, 0.22);
+}
+
+.login-hero-root:hover .login-hero-mesh {
+  opacity: calc(0.65 + var(--login-glow) * 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-hero-path,
+  .login-hero-path-delayed {
+    animation: none;
+  }
+
+  .login-hero-breathe,
+  .login-hero-breathe-delayed {
+    animation: none;
+  }
+
+  .login-hero-particle-drift {
+    animation: none;
+  }
+
+  .login-hero-root:hover .login-hero-frame {
+    box-shadow: none;
+  }
+}
+
