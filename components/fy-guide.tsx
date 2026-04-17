@@ -8,6 +8,7 @@ import { FY_NAME, getFyDockRotationTips, resolveFyBubbleMessage, type FyTipRole,
 import { useFyTour } from '@/lib/fy-tour-context'
 import { calcularSequenciaAtual, getTodayString } from '@/lib/time-utils'
 import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
+import { useFyIdleTracker } from '@/hooks/use-fy-idle-tracker'
 import { useSidebar } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import {
@@ -104,8 +105,6 @@ export function FyGuide() {
   // Estado de animação do Fy
   const [mood, setMood] = useState<FyMood>('neutro')
   const [isHovered, setIsHovered] = useState(false)
-  const [isIdle, setIsIdle] = useState(false)
-  const [idleSeconds, setIdleSeconds] = useState(0)
   const [showParticles, setShowParticles] = useState(false)
   const [showSleepZ, setShowSleepZ] = useState(false)
 
@@ -141,123 +140,63 @@ export function FyGuide() {
     setMounted(true)
   }, [])
 
-  // Subscription a eventos do Fy para reações
-  useEffect(() => {
-    const handleFyEvent = (event: ReturnType<typeof fyEmit> extends undefined ? never : { type: string; [key: string]: unknown }) => {
-      // Nota: fyEmit não retorna valor, então tratamos como void
-      // O evento real vem do barramento interno
+  // Handlers para reações a eventos do sistema
+  const handlePontoSaved = useCallback((success: boolean) => {
+    if (success) {
+      setMood('alegria')
+      setShowParticles(true)
+      setTimeout(() => {
+        setMood('neutro')
+        setShowParticles(false)
+      }, 2000)
     }
+  }, [])
 
-    // Handler para eventos do sistema
-    const onPontoSaved = (success: boolean) => {
-      if (success) {
-        setMood('alegria')
-        setShowParticles(true)
-        setTimeout(() => {
-          setMood('neutro')
-          setShowParticles(false)
-        }, 2000)
-      }
+  const handlePontoError = useCallback(() => {
+    setMood('aviso')
+    setTimeout(() => setMood('neutro'), 1500)
+  }, [])
+
+  const handleBored = useCallback(() => {
+    if (!isHovered && !showParticles) {
+      setMood('entediado')
     }
+  }, [isHovered, showParticles])
 
-    const onPontoError = () => {
-      setMood('aviso')
-      setTimeout(() => setMood('neutro'), 1500)
-    }
-
-    const onIdleStart = () => setIsIdle(true)
-    const onIdleEnd = () => {
-      setIsIdle(false)
-      setIdleSeconds(0)
-      setShowSleepZ(false)
-      setMood('neutro')
-    }
-
-    const onBored = () => setMood('entediado')
-    const onSleep = () => {
+  const handleSleep = useCallback(() => {
+    if (!isHovered && !showParticles) {
       setMood('dormindo')
       setShowSleepZ(true)
     }
-    const onWake = () => {
-      setMood('neutro')
-      setShowSleepZ(false)
-      setIsIdle(false)
-    }
+  }, [isHovered, showParticles])
 
-    // Idle tracker manual
-    let idleTimer: NodeJS.Timeout | null = null
-    let boredomTimer: NodeJS.Timeout | null = null
-    let sleepTimer: NodeJS.Timeout | null = null
-    let idleCounter: NodeJS.Timeout | null = null
+  const handleWake = useCallback(() => {
+    setMood('neutro')
+    setShowSleepZ(false)
+  }, [])
 
-    const resetIdle = () => {
-      if (idleTimer) clearTimeout(idleTimer)
-      if (boredomTimer) clearTimeout(boredomTimer)
-      if (sleepTimer) clearTimeout(sleepTimer)
-      if (idleCounter) clearInterval(idleCounter)
+  // Idle tracker unificado via hook
+  useFyIdleTracker({
+    enabled: !tour.isTourActive,
+    onBored: handleBored,
+    onSleep: handleSleep,
+    onWake: handleWake,
+  })
 
-      setIdleSeconds(0)
-
-      if (isIdle || mood === 'dormindo' || mood === 'entediado') {
-        onWake()
-      }
-
-      // 30s para tédio
-      boredomTimer = setTimeout(() => {
-        if (!isHovered && !showParticles) {
-          onBored()
-        }
-      }, 30000)
-
-      // 60s para dormir
-      sleepTimer = setTimeout(() => {
-        if (!isHovered && !showParticles) {
-          onSleep()
-        }
-      }, 60000)
-
-      // Contador de segundos
-      idleCounter = setInterval(() => {
-        setIdleSeconds((s) => s + 1)
-      }, 1000)
-    }
-
-    const handleActivity = () => {
-      resetIdle()
-    }
-
-    // Event listeners
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart']
-    events.forEach((event) => {
-      window.addEventListener(event, handleActivity, { passive: true })
-    })
-
-    // Iniciar idle tracker
-    resetIdle()
-
-    // Custom event listener para eventos do Fy
-    const fyEventHandler = (event: CustomEvent) => {
+  // Subscription a eventos do Fy via event bus
+  useEffect(() => {
+    const handleFyEvent = (event: CustomEvent) => {
       const { type, success } = event.detail || {}
-      if (type === 'ponto:saved') onPontoSaved(success)
-      if (type === 'ponto:error') onPontoError()
-      if (type === 'fy:idle_start') onIdleStart()
-      if (type === 'fy:idle_end') onIdleEnd()
-      if (type === 'fy:wake') onWake()
+      if (type === 'ponto:saved') handlePontoSaved(success)
+      if (type === 'ponto:error') handlePontoError()
     }
 
-    window.addEventListener('fy-event' as never, fyEventHandler as never)
+    window.addEventListener('fy-event' as never, handleFyEvent as never)
 
     return () => {
-      events.forEach((event) => {
-        window.removeEventListener(event, handleActivity)
-      })
-      if (idleTimer) clearTimeout(idleTimer)
-      if (boredomTimer) clearTimeout(boredomTimer)
-      if (sleepTimer) clearTimeout(sleepTimer)
-      if (idleCounter) clearInterval(idleCounter)
-      window.removeEventListener('fy-event' as never, fyEventHandler as never)
+      window.removeEventListener('fy-event' as never, handleFyEvent as never)
     }
-  }, [isHovered, isIdle, mood, showParticles])
+  }, [handlePontoSaved, handlePontoError])
 
   useEffect(() => {
     setTipIndex(0)
@@ -267,13 +206,12 @@ export function FyGuide() {
   const handleFyHoverStart = useCallback(() => {
     setIsHovered(true)
     fyEmit({ type: 'fy:hover' })
-    // Reset idle timers quando hover
-    if (isIdle || mood === 'dormindo' || mood === 'entediado') {
+    // Acorda o Fy quando hover
+    if (mood === 'dormindo' || mood === 'entediado') {
       setMood('neutro')
       setShowSleepZ(false)
-      setIsIdle(false)
     }
-  }, [isIdle, mood])
+  }, [mood])
 
   const handleFyHoverEnd = useCallback(() => {
     setIsHovered(false)

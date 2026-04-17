@@ -26,7 +26,7 @@ const moodVariants = {
   alegria: {
     scale: [1, 1.05, 1, 1.03, 1],
     y: [0, -8, 0, -6, 0],
-    transition: { duration: 0.8, ease: 'easeInOut' },
+    transition: { duration: 0.8 },
   },
   aviso: {
     x: [0, -4, 4, -4, 4, -3, 3, 0],
@@ -40,12 +40,12 @@ const moodVariants = {
   entediado: {
     y: [0, 3, -2, 0],
     rotate: [0, -2, 1, 0],
-    transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' },
+    transition: { duration: 2.5, repeat: Infinity },
   },
   dormindo: {
     scale: [1, 1.02, 1],
     opacity: [0.9, 1, 0.9],
-    transition: { duration: 3, repeat: Infinity, ease: 'easeInOut' },
+    transition: { duration: 3, repeat: Infinity },
   },
 }
 
