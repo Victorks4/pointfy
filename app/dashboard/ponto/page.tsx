@@ -24,6 +24,7 @@ import {
 } from '@/lib/time-utils'
 import { JUSTIFICATIVAS_HORA_EXTRA } from '@/lib/types'
 import type { PontoConfig } from '@/lib/types'
+import { fyEmit } from '@/lib/fy-event-bus'
 import { Clock, AlertCircle, Save, Info, CheckCircle, Timer, Coffee } from 'lucide-react'
  
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -687,6 +688,7 @@ export default function PontoPage() {
  
     if (emRecesso) {
       toast.error('Você está em período de recesso remunerado')
+      fyEmit({ type: 'ponto:error' })
       return
     }
  
@@ -695,7 +697,7 @@ export default function PontoPage() {
  
     if (erros.length > 0) {
       toast.error('Corrija os erros antes de salvar')
-      setAnimationPhase('alert')
+      fyEmit({ type: 'ponto:error' })
       return
     }
  
@@ -721,6 +723,8 @@ export default function PontoPage() {
       toast.success('Ponto registrado com sucesso!')
     }
 
+    // Emitir evento de sucesso para o Fy
+    fyEmit({ type: 'ponto:saved', success: true })
     setErrors([])
   }
  

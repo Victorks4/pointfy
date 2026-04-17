@@ -7,6 +7,16 @@ export const FY_NAME = 'Fy'
 
 export type FyAnimationPhase = 'idle' | 'pointing' | 'explaining' | 'alert' | 'celebrate'
 
+/** Mood visual do Fy - controla aparências e reações */
+export type FyMood = 'neutro' | 'alegria' | 'aviso' | 'atencao' | 'entediado' | 'dormindo'
+
+/** Reação visual do Fy a eventos */
+export type FyReaction = {
+  mood: FyMood
+  animation: 'idle' | 'celebrate' | 'alert' | 'sleep' | 'wake' | 'bored'
+  duration?: number
+}
+
 export const FY_SYSTEM_PROMPT = `Você é o Fy, mascote do sistema Pontify — plataforma de registro de ponto para estagiários do SENAI.
 
 Seu papel é ajudar usuários a registrar ponto corretamente e a usar o sistema com confiança.

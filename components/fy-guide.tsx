@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
-import { FY_NAME, getFyDockRotationTips, resolveFyBubbleMessage, type FyTipRole } from '@/lib/fy-mascot'
+import { FY_NAME, getFyDockRotationTips, resolveFyBubbleMessage, type FyTipRole, type FyMood } from '@/lib/fy-mascot'
 import { useFyTour } from '@/lib/fy-tour-context'
 import { calcularSequenciaAtual, getTodayString } from '@/lib/time-utils'
 import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
@@ -19,6 +19,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { FyChromaVideo } from '@/components/fy-chroma-video'
 import { FyFaqDialog } from '@/components/fy-faq-dialog'
+import { FyMotionWrapper } from '@/components/fy/fy-motion-wrapper'
+import { FyReactionParticles } from '@/components/fy/fy-reaction-particles'
+import { FySleepZ } from '@/components/fy/fy-sleep-z'
+import { fyEmit } from '@/lib/fy-event-bus'
 import { Minimize2, ChevronLeft, ChevronRight, Route, CircleHelp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -95,6 +99,15 @@ export function FyGuide() {
   const [mounted, setMounted] = useState(false)
   const [tipIndex, setTipIndex] = useState(0)
   const [faqOpen, setFaqOpen] = useState(false)
+  const [isClicked, setIsClicked] = useState(false)
+
+  // Estado de animação do Fy
+  const [mood, setMood] = useState<FyMood>('neutro')
+  const [isHovered, setIsHovered] = useState(false)
+  const [isIdle, setIsIdle] = useState(false)
+  const [idleSeconds, setIdleSeconds] = useState(0)
+  const [showParticles, setShowParticles] = useState(false)
+  const [showSleepZ, setShowSleepZ] = useState(false)
 
   const isAdmin = user?.cargo === 'admin'
   const isGestor = user?.cargo === 'gestor'
@@ -128,9 +141,149 @@ export function FyGuide() {
     setMounted(true)
   }, [])
 
+  // Subscription a eventos do Fy para reações
+  useEffect(() => {
+    const handleFyEvent = (event: ReturnType<typeof fyEmit> extends undefined ? never : { type: string; [key: string]: unknown }) => {
+      // Nota: fyEmit não retorna valor, então tratamos como void
+      // O evento real vem do barramento interno
+    }
+
+    // Handler para eventos do sistema
+    const onPontoSaved = (success: boolean) => {
+      if (success) {
+        setMood('alegria')
+        setShowParticles(true)
+        setTimeout(() => {
+          setMood('neutro')
+          setShowParticles(false)
+        }, 2000)
+      }
+    }
+
+    const onPontoError = () => {
+      setMood('aviso')
+      setTimeout(() => setMood('neutro'), 1500)
+    }
+
+    const onIdleStart = () => setIsIdle(true)
+    const onIdleEnd = () => {
+      setIsIdle(false)
+      setIdleSeconds(0)
+      setShowSleepZ(false)
+      setMood('neutro')
+    }
+
+    const onBored = () => setMood('entediado')
+    const onSleep = () => {
+      setMood('dormindo')
+      setShowSleepZ(true)
+    }
+    const onWake = () => {
+      setMood('neutro')
+      setShowSleepZ(false)
+      setIsIdle(false)
+    }
+
+    // Idle tracker manual
+    let idleTimer: NodeJS.Timeout | null = null
+    let boredomTimer: NodeJS.Timeout | null = null
+    let sleepTimer: NodeJS.Timeout | null = null
+    let idleCounter: NodeJS.Timeout | null = null
+
+    const resetIdle = () => {
+      if (idleTimer) clearTimeout(idleTimer)
+      if (boredomTimer) clearTimeout(boredomTimer)
+      if (sleepTimer) clearTimeout(sleepTimer)
+      if (idleCounter) clearInterval(idleCounter)
+
+      setIdleSeconds(0)
+
+      if (isIdle || mood === 'dormindo' || mood === 'entediado') {
+        onWake()
+      }
+
+      // 30s para tédio
+      boredomTimer = setTimeout(() => {
+        if (!isHovered && !showParticles) {
+          onBored()
+        }
+      }, 30000)
+
+      // 60s para dormir
+      sleepTimer = setTimeout(() => {
+        if (!isHovered && !showParticles) {
+          onSleep()
+        }
+      }, 60000)
+
+      // Contador de segundos
+      idleCounter = setInterval(() => {
+        setIdleSeconds((s) => s + 1)
+      }, 1000)
+    }
+
+    const handleActivity = () => {
+      resetIdle()
+    }
+
+    // Event listeners
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart']
+    events.forEach((event) => {
+      window.addEventListener(event, handleActivity, { passive: true })
+    })
+
+    // Iniciar idle tracker
+    resetIdle()
+
+    // Custom event listener para eventos do Fy
+    const fyEventHandler = (event: CustomEvent) => {
+      const { type, success } = event.detail || {}
+      if (type === 'ponto:saved') onPontoSaved(success)
+      if (type === 'ponto:error') onPontoError()
+      if (type === 'fy:idle_start') onIdleStart()
+      if (type === 'fy:idle_end') onIdleEnd()
+      if (type === 'fy:wake') onWake()
+    }
+
+    window.addEventListener('fy-event' as never, fyEventHandler as never)
+
+    return () => {
+      events.forEach((event) => {
+        window.removeEventListener(event, handleActivity)
+      })
+      if (idleTimer) clearTimeout(idleTimer)
+      if (boredomTimer) clearTimeout(boredomTimer)
+      if (sleepTimer) clearTimeout(sleepTimer)
+      if (idleCounter) clearInterval(idleCounter)
+      window.removeEventListener('fy-event' as never, fyEventHandler as never)
+    }
+  }, [isHovered, isIdle, mood, showParticles])
+
   useEffect(() => {
     setTipIndex(0)
   }, [pathname, bubble.text])
+
+  // Handlers de interação
+  const handleFyHoverStart = useCallback(() => {
+    setIsHovered(true)
+    fyEmit({ type: 'fy:hover' })
+    // Reset idle timers quando hover
+    if (isIdle || mood === 'dormindo' || mood === 'entediado') {
+      setMood('neutro')
+      setShowSleepZ(false)
+      setIsIdle(false)
+    }
+  }, [isIdle, mood])
+
+  const handleFyHoverEnd = useCallback(() => {
+    setIsHovered(false)
+  }, [])
+
+  const handleFyClick = useCallback(() => {
+    setIsClicked(true)
+    fyEmit({ type: 'fy:click' })
+    setTimeout(() => setIsClicked(false), 150)
+  }, [])
 
   useEffect(() => {
     if (tour.isTourActive) return
@@ -183,13 +336,23 @@ export function FyGuide() {
                 type="button"
                 variant="outline"
                 className={cn(
-                  'pointer-events-auto h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-sky-600 bg-white p-0 shadow-md shadow-sky-900/10 transition-transform hover:scale-105 hover:bg-white focus-visible:ring-2 focus-visible:ring-sky-500',
+                  'pointer-events-auto h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-sky-600 bg-white p-0 shadow-md transition-all focus-visible:ring-2 focus-visible:ring-sky-500',
                   !prefersReducedMotion && 'origin-bottom-right animate-in zoom-in-95 fade-in duration-700',
+                  isHovered && 'fy-hover-active shadow-sky-900/20',
+                  isClicked && 'fy-click-active',
+                  mood === 'dormindo' && 'opacity-85',
                 )}
                 aria-label={`Menu do ${FY_NAME}: atalhos e tour`}
+                onMouseEnter={handleFyHoverStart}
+                onMouseLeave={handleFyHoverEnd}
+                onClick={handleFyClick}
               >
                 <span className="sr-only">Abrir menu do assistente</span>
-                <FyChromaVideo src={VIDEO_SRC} layout="fab" canvasBaseWidth={128} className="pointer-events-none" />
+                <FyMotionWrapper mood={mood} isHovered={isHovered} isClicked={isClicked}>
+                  <FyChromaVideo src={VIDEO_SRC} layout="fab" canvasBaseWidth={128} className="pointer-events-none" />
+                </FyMotionWrapper>
+                {showParticles && <FyReactionParticles active />}
+                {showSleepZ && <FySleepZ />}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align="end" className="w-56">
@@ -269,6 +432,8 @@ export function FyGuide() {
             tour.uiMode !== 'dock' &&
             tour.uiMode !== 'exiting' &&
             'pointer-events-none',
+          unreadNotifications > 0 && 'fy-bubble-attention',
+          mood === 'atencao' && 'fy-bubble-attention',
         )}
         role="status"
         aria-live="polite"
@@ -359,9 +524,14 @@ export function FyGuide() {
           tour.uiMode === 'exiting' &&
             (prefersReducedMotion ? 'fy-exit-mascot-reduced' : 'fy-exit-mascot'),
           !tour.isTourActive && tour.uiMode !== 'exiting' && 'pointer-events-none',
+          mood === 'dormindo' && 'opacity-85',
         )}
       >
-        <FyChromaVideo src={VIDEO_SRC} className="drop-shadow-xl" />
+        <FyMotionWrapper mood={mood} isHovered={isHovered}>
+          <FyChromaVideo src={VIDEO_SRC} className="drop-shadow-xl" />
+        </FyMotionWrapper>
+        {showParticles && <FyReactionParticles active />}
+        {showSleepZ && <FySleepZ />}
       </div>
     </aside>
     <FyFaqDialog open={faqOpen} onOpenChange={setFaqOpen} role={fyTipRole} />
