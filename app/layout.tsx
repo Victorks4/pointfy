@@ -12,7 +12,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Sistema de Ponto Digital',
   description: 'Sistema de Gestão de Ponto Digital para Estagiários',
-  generator: 'v0.app',
   icons: {
     icon: [
       {

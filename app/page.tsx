@@ -181,7 +181,7 @@ export default function LoginPage() {
                 className="shrink-0 object-contain"
               />
               <p className="text-left text-sm leading-snug text-blue-950/85">
-                Depois do login, o <strong>Fy</strong> aparece no canto da tela com dicas em um balão — sem janelas extras.
+                Depois do login, o <strong>Fy</strong> aparece no canto da tela com dicas em um balão, sem janelas extras.
               </p>
             </div>
 

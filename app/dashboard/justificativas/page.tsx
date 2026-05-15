@@ -50,9 +50,6 @@ export default function JustificativasPage() {
       return
     }
 
-    // Simular envio de email para RH
-    console.log('[v0] Simulando envio de email para RH com atestado')
-    
     addJustificativa({
       userId: user.id,
       data: atestadoData,

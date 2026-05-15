@@ -84,16 +84,6 @@ export default function UsuariosAdminPage() {
     router.replace('/dashboard')
   }, [user, router])
 
-  // Verificar recessos próximos e criar notificações
-  useEffect(() => {
-    usuarios
-      .filter(u => u.cargo === 'estagiario' && isRecessApproaching(u.dataInicioRecesso))
-      .forEach(u => {
-        // Em um sistema real, verificaria se já existe notificação
-        console.log(`[v0] Recesso próximo para usuário ${u.nome}`)
-      })
-  }, [usuarios])
-
   if (user?.cargo !== 'admin') {
     return null
   }
@@ -153,9 +143,6 @@ export default function UsuariosAdminPage() {
         dataFimRecesso,
         gestorId: novoGestorId === '_none' ? null : novoGestorId,
       })
-      if (dataRecesso) {
-        console.log(`[v0] Recesso programado: ${dataRecesso} a ${dataFimRecesso}`)
-      }
       toast.success(`Estagiário ${nome} cadastrado com sucesso!`)
     }
 
