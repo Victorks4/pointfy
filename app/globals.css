@@ -423,126 +423,60 @@
   }
 }
 
-/* Login hero — left panel motion (pointer + ambient) */
-.login-hero-root {
-  --login-nx: 0.5;
-  --login-ny: 0.5;
-  --login-glow: 0;
+/* ============================================
+   Sidebar — Wave hover na logo Pontify
+   ============================================ */
+.pontify-logo-img {
+  transition: filter 320ms ease-out;
+  will-change: transform, filter;
 }
 
-.login-hero-aurora {
-  background:
-    radial-gradient(
-      ellipse 85% 70% at calc(8% + var(--login-nx) * 84%) calc(5% + var(--login-ny) * 90%),
-      rgba(255, 255, 255, 0.2),
-      transparent 52%
-    ),
-    radial-gradient(
-      ellipse 60% 50% at calc(92% - var(--login-nx) * 35%) calc(88% - var(--login-ny) * 40%),
-      rgba(147, 197, 253, 0.18),
-      transparent 50%
-    );
-  transition: background 0.35s ease-out;
+.pontify-logo-shine {
+  background: linear-gradient(
+    105deg,
+    transparent 28%,
+    rgba(255, 255, 255, 0.18) 42%,
+    rgba(255, 255, 255, 0.62) 50%,
+    rgba(255, 255, 255, 0.18) 58%,
+    transparent 72%
+  );
+  mix-blend-mode: overlay;
+  opacity: 0;
+  will-change: transform, opacity;
 }
 
-.login-hero-vignette {
-  background: radial-gradient(ellipse 95% 85% at 50% 45%, transparent 30%, rgba(15, 23, 42, 0.35) 100%);
-  mix-blend-mode: multiply;
-  opacity: 0.85;
+@keyframes pontify-logo-wave {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
+  16%  { transform: translate3d(0, -2.5px, 0) rotate(-1.4deg); }
+  34%  { transform: translate3d(0, 0.5px, 0) rotate(0.9deg); }
+  52%  { transform: translate3d(0, -1.5px, 0) rotate(-0.5deg); }
+  70%  { transform: translate3d(0, 0, 0) rotate(0.3deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg); }
 }
 
-.login-hero-mesh {
-  color: rgba(255, 255, 255, 0.35);
-  opacity: calc(0.55 + var(--login-glow) * 0.2);
-  transition: opacity 0.45s ease-out;
+@keyframes pontify-logo-shine-sweep {
+  0%   { transform: translateX(-130%) skewX(-14deg); opacity: 0; }
+  18%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translateX(230%) skewX(-14deg); opacity: 0; }
 }
 
-.login-hero-path {
-  stroke-dasharray: 6 18;
-  animation: login-hero-dash 16s linear infinite;
+.pontify-logo-trigger:hover .pontify-logo-img {
+  animation: pontify-logo-wave 1.35s cubic-bezier(0.34, 1.4, 0.55, 1) both;
+  filter: drop-shadow(0 6px 22px rgba(59, 130, 246, 0.45));
 }
 
-.login-hero-path-delayed {
-  animation-duration: 22s;
-  animation-direction: reverse;
-}
-
-@keyframes login-hero-dash {
-  to {
-    stroke-dashoffset: -120;
-  }
-}
-
-@keyframes login-hero-breathe {
-  0%,
-  100% {
-    opacity: 0.95;
-    filter: drop-shadow(0 0 0 transparent);
-  }
-  50% {
-    opacity: 1;
-    filter: drop-shadow(0 0 14px rgba(191, 219, 254, 0.35));
-  }
-}
-
-.login-hero-breathe {
-  animation: login-hero-breathe 5.5s ease-in-out infinite;
-}
-
-.login-hero-breathe-delayed {
-  animation-delay: -2.6s;
-}
-
-.login-hero-particle-drift {
-  animation: login-hero-particle-drift 7.5s ease-in-out infinite;
-}
-
-@keyframes login-hero-particle-drift {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  33% {
-    transform: translate(4px, -6px);
-  }
-  66% {
-    transform: translate(-3px, 4px);
-  }
-}
-
-.login-hero-frame {
-  transition:
-    border-color 0.45s ease-out,
-    box-shadow 0.45s ease-out,
-    background-color 0.45s ease-out;
-}
-
-.login-hero-root:hover .login-hero-frame {
-  border-color: rgba(255, 255, 255, 0.38);
-  box-shadow: 0 0 28px rgba(147, 197, 253, 0.22);
-}
-
-.login-hero-root:hover .login-hero-mesh {
-  opacity: calc(0.65 + var(--login-glow) * 0.18);
+.pontify-logo-trigger:hover .pontify-logo-shine {
+  animation: pontify-logo-shine-sweep 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .login-hero-path,
-  .login-hero-path-delayed {
+  .pontify-logo-trigger:hover .pontify-logo-img,
+  .pontify-logo-trigger:hover .pontify-logo-shine {
     animation: none;
   }
-
-  .login-hero-breathe,
-  .login-hero-breathe-delayed {
-    animation: none;
-  }
-
-  .login-hero-particle-drift {
-    animation: none;
-  }
-
-  .login-hero-root:hover .login-hero-frame {
-    box-shadow: none;
+  .pontify-logo-trigger:hover .pontify-logo-img {
+    filter: none;
   }
 }
 

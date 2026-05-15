@@ -1,232 +1,259 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import Image from 'next/image'
+import { useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  useReducedMotion,
+} from 'framer-motion'
+
+import { LOGIN_SYNC_TRANSITION, useLoginSubmittingAmbient } from '@/lib/login-ambient-context'
 
 type LoginLeftPanelProps = {
   mounted: boolean
   children: ReactNode
 }
 
-const PARTICLE_SEEDS = [
-  { l: 10, t: 18, s: 3, delay: 0, amp: 14 },
-  { l: 22, t: 72, s: 4, delay: 0.6, amp: 10 },
-  { l: 78, t: 22, s: 3, delay: 1.1, amp: 16 },
-  { l: 90, t: 55, s: 5, delay: 0.2, amp: 12 },
-  { l: 45, t: 8, s: 2, delay: 1.4, amp: 18 },
-  { l: 62, t: 88, s: 4, delay: 0.8, amp: 11 },
-  { l: 5, t: 48, s: 3, delay: 1.9, amp: 9 },
-  { l: 52, t: 38, s: 2, delay: 0.4, amp: 15 },
+/** Disco glass que segue o cursor — bem compacto para não cobrir a arte */
+const ORB_SIZE = 43
+
+const FLOAT_SHAPES = [
+  { cls: 'left-[6%] top-[14%]', frame: 'h-14 w-14', delay: 0, rot: [-14, 14, -8, -14] as const },
+  { cls: 'right-[14%] top-[26%]', frame: 'h-24 w-24 rounded-full', delay: 0.55, rot: [-4, 8, -6, -4] as const },
+  { cls: 'left-[42%] top-[8%]', frame: 'h-16 w-16', delay: 1.18, rot: [14, -10, 6, 14] as const },
+  { cls: 'right-[8%] bottom-[18%]', frame: 'h-28 w-28', delay: 0.82, rot: [22, 8, -12, 22] as const },
+  { cls: 'left-[20%] bottom-[12%]', frame: 'h-14 w-14 rounded-[14px]', delay: 0.28, rot: [-12, 6, -4, -12] as const },
 ] as const
 
-function clamp01(value: number): number {
-  if (value < 0) return 0
-  if (value > 1) return 1
-  return value
-}
-
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false)
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReduced(mq.matches)
-    const onChange = () => setReduced(mq.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
-  return reduced
+function centerOrb(
+  mx: ReturnType<typeof useMotionValue>,
+  my: ReturnType<typeof useMotionValue>,
+  el: HTMLElement,
+) {
+  const w = el.clientWidth
+  const h = el.clientHeight
+  mx.set(w / 2 - ORB_SIZE / 2)
+  my.set(h / 2 - ORB_SIZE / 2)
 }
 
 export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
   const rootRef = useRef<HTMLDivElement>(null)
-  const rafRef = useRef(0)
-  const prefersReducedMotion = usePrefersReducedMotion()
-  const [pointer, setPointer] = useState({ nx: 0.5, ny: 0.5, hover: false })
+  const reduce = useReducedMotion()
+  const submitting = useLoginSubmittingAmbient()
 
-  const flushPointer = useCallback((clientX: number, clientY: number) => {
-    const el = rootRef.current
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    if (r.width <= 0 || r.height <= 0) return
-    setPointer({
-      nx: clamp01((clientX - r.left) / r.width),
-      ny: clamp01((clientY - r.top) / r.height),
-      hover: true,
-    })
-  }, [])
+  const mx = useMotionValue(0)
+  const my = useMotionValue(0)
+
+  const gx = useSpring(mx, { stiffness: 460, damping: 42 })
+  const gy = useSpring(my, { stiffness: 460, damping: 42 })
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (rafRef.current) return
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = 0
-        flushPointer(e.clientX, e.clientY)
-      })
+      const el = rootRef.current
+      if (!el || reduce) return
+      const r = el.getBoundingClientRect()
+      mx.set(e.clientX - r.left - ORB_SIZE / 2)
+      my.set(e.clientY - r.top - ORB_SIZE / 2)
     },
-    [flushPointer],
+    [mx, my, reduce],
   )
 
   const onPointerLeave = useCallback(() => {
-    setPointer({ nx: 0.5, ny: 0.5, hover: false })
-  }, [])
+    const el = rootRef.current
+    if (!el || reduce) return
+    centerOrb(mx, my, el)
+  }, [mx, my, reduce])
 
   useEffect(() => {
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    }
-  }, [])
+    const el = rootRef.current
+    if (!el) return
+    centerOrb(mx, my, el)
+    const ro = new ResizeObserver(() => centerOrb(mx, my, el))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [mx, my])
 
-  const { nx, ny, hover } = pointer
-  const glow = prefersReducedMotion ? 0 : hover ? 1 : 0
-
-  const layerVars = {
-    '--login-nx': String(nx),
-    '--login-ny': String(ny),
-    '--login-glow': String(glow),
-  } as CSSProperties
-
-  const parallax = (sx: number, sy: number): CSSProperties =>
-    prefersReducedMotion
-      ? {}
-      : { transform: `translate(${(nx - 0.5) * sx}px, ${(ny - 0.5) * sy}px)` }
+  const floatDur = submitting ? 2.85 : 5.4
 
   return (
     <div
       ref={rootRef}
-      className="login-hero-root group/login relative hidden min-h-dvh w-full shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 lg:flex lg:min-h-0 lg:w-1/2 lg:self-stretch"
+      className="relative hidden min-h-dvh w-full shrink-0 overflow-hidden lg:flex lg:min-h-0 lg:w-1/2 lg:self-stretch"
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
-      style={layerVars}
     >
-      <div
-        className="login-hero-aurora pointer-events-none absolute inset-0 opacity-90 transition-opacity duration-500"
+      <motion.div
+        className="absolute inset-0"
         aria-hidden
-      />
-      <div
-        className="login-hero-vignette pointer-events-none absolute inset-0"
-        aria-hidden
-      />
-
-      <svg
-        className="login-hero-mesh pointer-events-none absolute inset-0 h-full w-full"
-        viewBox="0 0 800 900"
-        preserveAspectRatio="xMidYMid slice"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden
-      >
-        <defs>
-          <linearGradient id="login-hero-line" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="white" stopOpacity={0} />
-            <stop offset="45%" stopColor="white" stopOpacity={0.22} />
-            <stop offset="100%" stopColor="white" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <g className="login-hero-lines motion-reduce:opacity-40">
-          <path
-            d="M-20 120 L180 280 L420 140 L780 320"
-            stroke="url(#login-hero-line)"
-            strokeWidth="1.2"
-            className="login-hero-path"
-          />
-          <path
-            d="M40 520 L220 380 L480 620 L760 440 L620 880"
-            stroke="url(#login-hero-line)"
-            strokeWidth="0.9"
-            className="login-hero-path login-hero-path-delayed"
-          />
-          <path
-            d="M120 -30 L320 200 L200 480 L520 720 L380 920"
-            stroke="url(#login-hero-line)"
-            strokeWidth="0.8"
-            className="login-hero-path"
-          />
-          <path
-            d="M600 40 L480 260 L720 380 L560 640"
-            stroke="url(#login-hero-line)"
-            strokeWidth="0.7"
-            className="login-hero-path login-hero-path-delayed"
-          />
-        </g>
-      </svg>
-
-      <div
-        className="pointer-events-none absolute inset-0 transition-transform duration-700 ease-out motion-reduce:transition-none motion-reduce:transform-none"
-        style={
-          prefersReducedMotion
-            ? undefined
-            : {
-                transform: `translate(${(nx - 0.5) * 10}px, ${(ny - 0.5) * 8}px) scale(${hover ? 1.02 : 1})`,
-              }
+        initial={reduce ? false : { opacity: 0, scale: 0.97 }}
+        animate={
+          mounted
+            ? reduce
+              ? { opacity: 1, scale: 1 }
+              : { opacity: 1, scale: 1 }
+            : reduce
+              ? { opacity: 1, scale: 1 }
+              : { opacity: 0, scale: 0.94 }
         }
-        aria-hidden
+        transition={{
+          duration: reduce ? 0 : 0.78,
+          ease: [0.22, 1, 0.36, 1],
+        }}
       >
-        <div
-          className={`absolute -top-10 -left-10 transition-all duration-1000 motion-reduce:transition-none ${mounted ? 'translate-y-0 opacity-100' : '-translate-y-10 opacity-0'}`}
-        >
-          <div style={parallax(26, 22)}>
-            <div className="login-hero-frame login-hero-breathe h-32 w-32 rotate-45 border-2 border-white/20" />
-          </div>
-        </div>
+        <Image
+          src="/imagelogin.png"
+          alt=""
+          fill
+          priority
+          unoptimized
+          className="object-cover object-[50%_50%]"
+        />
+      </motion.div>
 
-        <div
-          className={`absolute top-1/4 left-10 transition-all duration-1000 delay-200 motion-reduce:transition-none ${mounted ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'}`}
-        >
-          <div style={parallax(20, 18)}>
-            <div className="login-hero-frame login-hero-breathe login-hero-breathe-delayed h-20 w-20 rotate-12 border-2 border-white/30" />
-          </div>
-        </div>
+      {/* Leitura sobre a arte */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/45"
+        aria-hidden
+      />
+      <motion.div
+        className="pointer-events-none absolute inset-0 bg-black/35"
+        aria-hidden
+        animate={
+          submitting
+            ? reduce
+              ? { opacity: 0.34 }
+              : { opacity: [0.38, 0.34, 0.38] }
+            : reduce
+              ? { opacity: 0.42 }
+              : { opacity: 0.43 }
+        }
+        transition={
+          submitting && !reduce
+            ? LOGIN_SYNC_TRANSITION.pulse
+            : { duration: 0.35 }
+        }
+      />
 
-        <div
-          className={`absolute bottom-20 left-20 transition-all duration-1000 delay-400 motion-reduce:transition-none ${mounted ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
-        >
-          <div style={parallax(32, 28)}>
-            <div className="login-hero-frame login-hero-breathe h-16 w-16 rotate-45 bg-white/10" />
-          </div>
-        </div>
-
-        <div
-          className={`absolute -bottom-20 left-1/3 transition-all duration-1000 delay-300 motion-reduce:transition-none ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}
-        >
-          <div style={parallax(18, 24)}>
-            <div className="login-hero-frame login-hero-breathe login-hero-breathe-delayed h-40 w-40 rotate-45 border-2 border-white/15" />
-          </div>
-        </div>
-
-        <div
-          className={`absolute top-1/3 right-10 transition-all duration-1000 delay-500 motion-reduce:transition-none ${mounted ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
-        >
-          <div style={parallax(24, 20)}>
-            <div className="login-hero-frame login-hero-breathe h-24 w-24 rounded-full border-2 border-white/20" />
-          </div>
-        </div>
-      </div>
-
-      {PARTICLE_SEEDS.map((p, i) => (
-        <div
-          key={i}
-          className="pointer-events-none absolute motion-reduce:hidden"
+      {!reduce && (
+        <motion.div
+          className="pointer-events-none absolute z-[6] backdrop-blur-2xl will-change-transform"
           style={{
-            left: `${p.l}%`,
-            top: `${p.t}%`,
-            ...parallax(p.amp, p.amp * 0.85),
-            transition: prefersReducedMotion ? undefined : 'transform 0.65s ease-out',
-          }}
+            width: ORB_SIZE,
+            height: ORB_SIZE,
+            marginLeft: 0,
+            marginTop: 0,
+            borderRadius: ORB_SIZE,
+            x: gx,
+            y: gy,
+            background:
+              'radial-gradient(ellipse 92% 92% at 50% 50%, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.12) 40%, rgba(255,255,255,0.04) 72%, transparent 92%)',
+            border: '1px solid rgba(255,255,255,0.45)',
+            boxShadow:
+              '0 10px 26px rgba(13,71,161,0.22), inset 0 1px 0 rgba(255,255,255,0.45)',
+          } as CSSProperties}
           aria-hidden
-        >
-          <div
-            className="login-hero-particle login-hero-particle-drift rounded-full bg-white/55 shadow-[0_0_14px_rgba(255,255,255,0.45)]"
-            style={{
-              width: p.s,
-              height: p.s,
-              animationDelay: `${p.delay}s`,
+        />
+      )}
+
+      {/* Formas translúcidas animadas */}
+      <motion.div
+        className="pointer-events-none absolute inset-0 z-[5]"
+        aria-hidden
+        animate={
+          submitting && !reduce
+            ? { opacity: [0.78, 0.98, 0.78], scale: [1, 1.024, 1] }
+            : { opacity: 0.94, scale: 1 }
+        }
+        transition={
+          submitting && !reduce
+            ? LOGIN_SYNC_TRANSITION.pulse
+            : { duration: 0.45 }
+        }
+      >
+        {FLOAT_SHAPES.map((shape, idx) => (
+          <motion.div
+            key={idx}
+            className={`pointer-events-none absolute border-2 border-white/28 bg-white/5 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] ${shape.cls} ${shape.frame}`}
+            animate={
+              reduce
+                ? undefined
+                : {
+                    x: idx % 2 === 0 ? ['0%', '8%', '-4%', '0%'] : ['0%', '-14%', '6%', '0%'],
+                    y:
+                      idx % 2 === 0
+                        ? ['0%', '-22%', '14%', '-6%', '0%']
+                        : ['0%', '18%', '-10%', '8%', '0%'],
+                    rotate: [...shape.rot],
+                  }
+            }
+            transition={{
+              duration: floatDur + shape.delay * 0.6,
+              repeat: Infinity,
+              ease: 'easeInOut',
+              delay: shape.delay,
             }}
           />
-        </div>
-      ))}
+        ))}
+      </motion.div>
 
-      <div className="relative z-10 flex min-h-dvh w-full flex-1 flex-col items-center justify-center px-12 text-white lg:min-h-0">
+      {/* Partículas sutis */}
+      {!reduce &&
+        [12, 22, 33, 48, 58, 71, 84, 90].map((left, idx) => (
+          <motion.div
+            key={`p-${left}`}
+            className="pointer-events-none absolute z-[4]"
+            aria-hidden
+            style={{ left: `${left}%`, top: `${(idx * 9 + 21) % 85}%` }}
+            animate={{
+              y: [0, -18, -6, 10, 0],
+              opacity: [0.08, 0.45, 0.25, 0.18, 0.08],
+            }}
+            transition={{
+              duration: 6.2 + idx * 0.45,
+              repeat: Infinity,
+              ease: 'easeInOut',
+              delay: submitting ? idx * 0.08 : idx * 0.22,
+            }}
+          >
+            <div className="h-2 w-2 rounded-full bg-white shadow-[0_0_22px_rgba(255,255,255,0.55)]" />
+          </motion.div>
+        ))}
+
+      <motion.div
+        className="relative z-10 flex min-h-dvh w-full flex-1 flex-col lg:min-h-0"
+        initial={reduce ? false : { opacity: 0, scale: 0.96 }}
+        animate={
+          mounted
+            ? { opacity: 1, scale: 1 }
+            : reduce
+              ? { opacity: 1, scale: 1 }
+              : { opacity: 0, scale: 0.93 }
+        }
+        transition={{
+          duration: reduce ? 0 : 0.72,
+          delay: reduce ? 0 : 0.12,
+          ease: [0.22, 1, 0.36, 1],
+        }}
+      >
         {children}
-      </div>
+      </motion.div>
+
+      {/* Pulso estrutural (sincronizado com botão quando submitting) */}
+      {!reduce && (
+        <motion.div
+          className="pointer-events-none absolute inset-[2%] rounded-[clamp(22px,3vw,40px)] border border-white/[0.12] lg:block"
+          aria-hidden
+          initial={false}
+          animate={
+            submitting
+              ? { opacity: [0.18, 0.48, 0.18], scale: [0.993, 1.006, 0.993] }
+              : { opacity: 0.14, scale: 1 }
+          }
+          transition={submitting ? LOGIN_SYNC_TRANSITION.pulse : { duration: 0.3 }}
+        />
+      )}
     </div>
   )
 }

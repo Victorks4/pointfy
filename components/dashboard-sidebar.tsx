@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
@@ -123,21 +124,37 @@ export function DashboardSidebar() {
       .slice(0, 2)
   }
 
+  const logoHref =
+    user?.cargo === 'admin'
+      ? '/dashboard/admin'
+      : user?.cargo === 'gestor'
+        ? '/dashboard/gestor'
+        : '/dashboard'
+
   return (
     <Sidebar className="border-r border-[#31435f] [&_[data-sidebar=sidebar]]:!bg-gradient-to-b [&_[data-sidebar=sidebar]]:!from-[#24364e] [&_[data-sidebar=sidebar]]:!to-[#16263a]">
-      <SidebarHeader className="border-b border-[#31435f]">
-        <div className="flex items-center gap-3 px-2 py-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#2f73e0] text-white shadow-lg shadow-[#2f73e0]/30">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-sm text-white">Pontify</span>
-            <span className="text-xs text-[#8ea2bd]">Gestão de Ponto Digital</span>
-          </div>
-        </div>
+      <SidebarHeader className="border-b border-[#31435f] !gap-0 !p-0">
+        <Link
+          href={logoHref}
+          className="pontify-logo-trigger mx-2 mt-0 mb-1 flex items-center px-3 pt-1 pb-2 outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+        >
+          <span className="pontify-logo-wrap relative inline-flex overflow-hidden rounded-md">
+            <Image
+              src="/pontifylogo.png"
+              alt="Pontify"
+              width={800}
+              height={200}
+              className="pontify-logo-img block h-10 w-auto max-w-[min(100%,15.5rem)] object-contain object-left sm:h-32 sm:max-w-[min(100%,15.75rem)]"
+              sizes="(max-width: 768px) 240px, 252px"
+              priority
+              unoptimized
+            />
+            <span aria-hidden className="pontify-logo-shine pointer-events-none absolute inset-0 -translate-x-full" />
+          </span>
+        </Link>
       </SidebarHeader>
 
-      <SidebarContent className="px-2">
+      <SidebarContent className="px-2 [&>[data-sidebar=group]:first-child]:pt-1">
         {user?.cargo === 'estagiario' && (
           <SidebarGroup data-fy-anchor="fy-sidebar-menu">
             <SidebarGroupLabel className="text-[#9db0c9] text-xs uppercase tracking-wider">
