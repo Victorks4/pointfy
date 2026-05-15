@@ -112,30 +112,6 @@ export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
         />
       </motion.div>
 
-      {/* Leitura sobre a arte */}
-      <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/45"
-        aria-hidden
-      />
-      <motion.div
-        className="pointer-events-none absolute inset-0 bg-black/35"
-        aria-hidden
-        animate={
-          submitting
-            ? reduce
-              ? { opacity: 0.34 }
-              : { opacity: [0.38, 0.34, 0.38] }
-            : reduce
-              ? { opacity: 0.42 }
-              : { opacity: 0.43 }
-        }
-        transition={
-          submitting && !reduce
-            ? LOGIN_SYNC_TRANSITION.pulse
-            : { duration: 0.35 }
-        }
-      />
-
       {!reduce && (
         <motion.div
           className="pointer-events-none absolute z-[6] backdrop-blur-2xl will-change-transform"
