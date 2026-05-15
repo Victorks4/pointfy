@@ -8,7 +8,8 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
-import { Spinner } from "@/components/ui/spinner";
+import { LoginBrandLoader } from "@/components/login-brand-loader";
+import { PontifyDataFlowBrand } from "@/components/pontify-data-flow-brand";
 import { User, Lock, ArrowRight } from "lucide-react";
 import { LoginLeftPanel } from "@/components/login-left-panel";
 import {
@@ -67,11 +68,9 @@ export default function LoginPage() {
           <div
             className={`w-full max-w-md transition-all duration-700 delay-200 ${mounted ? "translate-x-0 opacity-100" : "translate-x-10 opacity-0"}`}
           >
-            <div className="mb-10 flex lg:hidden justify-center">
-              <div className="flex items-center rounded-2xl border border-black/[0.07] bg-white px-5 py-3.5 shadow-lg shadow-black/6">
-                <span className="text-lg font-semibold tracking-tight text-neutral-950">
-                  PONTIFY
-                </span>
+            <div className="mb-10 flex lg:hidden justify-center px-2">
+              <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-white px-4 py-3.5 shadow-lg shadow-black/10">
+                <PontifyDataFlowBrand variant="inline" />
               </div>
             </div>
 
@@ -160,7 +159,7 @@ export default function LoginPage() {
                 >
                   {isLoading ? (
                     <>
-                      <Spinner className="mr-2" />
+                      <LoginBrandLoader />
                       Entrando...
                     </>
                   ) : (

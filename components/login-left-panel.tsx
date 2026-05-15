@@ -1,12 +1,14 @@
 'use client'
 
 import Image from 'next/image'
-import { useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react'
 import {
   motion,
   useMotionValue,
   useSpring,
   useReducedMotion,
+  type MotionStyle,
+  type MotionValue,
 } from 'framer-motion'
 
 import { LOGIN_SYNC_TRANSITION, useLoginSubmittingAmbient } from '@/lib/login-ambient-context'
@@ -27,11 +29,7 @@ const FLOAT_SHAPES = [
   { cls: 'left-[20%] bottom-[12%]', frame: 'h-14 w-14 rounded-[14px]', delay: 0.28, rot: [-12, 6, -4, -12] as const },
 ] as const
 
-function centerOrb(
-  mx: ReturnType<typeof useMotionValue>,
-  my: ReturnType<typeof useMotionValue>,
-  el: HTMLElement,
-) {
+function centerOrb(mx: MotionValue<number>, my: MotionValue<number>, el: HTMLElement) {
   const w = el.clientWidth
   const h = el.clientHeight
   mx.set(w / 2 - ORB_SIZE / 2)
@@ -42,6 +40,8 @@ export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotion()
   const submitting = useLoginSubmittingAmbient()
+  const liquidUid = useId().replace(/:/g, '')
+  const liquidGradId = `pf-liq-${liquidUid}`
 
   const mx = useMotionValue(0)
   const my = useMotionValue(0)
@@ -139,20 +139,22 @@ export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
       {!reduce && (
         <motion.div
           className="pointer-events-none absolute z-[6] backdrop-blur-2xl will-change-transform"
-          style={{
-            width: ORB_SIZE,
-            height: ORB_SIZE,
-            marginLeft: 0,
-            marginTop: 0,
-            borderRadius: ORB_SIZE,
-            x: gx,
-            y: gy,
-            background:
-              'radial-gradient(ellipse 92% 92% at 50% 50%, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.12) 40%, rgba(255,255,255,0.04) 72%, transparent 92%)',
-            border: '1px solid rgba(255,255,255,0.45)',
-            boxShadow:
-              '0 10px 26px rgba(13,71,161,0.22), inset 0 1px 0 rgba(255,255,255,0.45)',
-          } as CSSProperties}
+          style={
+            {
+              width: ORB_SIZE,
+              height: ORB_SIZE,
+              marginLeft: 0,
+              marginTop: 0,
+              borderRadius: ORB_SIZE,
+              x: gx,
+              y: gy,
+              background:
+                'radial-gradient(ellipse 92% 92% at 50% 50%, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.12) 40%, rgba(255,255,255,0.04) 72%, transparent 92%)',
+              border: '1px solid rgba(255,255,255,0.45)',
+              boxShadow:
+                '0 10px 26px rgba(13,71,161,0.22), inset 0 1px 0 rgba(255,255,255,0.45)',
+            } satisfies MotionStyle
+          }
           aria-hidden
         />
       )}
@@ -221,6 +223,37 @@ export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
           </motion.div>
         ))}
 
+      {/* Onda líquida inferior — neon suave */}
+      {!reduce && (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-[30%] min-h-[7rem] max-h-[220px]"
+          aria-hidden
+        >
+          <svg
+            className="h-full w-[118%] max-w-none -translate-x-[8%]"
+            viewBox="0 0 1200 160"
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <linearGradient id={liquidGradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="rgba(125,211,252,0.5)" />
+                <stop offset="45%" stopColor="rgba(59,130,246,0.2)" />
+                <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+              </linearGradient>
+            </defs>
+            <motion.g
+              animate={{ x: [-48, -120, -48] }}
+              transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <path
+                fill={`url(#${liquidGradId})`}
+                d="M0 108 C280 74 460 154 740 94 C944 54 1090 128 1380 86 L1460 220 L0 220 Z"
+              />
+            </motion.g>
+          </svg>
+        </div>
+      )}
+
       <motion.div
         className="relative z-10 flex min-h-dvh w-full flex-1 flex-col lg:min-h-0"
         initial={reduce ? false : { opacity: 0, scale: 0.96 }}
@@ -243,13 +276,22 @@ export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
       {/* Pulso estrutural (sincronizado com botão quando submitting) */}
       {!reduce && (
         <motion.div
-          className="pointer-events-none absolute inset-[2%] rounded-[clamp(22px,3vw,40px)] border border-white/[0.12] lg:block"
+          className="pointer-events-none absolute inset-[2%] z-[8] rounded-[clamp(22px,3vw,40px)] border border-white/[0.13] lg:block"
           aria-hidden
           initial={false}
+          style={{ boxSizing: 'border-box' }}
           animate={
             submitting
-              ? { opacity: [0.18, 0.48, 0.18], scale: [0.993, 1.006, 0.993] }
-              : { opacity: 0.14, scale: 1 }
+              ? {
+                  opacity: [0.26, 0.62, 0.26],
+                  scale: [0.993, 1.008, 0.993],
+                  boxShadow: [
+                    'inset 0 0 0 1px rgba(34,211,238,0.18), 0 0 40px rgba(34,211,238,0.18)',
+                    'inset 0 0 0 1px rgba(165,243,254,0.38), 0 0 64px rgba(56,189,248,0.32)',
+                    'inset 0 0 0 1px rgba(34,211,238,0.18), 0 0 40px rgba(34,211,238,0.18)',
+                  ],
+                }
+              : { opacity: 0.16, scale: 1, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.08)' }
           }
           transition={submitting ? LOGIN_SYNC_TRANSITION.pulse : { duration: 0.3 }}
         />
