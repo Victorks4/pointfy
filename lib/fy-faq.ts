@@ -37,6 +37,20 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
     roles: ['estagiario'],
   },
   {
+    id: 'relatorios-pdf',
+    question: 'Como gero o relatório mensal e assino?',
+    answer:
+      'Em “Relatórios” escolha mês e ano, confira o resumo e baixe o PDF no padrão SENAI (com logo e áreas para assinatura). Depois de emitir o arquivo, acesse o portal de assinatura da empresa para assinar digitalmente — essa etapa não é feita no Pontify.',
+    roles: ['estagiario'],
+  },
+  {
+    id: 'relatorios-vazio',
+    question: 'Por que não consigo baixar o PDF?',
+    answer:
+      'O download só libera quando há pelo menos um registro de presença no período escolhido. Registre os dias trabalhados em “Registrar Presença” e tente de novo no mês correto.',
+    roles: ['estagiario'],
+  },
+  {
     id: 'justificativa',
     question: 'Quando preciso enviar justificativa?',
     answer:
@@ -89,7 +103,7 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
     id: 'admin-relatorios',
     question: 'Como fecho o mês com relatórios?',
     answer:
-      'Os estagiários baixam o relatório mensal em PDF na área Relatórios e enviam ao portal de assinatura externo. No admin, use o painel para acompanhar totais e histórico por usuário.',
+      'Os estagiários baixam o PDF em Relatórios (menu deles), no padrão SENAI, e em seguida assinam no portal de assinatura da empresa. No admin, acompanhe totais no painel e histórico por usuário.',
     roles: ['admin'],
   },
   {

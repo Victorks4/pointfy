@@ -302,13 +302,22 @@ export function FyGuide() {
                 Ir para o painel
               </DropdownMenuItem>
               {!isAdmin && !isGestor ? (
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push('/dashboard/ponto')
-                  }}
-                >
-                  Registrar presença
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push('/dashboard/ponto')
+                    }}
+                  >
+                    Registrar presença
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push('/dashboard/relatorios')
+                    }}
+                  >
+                    Relatórios (PDF)
+                  </DropdownMenuItem>
+                </>
               ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem

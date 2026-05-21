@@ -107,7 +107,7 @@ export default function RelatoriosEstagiarioPage() {
         })),
         filename: `relatorio-presenca-${user.ra}-${periodoKey}.pdf`,
       })
-      toast.success('PDF gerado com sucesso.')
+      toast.success('PDF gerado. Acesse o portal de assinatura da empresa para assinar o documento.')
     } catch {
       toast.error('Não foi possível gerar o PDF. Tente novamente.')
     } finally {
@@ -142,7 +142,7 @@ export default function RelatoriosEstagiarioPage() {
           </AlertDescription>
         </Alert>
 
-        <Card>
+        <Card data-fy-anchor="fy-relatorios-panel">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileBarChart2 className="h-5 w-5" />
