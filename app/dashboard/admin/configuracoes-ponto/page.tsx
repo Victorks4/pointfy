@@ -42,7 +42,8 @@ import {
 } from '@/components/ui/table'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, SlidersHorizontal, Check } from 'lucide-react'
-import { formatMinutesToDisplay } from '@/lib/time-utils'
+import { formatMinutesToDisplay, formatDate } from '@/lib/time-utils'
+import { LABELS } from '@/lib/labels'
 
 type FormState = {
   nome: string
@@ -78,7 +79,21 @@ function configToForm(config: PontoConfig): FormState {
 
 export default function AdminConfiguracoesPontoPage() {
   const { user } = useAuth()
-  const { pontoConfigs, addPontoConfig, updatePontoConfig, deletePontoConfig } = useData()
+  const {
+    pontoConfigs,
+    addPontoConfig,
+    updatePontoConfig,
+    deletePontoConfig,
+    bloqueiosPresenca,
+    addBloqueioPresenca,
+    removeBloqueioPresenca,
+    usuarios,
+  } = useData()
+
+  const [bloqueioUserId, setBloqueioUserId] = useState<string>('_all')
+  const [bloqueioInicio, setBloqueioInicio] = useState('')
+  const [bloqueioFim, setBloqueioFim] = useState('')
+  const [bloqueioMotivo, setBloqueioMotivo] = useState('')
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -175,7 +190,7 @@ export default function AdminConfiguracoesPontoPage() {
       <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
-        <h1 className="text-lg font-semibold">Configurações de Ponto</h1>
+        <h1 className="text-lg font-semibold">{LABELS.CONFIGURACOES_PRESENCA}</h1>
       </header>
 
       <main data-fy-anchor="fy-admin-config-main" className="flex-1 p-4 md:p-6 space-y-6">
@@ -188,7 +203,7 @@ export default function AdminConfiguracoesPontoPage() {
                   Perfis de Configuração
                 </CardTitle>
                 <CardDescription>
-                  Gerencie diferentes configurações de ponto. A configuração ativa determina as regras aplicadas no registro.
+                  Gerencie diferentes configurações de presença. A configuração ativa determina as regras aplicadas no registro.
                 </CardDescription>
               </div>
               <Button onClick={openCreate}>
@@ -260,6 +275,132 @@ export default function AdminConfiguracoesPontoPage() {
             </Table>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{LABELS.PRESENCA_BLOQUEADA}</CardTitle>
+            <CardDescription>
+              Impede registro de presença em datas específicas. Dias bloqueados não alteram o saldo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2">
+                <Label>Estagiário</Label>
+                <Select value={bloqueioUserId} onValueChange={setBloqueioUserId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">Todos os estagiários</SelectItem>
+                    {usuarios
+                      .filter((u) => u.cargo === 'estagiario')
+                      .map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.nome}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bloqueio-inicio">Data início</Label>
+                <Input
+                  id="bloqueio-inicio"
+                  type="date"
+                  value={bloqueioInicio}
+                  onChange={(e) => setBloqueioInicio(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bloqueio-fim">Data fim (opcional)</Label>
+                <Input
+                  id="bloqueio-fim"
+                  type="date"
+                  value={bloqueioFim}
+                  onChange={(e) => setBloqueioFim(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bloqueio-motivo">Motivo (opcional)</Label>
+                <Input
+                  id="bloqueio-motivo"
+                  value={bloqueioMotivo}
+                  onChange={(e) => setBloqueioMotivo(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                if (!bloqueioInicio) {
+                  toast.error('Informe a data de início')
+                  return
+                }
+                if (bloqueioFim && bloqueioFim < bloqueioInicio) {
+                  toast.error('Data fim deve ser igual ou posterior ao início')
+                  return
+                }
+                addBloqueioPresenca({
+                  userId: bloqueioUserId === '_all' ? null : bloqueioUserId,
+                  dataInicio: bloqueioInicio,
+                  dataFim: bloqueioFim || null,
+                  motivo: bloqueioMotivo.trim() || null,
+                })
+                toast.success('Bloqueio de presença criado')
+                setBloqueioInicio('')
+                setBloqueioFim('')
+                setBloqueioMotivo('')
+              }}
+            >
+              Bloquear presença
+            </Button>
+
+            {bloqueiosPresenca.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Alvo</TableHead>
+                    <TableHead>Período</TableHead>
+                    <TableHead>Motivo</TableHead>
+                    <TableHead className="text-right">Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {bloqueiosPresenca.map((b) => (
+                    <TableRow key={b.id}>
+                      <TableCell>
+                        {b.userId
+                          ? usuarios.find((u) => u.id === b.userId)?.nome ?? '—'
+                          : 'Todos os estagiários'}
+                      </TableCell>
+                      <TableCell>
+                        {formatDate(b.dataInicio)}
+                        {b.dataFim ? ` — ${formatDate(b.dataFim)}` : ''}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {b.motivo ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            removeBloqueioPresenca(b.id)
+                            toast.success('Bloqueio removido')
+                          }}
+                        >
+                          Remover
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhum bloqueio ativo.</p>
+            )}
+          </CardContent>
+        </Card>
       </main>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -268,8 +409,8 @@ export default function AdminConfiguracoesPontoPage() {
             <DialogTitle>{editingId ? 'Editar Configuração' : 'Nova Configuração'}</DialogTitle>
             <DialogDescription>
               {editingId
-                ? 'Atualize os parâmetros desta configuração de ponto.'
-                : 'Defina os parâmetros para uma nova configuração de ponto.'}
+                ? 'Atualize os parâmetros desta configuração de presença.'
+                : 'Defina os parâmetros para uma nova configuração de presença.'}
             </DialogDescription>
           </DialogHeader>
 

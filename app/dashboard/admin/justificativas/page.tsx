@@ -7,10 +7,13 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { formatDate, formatMinutesToDisplay } from '@/lib/time-utils'
+import { STATUS_COMPENSACAO_LABELS } from '@/lib/compensacao-utils'
 
 export default function AdminJustificativasPage() {
   const { user } = useAuth()
-  const { justificativas, usuarios } = useData()
+  const { getJustificativasVisiveisRh, usuarios } = useData()
+
+  const justificativas = getJustificativasVisiveisRh()
 
   if (user?.cargo !== 'admin') return null
 
@@ -25,14 +28,15 @@ export default function AdminJustificativasPage() {
       <main className="flex-1 p-4 md:p-6">
         <Card data-fy-anchor="fy-admin-justificativas-main">
           <CardHeader>
-            <CardTitle>Gestão de justificativas</CardTitle>
+            <CardTitle>Gestão de justificativas (RH)</CardTitle>
             <CardDescription>
-              Tela exclusiva do administrador para visualizar justificativas enviadas.
+              Atestados e compensações já aprovadas pelo gestor. Solicitações pendentes ou
+              rejeitadas não aparecem aqui.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {justificativas.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma justificativa recebida até o momento.</p>
+              <p className="text-sm text-muted-foreground">Nenhuma justificativa visível até o momento.</p>
             ) : (
               justificativas.map((item) => {
                 const usuario = usuarios.find((u) => u.id === item.userId)
@@ -46,9 +50,14 @@ export default function AdminJustificativasPage() {
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{formatDate(item.data)}</p>
                     <p className="text-sm mt-2">{item.descricao}</p>
-                    {item.tipo === 'compensacao' && (
+                    {item.tipo === 'compensacao' && item.statusCompensacao && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Status: {STATUS_COMPENSACAO_LABELS[item.statusCompensacao]}
+                      </p>
+                    )}
+                    {item.tipo === 'compensacao' && item.minutosAbatidos !== 0 && (
                       <p className="text-sm text-muted-foreground mt-2">
-                        Impacto no banco: {formatMinutesToDisplay(item.minutosAbatidos)}
+                        Impacto no saldo: {formatMinutesToDisplay(item.minutosAbatidos)}
                       </p>
                     )}
                   </div>

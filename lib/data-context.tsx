@@ -17,10 +17,14 @@ import type {
   DesafioSemanal,
   DesafioProgresso,
   PontoConfig,
-  AssinaturaSalva,
-  FolhaPontoMensal,
+  BloqueioPresenca,
 } from './types'
-import { isPeriodoAssinaturaFolhaPonto, mesAnoFechamentoAtual } from '@/lib/folha-ponto-assinatura'
+import { MINUTOS_COMPENSACAO } from './types'
+import { isPresencaBloqueada as checkPresencaBloqueada } from '@/lib/presenca-bloqueio'
+import {
+  compensacaoAfetaSaldo,
+  minutosCompensacaoEfetivos,
+} from '@/lib/compensacao-utils'
 
 interface DataContextType {
   pontos: PontoRegistro[]
@@ -32,6 +36,20 @@ interface DataContextType {
   justificativas: Justificativa[]
   addJustificativa: (justificativa: Omit<Justificativa, 'id' | 'createdAt'>) => void
   getJustificativasByUser: (userId: string) => Justificativa[]
+  getJustificativasVisiveisRh: () => Justificativa[]
+  aprovarCompensacao: (gestorId: string, justificativaId: string) => { ok: true } | { ok: false; reason: string }
+  rejeitarCompensacao: (
+    gestorId: string,
+    justificativaId: string,
+    motivoRejeicao?: string,
+  ) => { ok: true } | { ok: false; reason: string }
+  getCompensacoesPendentesGestor: (gestorId: string) => Justificativa[]
+  getCompensacoesHistoricoGestor: (gestorId: string) => Justificativa[]
+
+  bloqueiosPresenca: BloqueioPresenca[]
+  addBloqueioPresenca: (bloqueio: Omit<BloqueioPresenca, 'id' | 'createdAt'>) => void
+  removeBloqueioPresenca: (id: string) => void
+  isPresencaBloqueada: (userId: string, data: string) => boolean
 
   notificacoes: Notificacao[]
   addNotificacao: (notificacao: Omit<Notificacao, 'id' | 'createdAt'>) => void
@@ -64,17 +82,6 @@ interface DataContextType {
   updatePontoConfig: (id: string, config: Partial<PontoConfig>) => void
   deletePontoConfig: (id: string) => void
   getActivePontoConfig: () => PontoConfig
-
-  salvarAssinaturaUsuario: (userId: string, dataUrl: string) => void
-  getAssinaturaUsuario: (userId: string) => AssinaturaSalva | undefined
-  getFolhaPontoMensal: (estagiarioId: string, mesAno: string) => FolhaPontoMensal | undefined
-  registrarAssinaturaGestorFolha: (
-    estagiarioId: string,
-    gestorId: string,
-  ) => { ok: true } | { ok: false; reason: string }
-  registrarAssinaturaEstagiarioFolha: (
-    estagiarioId: string,
-  ) => { ok: true } | { ok: false; reason: string }
 }
 
 const DataContext = createContext<DataContextType | null>(null)
@@ -99,9 +106,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     {
       id: '1',
       userId: null,
-      titulo: 'Bem-vindo ao Sistema de Ponto',
+      titulo: 'Bem-vindo ao sistema de presença',
       mensagem:
-        'Lembre-se de registrar seu ponto diariamente. Horários devem ser informados no formato HH:mm (ex: 08:15).',
+        'Lembre-se de registrar sua presença diariamente. Horários devem ser informados no formato HH:mm (ex: 08:15).',
       lida: false,
       createdAt: new Date().toISOString(),
     },
@@ -110,111 +117,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [desafios, setDesafios] = useState<DesafioSemanal[]>([])
   const [desafioProgressos, setDesafioProgressos] = useState<DesafioProgresso[]>([])
   const [pontoConfigs, setPontoConfigs] = useState<PontoConfig[]>([DEFAULT_PONTO_CONFIG])
-  const [assinaturasPorUsuarioId, setAssinaturasPorUsuarioId] = useState<Record<string, AssinaturaSalva>>({})
-  const [folhasPontoMensal, setFolhasPontoMensal] = useState<FolhaPontoMensal[]>([])
-
-  const salvarAssinaturaUsuario = useCallback((userId: string, dataUrl: string) => {
-    setAssinaturasPorUsuarioId((prev) => ({
-      ...prev,
-      [userId]: { dataUrl, atualizadoEm: new Date().toISOString() },
-    }))
-  }, [])
-
-  const getAssinaturaUsuario = useCallback(
-    (userId: string) => assinaturasPorUsuarioId[userId],
-    [assinaturasPorUsuarioId],
-  )
-
-  const getFolhaPontoMensal = useCallback(
-    (estagiarioId: string, mesAno: string) =>
-      folhasPontoMensal.find((f) => f.estagiarioId === estagiarioId && f.mesAno === mesAno),
-    [folhasPontoMensal],
-  )
-
-  const registrarAssinaturaGestorFolha = useCallback(
-    (estagiarioId: string, gestorId: string): { ok: true } | { ok: false; reason: string } => {
-      const agora = new Date()
-      if (!isPeriodoAssinaturaFolhaPonto(agora)) {
-        return { ok: false, reason: 'fora_do_periodo' }
-      }
-      const est = usuarios.find((u) => u.id === estagiarioId)
-      if (!est || est.cargo !== 'estagiario' || est.gestorId !== gestorId) {
-        return { ok: false, reason: 'nao_autorizado' }
-      }
-      if (!assinaturasPorUsuarioId[gestorId]) {
-        return { ok: false, reason: 'gestor_sem_assinatura' }
-      }
-      const mesAno = mesAnoFechamentoAtual(agora)
-      setFolhasPontoMensal((prev) => {
-        const i = prev.findIndex((f) => f.estagiarioId === estagiarioId && f.mesAno === mesAno)
-        if (i >= 0) {
-          const row = prev[i]
-          if (row.gestorAssinouEm) return prev
-          const next = [...prev]
-          next[i] = { ...row, gestorAssinouEm: new Date().toISOString() }
-          return next
-        }
-        return [
-          ...prev,
-          {
-            id: `${Date.now()}-${estagiarioId}`,
-            estagiarioId,
-            gestorId,
-            mesAno,
-            gestorAssinouEm: new Date().toISOString(),
-            estagiarioAssinouEm: null,
-          },
-        ]
-      })
-      return { ok: true }
-    },
-    [usuarios, assinaturasPorUsuarioId],
-  )
-
-  const registrarAssinaturaEstagiarioFolha = useCallback(
-    (estagiarioId: string): { ok: true } | { ok: false; reason: string } => {
-      const agora = new Date()
-      if (!isPeriodoAssinaturaFolhaPonto(agora)) {
-        return { ok: false, reason: 'fora_do_periodo' }
-      }
-      const est = usuarios.find((u) => u.id === estagiarioId)
-      if (!est || est.cargo !== 'estagiario') {
-        return { ok: false, reason: 'nao_autorizado' }
-      }
-      if (!assinaturasPorUsuarioId[estagiarioId]) {
-        return { ok: false, reason: 'estagiario_sem_assinatura' }
-      }
-      const gestorIdEstagiario = est.gestorId
-      if (!gestorIdEstagiario) {
-        return { ok: false, reason: 'sem_gestor' }
-      }
-      const mesAno = mesAnoFechamentoAtual(agora)
-      setFolhasPontoMensal((prev) => {
-        const i = prev.findIndex((f) => f.estagiarioId === estagiarioId && f.mesAno === mesAno)
-        if (i >= 0) {
-          const row = prev[i]
-          if (row.estagiarioAssinouEm) return prev
-          if (row.gestorId !== gestorIdEstagiario) return prev
-          const next = [...prev]
-          next[i] = { ...row, estagiarioAssinouEm: new Date().toISOString() }
-          return next
-        }
-        return [
-          ...prev,
-          {
-            id: `${Date.now()}-${estagiarioId}`,
-            estagiarioId,
-            gestorId: gestorIdEstagiario,
-            mesAno,
-            gestorAssinouEm: null,
-            estagiarioAssinouEm: new Date().toISOString(),
-          },
-        ]
-      })
-      return { ok: true }
-    },
-    [usuarios, assinaturasPorUsuarioId],
-  )
+  const [bloqueiosPresenca, setBloqueiosPresenca] = useState<BloqueioPresenca[]>([])
 
   const addPonto = useCallback((ponto: Omit<PontoRegistro, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newPonto: PontoRegistro = {
@@ -247,14 +150,175 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [pontos],
   )
 
-  const addJustificativa = useCallback((justificativa: Omit<Justificativa, 'id' | 'createdAt'>) => {
-    const newJustificativa: Justificativa = {
-      ...justificativa,
+  const isPresencaBloqueadaFn = useCallback(
+    (userId: string, data: string) => checkPresencaBloqueada(bloqueiosPresenca, userId, data),
+    [bloqueiosPresenca],
+  )
+
+  const addBloqueioPresenca = useCallback((bloqueio: Omit<BloqueioPresenca, 'id' | 'createdAt'>) => {
+    const row: BloqueioPresenca = {
+      ...bloqueio,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
     }
-    setJustificativas((prev) => [...prev, newJustificativa])
+    setBloqueiosPresenca((prev) => [...prev, row])
   }, [])
+
+  const removeBloqueioPresenca = useCallback((id: string) => {
+    setBloqueiosPresenca((prev) => prev.filter((b) => b.id !== id))
+  }, [])
+
+  const addJustificativa = useCallback(
+    (justificativa: Omit<Justificativa, 'id' | 'createdAt'>) => {
+      const est = usuarios.find((u) => u.id === justificativa.userId)
+      const base: Justificativa = {
+        ...justificativa,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+      }
+      if (justificativa.tipo === 'compensacao') {
+        const newJustificativa: Justificativa = {
+          ...base,
+          minutosAbatidos: 0,
+          statusCompensacao: 'pendente_gestor',
+          gestorId: est?.gestorId ?? null,
+          decididaEm: null,
+          motivoRejeicao: null,
+        }
+        setJustificativas((prev) => [...prev, newJustificativa])
+        if (est?.gestorId) {
+          setNotificacoes((prev) => [
+            {
+              id: `${Date.now()}-comp`,
+              userId: est.gestorId!,
+              titulo: 'Compensação pendente',
+              mensagem: `${est.nome} solicitou compensação para ${justificativa.data}.`,
+              lida: false,
+              createdAt: new Date().toISOString(),
+            },
+            ...prev,
+          ])
+        }
+        return
+      }
+      setJustificativas((prev) => [...prev, base])
+    },
+    [usuarios],
+  )
+
+  const aprovarCompensacao = useCallback(
+    (gestorId: string, justificativaId: string): { ok: true } | { ok: false; reason: string } => {
+      const j = justificativas.find((x) => x.id === justificativaId)
+      if (!j || j.tipo !== 'compensacao') return { ok: false, reason: 'nao_encontrada' }
+      const est = usuarios.find((u) => u.id === j.userId)
+      if (!est || est.gestorId !== gestorId) return { ok: false, reason: 'nao_autorizado' }
+      if (j.statusCompensacao !== 'pendente_gestor') return { ok: false, reason: 'ja_decidida' }
+      setJustificativas((prev) =>
+        prev.map((row) =>
+          row.id === justificativaId
+            ? {
+                ...row,
+                statusCompensacao: 'aprovada_gestor',
+                minutosAbatidos: -MINUTOS_COMPENSACAO,
+                decididaEm: new Date().toISOString(),
+              }
+            : row,
+        ),
+      )
+      setNotificacoes((prev) => [
+        {
+          id: `${Date.now()}-cap`,
+          userId: j.userId,
+          titulo: 'Compensação aprovada',
+          mensagem: 'Sua solicitação de compensação foi aprovada pelo gestor.',
+          lida: false,
+          createdAt: new Date().toISOString(),
+        },
+        ...prev,
+      ])
+      return { ok: true }
+    },
+    [justificativas, usuarios],
+  )
+
+  const rejeitarCompensacao = useCallback(
+    (
+      gestorId: string,
+      justificativaId: string,
+      motivoRejeicao?: string,
+    ): { ok: true } | { ok: false; reason: string } => {
+      const j = justificativas.find((x) => x.id === justificativaId)
+      if (!j || j.tipo !== 'compensacao') return { ok: false, reason: 'nao_encontrada' }
+      const est = usuarios.find((u) => u.id === j.userId)
+      if (!est || est.gestorId !== gestorId) return { ok: false, reason: 'nao_autorizado' }
+      if (j.statusCompensacao !== 'pendente_gestor') return { ok: false, reason: 'ja_decidida' }
+      setJustificativas((prev) =>
+        prev.map((row) =>
+          row.id === justificativaId
+            ? {
+                ...row,
+                statusCompensacao: 'rejeitada_gestor',
+                minutosAbatidos: 0,
+                decididaEm: new Date().toISOString(),
+                motivoRejeicao: motivoRejeicao?.trim() || null,
+              }
+            : row,
+        ),
+      )
+      setNotificacoes((prev) => [
+        {
+          id: `${Date.now()}-crej`,
+          userId: j.userId,
+          titulo: 'Compensação não aprovada',
+          mensagem: motivoRejeicao?.trim()
+            ? `Sua compensação foi rejeitada: ${motivoRejeicao.trim()}`
+            : 'Sua solicitação de compensação foi rejeitada pelo gestor.',
+          lida: false,
+          createdAt: new Date().toISOString(),
+        },
+        ...prev,
+      ])
+      return { ok: true }
+    },
+    [justificativas, usuarios],
+  )
+
+  const getCompensacoesPendentesGestor = useCallback(
+    (gestorId: string) => {
+      const ids = usuarios
+        .filter((u) => u.cargo === 'estagiario' && u.gestorId === gestorId)
+        .map((u) => u.id)
+      return justificativas.filter(
+        (j) =>
+          j.tipo === 'compensacao' &&
+          j.statusCompensacao === 'pendente_gestor' &&
+          ids.includes(j.userId),
+      )
+    },
+    [justificativas, usuarios],
+  )
+
+  const getCompensacoesHistoricoGestor = useCallback(
+    (gestorId: string) => {
+      const ids = usuarios
+        .filter((u) => u.cargo === 'estagiario' && u.gestorId === gestorId)
+        .map((u) => u.id)
+      return justificativas
+        .filter((j) => j.tipo === 'compensacao' && ids.includes(j.userId))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    },
+    [justificativas, usuarios],
+  )
+
+  const getJustificativasVisiveisRh = useCallback(
+    () =>
+      justificativas.filter(
+        (j) =>
+          j.tipo === 'atestado' ||
+          (j.tipo === 'compensacao' && compensacaoAfetaSaldo(j)),
+      ),
+    [justificativas],
+  )
 
   const getJustificativasByUser = useCallback(
     (userId: string) =>
@@ -313,13 +377,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const user = usuarios.find((u) => u.id === userId)
       if (!user) return 0
 
-      const userPontos = pontos.filter((p) => p.userId === userId)
+      const userPontos = pontos.filter(
+        (p) => p.userId === userId && !checkPresencaBloqueada(bloqueiosPresenca, userId, p.data),
+      )
       const userJustificativas = justificativas.filter((j) => j.userId === userId)
 
       const totalTrabalhado = userPontos.reduce((acc, p) => acc + p.totalMinutos, 0)
       const totalCompensado = userJustificativas
-        .filter((j) => j.tipo === 'compensacao')
-        .reduce((acc, j) => acc + j.minutosAbatidos, 0)
+        .filter(
+          (j) =>
+            compensacaoAfetaSaldo(j) &&
+            !checkPresencaBloqueada(bloqueiosPresenca, userId, j.data),
+        )
+        .reduce((acc, j) => acc + minutosCompensacaoEfetivos(j), 0)
 
       const diasTrabalhados = userPontos.length
       const cargaDiaria = user.cargaHorariaSemanal / 5
@@ -327,7 +397,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       return totalTrabalhado - cargaEsperada + totalCompensado
     },
-    [usuarios, pontos, justificativas],
+    [usuarios, pontos, justificativas, bloqueiosPresenca],
   )
 
   const calcularBancoHorasPorPeriodo = useCallback(
@@ -339,16 +409,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const getYearMonthFromDate = (dateString: string) => dateString.slice(0, 7)
 
       const pontosNoPeriodo = pontos.filter(
-        (p) => p.userId === userId && getYearMonthFromDate(p.data) === yearMonthKey,
+        (p) =>
+          p.userId === userId &&
+          getYearMonthFromDate(p.data) === yearMonthKey &&
+          !checkPresencaBloqueada(bloqueiosPresenca, userId, p.data),
       )
       const justificativasNoPeriodo = justificativas.filter(
-        (j) => j.userId === userId && getYearMonthFromDate(j.data) === yearMonthKey,
+        (j) =>
+          j.userId === userId &&
+          getYearMonthFromDate(j.data) === yearMonthKey &&
+          !checkPresencaBloqueada(bloqueiosPresenca, userId, j.data),
       )
 
       const totalTrabalhado = pontosNoPeriodo.reduce((acc, p) => acc + p.totalMinutos, 0)
       const totalCompensado = justificativasNoPeriodo
-        .filter((j) => j.tipo === 'compensacao')
-        .reduce((acc, j) => acc + j.minutosAbatidos, 0)
+        .filter((j) => compensacaoAfetaSaldo(j))
+        .reduce((acc, j) => acc + minutosCompensacaoEfetivos(j), 0)
 
       const diasTrabalhados = pontosNoPeriodo.length
       const cargaDiaria = user.cargaHorariaSemanal / 5
@@ -356,7 +432,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       return totalTrabalhado - cargaEsperada + totalCompensado
     },
-    [usuarios, pontos, justificativas],
+    [usuarios, pontos, justificativas, bloqueiosPresenca],
   )
 
   const getBancoHoras = useCallback(
@@ -494,6 +570,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         justificativas,
         addJustificativa,
         getJustificativasByUser,
+        getJustificativasVisiveisRh,
+        aprovarCompensacao,
+        rejeitarCompensacao,
+        getCompensacoesPendentesGestor,
+        getCompensacoesHistoricoGestor,
+        bloqueiosPresenca,
+        addBloqueioPresenca,
+        removeBloqueioPresenca,
+        isPresencaBloqueada: isPresencaBloqueadaFn,
         notificacoes,
         addNotificacao,
         markNotificacaoAsRead,
@@ -520,11 +605,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updatePontoConfig,
         deletePontoConfig,
         getActivePontoConfig,
-        salvarAssinaturaUsuario,
-        getAssinaturaUsuario,
-        getFolhaPontoMensal,
-        registrarAssinaturaGestorFolha,
-        registrarAssinaturaEstagiarioFolha,
       }) satisfies DataContextType,
     [
       pontos,
@@ -535,6 +615,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       justificativas,
       addJustificativa,
       getJustificativasByUser,
+      getJustificativasVisiveisRh,
+      aprovarCompensacao,
+      rejeitarCompensacao,
+      getCompensacoesPendentesGestor,
+      getCompensacoesHistoricoGestor,
+      bloqueiosPresenca,
+      addBloqueioPresenca,
+      removeBloqueioPresenca,
+      isPresencaBloqueadaFn,
       notificacoes,
       addNotificacao,
       markNotificacaoAsRead,
@@ -561,11 +650,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updatePontoConfig,
       deletePontoConfig,
       getActivePontoConfig,
-      salvarAssinaturaUsuario,
-      getAssinaturaUsuario,
-      getFolhaPontoMensal,
-      registrarAssinaturaGestorFolha,
-      registrarAssinaturaEstagiarioFolha,
     ],
   )
 

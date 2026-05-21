@@ -1,96 +1,18 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
+import { LABELS } from '@/lib/labels'
 import { formatMinutesToDisplay } from '@/lib/time-utils'
-
-/** Paleta: preto, branco e cinza legível (cabeçalho escuro + texto branco). */
-const PDF = {
-  text: [15, 23, 42] as [number, number, number],
-  muted: [82, 82, 91] as [number, number, number],
-  headBg: [63, 63, 70] as [number, number, number],
-  headText: [255, 255, 255] as [number, number, number],
-  line: [100, 100, 100] as [number, number, number],
-  zebra: [248, 248, 250] as [number, number, number],
-  white: [255, 255, 255] as [number, number, number],
-}
-
-function autoTableCommon() {
-  return {
-    theme: 'grid' as const,
-    headStyles: {
-      fillColor: PDF.headBg,
-      textColor: PDF.headText,
-      fontStyle: 'bold' as const,
-      fontSize: 9,
-    },
-    styles: {
-      fontSize: 9,
-      cellPadding: 4,
-      overflow: 'linebreak' as const,
-      textColor: PDF.text,
-      lineColor: PDF.line,
-      lineWidth: 0.35,
-    },
-    alternateRowStyles: { fillColor: PDF.zebra },
-  }
-}
-
-function addImageDataUrl(
-  doc: jsPDF,
-  dataUrl: string,
-  x: number,
-  y: number,
-  maxW: number,
-  maxH: number,
-): boolean {
-  try {
-    const fmt = dataUrl.startsWith('data:image/jpeg') || dataUrl.startsWith('data:image/jpg') ? 'JPEG' : 'PNG'
-    doc.addImage(dataUrl, fmt, x, y, maxW, maxH)
-    return true
-  } catch {
-    return false
-  }
-}
-
-function drawSignatureSlot(
-  doc: jsPDF,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  title: string,
-  nome: string,
-  dataUrl: string | null | undefined,
-  dataAssinatura: string | null | undefined,
-) {
-  doc.setFontSize(9)
-  doc.setTextColor(...PDF.text)
-  doc.text(title, x, y)
-  doc.setFontSize(8)
-  doc.setTextColor(...PDF.muted)
-  doc.text(nome, x, y + 12)
-
-  const boxY = y + 18
-  doc.setDrawColor(...PDF.line)
-  doc.setLineWidth(0.5)
-  doc.rect(x, boxY, w, h)
-
-  if (dataUrl) {
-    const ok = addImageDataUrl(doc, dataUrl, x + 2, boxY + 2, w - 4, h - 4)
-    if (!ok) {
-      doc.setFontSize(8)
-      doc.setTextColor(...PDF.muted)
-      doc.text('(imagem da assinatura indisponível)', x + 4, boxY + h / 2)
-    }
-  }
-
-  if (dataAssinatura) {
-    doc.setFontSize(7)
-    doc.setTextColor(...PDF.muted)
-    const label = `Assinado em: ${new Date(dataAssinatura).toLocaleString('pt-BR')}`
-    doc.text(label, x, boxY + h + 10)
-  }
-}
+import {
+  SENAI,
+  SENAI_LOGO_PATH,
+  drawInfoBox,
+  drawSenaiHeader,
+  drawSignatureFooter,
+  formatDateBr,
+  loadPublicImageDataUrl,
+  senaiAutoTableCommon,
+} from '@/lib/pdf/senai-theme'
 
 export type RelatorioEstagiarioRow = {
   nome: string
@@ -107,18 +29,10 @@ export type PontoDetalhe = {
   entrada2: string | null
   saida2: string | null
   totalMinutos: number
+  observacao?: string | null
 }
 
-export type RelatorioUsuarioAssinaturasPdf = {
-  gestorNome: string
-  estagiarioNome: string
-  gestorDataUrl: string | null
-  estagiarioDataUrl: string | null
-  gestorAssinouEm: string | null
-  estagiarioAssinouEm: string | null
-}
-
-export function downloadRelatorioEstagiariosPdf(params: {
+export async function downloadRelatorioEstagiariosPdf(params: {
   titulo: string
   filtroDepartamento: string
   linhas: RelatorioEstagiarioRow[]
@@ -126,16 +40,19 @@ export function downloadRelatorioEstagiariosPdf(params: {
   filename: string
 }) {
   const { linhas, titulo, filtroDepartamento, periodoLabel, filename } = params
-
+  const logoDataUrl = await loadPublicImageDataUrl(SENAI_LOGO_PATH)
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
 
-  doc.setTextColor(...PDF.text)
-  doc.setFontSize(14)
-  doc.text(titulo, 40, 40)
+  const { contentStartY } = drawSenaiHeader(doc, {
+    logoDataUrl,
+    titulo: titulo.toUpperCase(),
+    subtitulo: `Período: ${periodoLabel}`,
+  })
 
-  doc.setFontSize(10)
-  doc.text(`Período: ${periodoLabel}`, 40, 58)
-  doc.text(`Departamento: ${filtroDepartamento || 'Todos'}`, 40, 72)
+  let y = drawInfoBox(doc, contentStartY, [
+    `Departamento: ${filtroDepartamento || 'Todos'}`,
+    `Total de registros na listagem: ${linhas.length}`,
+  ])
 
   const body = linhas.map((l) => [
     l.nome,
@@ -146,10 +63,10 @@ export function downloadRelatorioEstagiariosPdf(params: {
   ])
 
   autoTable(doc, {
-    startY: 90,
-    head: [['Nome', 'RA', 'Departamento', 'Registros', 'Banco de Horas']],
+    startY: y,
+    head: [['Nome', 'RA', 'Departamento', 'Registros', LABELS.SALDO]],
     body,
-    ...autoTableCommon(),
+    ...senaiAutoTableCommon(),
     columnStyles: {
       0: { cellWidth: 120 },
       1: { cellWidth: 60 },
@@ -162,7 +79,7 @@ export function downloadRelatorioEstagiariosPdf(params: {
   doc.save(filename)
 }
 
-export function downloadRelatorioUsuarioPdf(params: {
+export async function downloadRelatorioUsuarioPdf(params: {
   titulo: string
   periodoLabel: string
   usuario: {
@@ -170,105 +87,87 @@ export function downloadRelatorioUsuarioPdf(params: {
     ra: string
     departamento: string
   }
+  gestorNome?: string | null
   bancoHorasMinutos: number
+  totalHorasMesMinutos: number
+  totalHorasGeralMinutos: number
   pontos: PontoDetalhe[]
   filename: string
-  assinaturas?: RelatorioUsuarioAssinaturasPdf | null
 }) {
-  const { titulo, periodoLabel, usuario, bancoHorasMinutos, pontos, filename, assinaturas } = params
+  const {
+    titulo,
+    periodoLabel,
+    usuario,
+    gestorNome,
+    bancoHorasMinutos,
+    totalHorasMesMinutos,
+    totalHorasGeralMinutos,
+    pontos,
+    filename,
+  } = params
 
+  const logoDataUrl = await loadPublicImageDataUrl(SENAI_LOGO_PATH)
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
 
-  doc.setTextColor(...PDF.text)
-  doc.setFontSize(14)
-  doc.text(titulo, 40, 40)
+  const { contentStartY } = drawSenaiHeader(doc, {
+    logoDataUrl,
+    titulo: 'RELATÓRIO DE PRESENÇA',
+    subtitulo: `${titulo} · ${periodoLabel}`,
+  })
 
-  doc.setFontSize(10)
-  doc.text(`Período: ${periodoLabel}`, 40, 58)
-  doc.text(`Usuário: ${usuario.nome} (${usuario.ra})`, 40, 72)
-  doc.text(`Departamento: ${usuario.departamento}`, 40, 86)
-  doc.text(`Banco de Horas: ${formatMinutesToDisplay(bancoHorasMinutos)}`, 40, 100)
+  let y = drawInfoBox(doc, contentStartY, [
+    `Estagiário(a): ${usuario.nome}`,
+    `RA: ${usuario.ra}`,
+    `Departamento: ${usuario.departamento}`,
+    `Gestor(a) / responsável: ${gestorNome?.trim() || '—'}`,
+    `Período: ${periodoLabel}`,
+  ])
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(...SENAI.text)
+  doc.text(`${LABELS.SALDO} no período: ${formatMinutesToDisplay(bancoHorasMinutos)}`, 40, y)
+  y += 14
+  doc.text(`Total de horas no período: ${formatMinutesToDisplay(totalHorasMesMinutos)}`, 40, y)
+  y += 14
+  doc.text(`Total de horas (todos os meses): ${formatMinutesToDisplay(totalHorasGeralMinutos)}`, 40, y)
+  y += 18
 
   const body = pontos.map((p) => [
-    p.data,
+    formatDateBr(p.data),
     p.entrada1 ?? '--:--',
     p.saida1 ?? '--:--',
     p.entrada2 ?? '--:--',
     p.saida2 ?? '--:--',
     formatMinutesToDisplay(p.totalMinutos),
+    p.observacao?.trim() || '—',
   ])
 
   autoTable(doc, {
-    startY: 118,
-    head: [['Data', 'Entrada 1', 'Saída 1', 'Entrada 2', 'Saída 2', 'Total']],
+    startY: y,
+    head: [['Data', 'Entrada 1', 'Saída 1', 'Entrada 2', 'Saída 2', 'Total', 'Observação']],
     body,
-    ...autoTableCommon(),
-    styles: { ...autoTableCommon().styles, fontSize: 8, cellPadding: 3 },
-    headStyles: { ...autoTableCommon().headStyles, fontSize: 8 },
+    ...senaiAutoTableCommon(),
+    styles: { ...senaiAutoTableCommon().styles, fontSize: 7, cellPadding: 3 },
+    headStyles: { ...senaiAutoTableCommon().headStyles, fontSize: 7 },
     columnStyles: {
-      0: { cellWidth: 70 },
-      1: { cellWidth: 68 },
-      2: { cellWidth: 68 },
-      3: { cellWidth: 68 },
-      4: { cellWidth: 68 },
-      5: { cellWidth: 88, halign: 'right' },
+      0: { cellWidth: 52 },
+      1: { cellWidth: 52 },
+      2: { cellWidth: 52 },
+      3: { cellWidth: 52 },
+      4: { cellWidth: 52 },
+      5: { cellWidth: 58, halign: 'right' },
+      6: { cellWidth: 110 },
     },
   })
 
   const docExt = doc as unknown as { lastAutoTable?: { finalY: number } }
-  let y = (docExt.lastAutoTable?.finalY ?? 200) + 28
+  const tableEndY = (docExt.lastAutoTable?.finalY ?? y) + 24
 
-  const pageH = doc.internal.pageSize.getHeight()
-  const slotW = 235
-  const slotH = 56
-
-  if (assinaturas) {
-    if (y + slotH + 48 > pageH) {
-      doc.addPage()
-      y = 48
-    }
-
-    doc.setFontSize(10)
-    doc.setTextColor(...PDF.text)
-    doc.text('Assinaturas da folha de ponto', 40, y)
-    y += 22
-
-    drawSignatureSlot(
-      doc,
-      40,
-      y,
-      slotW,
-      slotH,
-      'Assinatura do gestor',
-      assinaturas.gestorNome,
-      assinaturas.gestorDataUrl,
-      assinaturas.gestorAssinouEm,
-    )
-
-    drawSignatureSlot(
-      doc,
-      40 + slotW + 20,
-      y,
-      slotW,
-      slotH,
-      'Assinatura do estagiário',
-      assinaturas.estagiarioNome,
-      assinaturas.estagiarioDataUrl,
-      assinaturas.estagiarioAssinouEm,
-    )
-  } else {
-    if (y + slotH + 40 > pageH) {
-      doc.addPage()
-      y = 48
-    }
-    doc.setFontSize(10)
-    doc.setTextColor(...PDF.text)
-    doc.text('Assinaturas da folha de ponto', 40, y)
-    y += 22
-
-    drawSignatureSlot(doc, 40, y, slotW, slotH, 'Assinatura do gestor', '—', null, null)
-    drawSignatureSlot(doc, 40 + slotW + 20, y, slotW, slotH, 'Assinatura do estagiário', usuario.nome, null, null)
-  }
+  drawSignatureFooter(doc, tableEndY, {
+    estagiarioNome: usuario.nome,
+    gestorNome,
+  })
 
   doc.save(filename)
 }

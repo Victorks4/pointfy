@@ -161,7 +161,7 @@ export default function UsuariosAdminPage() {
     addNotificacao({
       userId,
       titulo: 'Recesso Remunerado Agendado',
-      mensagem: `Seu recesso remunerado foi agendado para ${formatDate(dataInicio)} até ${formatDate(dataFim)}. Durante este período, você não precisará registrar ponto.`,
+      mensagem: `Seu recesso remunerado foi agendado para ${formatDate(dataInicio)} até ${formatDate(dataFim)}. Durante este período, você não precisará registrar presença.`,
       lida: false,
     })
 
@@ -507,7 +507,7 @@ export default function UsuariosAdminPage() {
                       <TableHead>RA</TableHead>
                       <TableHead>Departamento</TableHead>
                       <TableHead>Carga Horária</TableHead>
-                      <TableHead>Banco de Horas</TableHead>
+                      <TableHead>Saldo</TableHead>
                       <TableHead>Gestor</TableHead>
                       <TableHead>Recesso</TableHead>
                     </TableRow>

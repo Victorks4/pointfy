@@ -136,7 +136,7 @@ export default function AdminPage() {
             Visão Geral
           </h2>
           <p className="text-muted-foreground">
-            Acompanhe os registros de ponto de todos os usuários
+            Acompanhe os registros de presença de todos os usuários
           </p>
         </div>
 
@@ -160,7 +160,7 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{pontosDoMes.length}</div>
-              <p className="text-xs text-muted-foreground">Pontos registrados</p>
+              <p className="text-xs text-muted-foreground">Registros de presença</p>
             </CardContent>
           </Card>
 
@@ -246,7 +246,7 @@ export default function AdminPage() {
                       <TableHead>Departamento</TableHead>
                       <TableHead className="text-center">Dias Trabalhados</TableHead>
                       <TableHead className="text-right">Horas no Mês</TableHead>
-                      <TableHead className="text-right">Banco de Horas</TableHead>
+                      <TableHead className="text-right">Saldo</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -305,7 +305,7 @@ export default function AdminPage() {
                       handleCloseDialog()
                     }}
                   >
-                    Ver histórico de ponto
+                    Ver histórico de presença
                   </button>
                   <button
                     className="w-full py-2 px-4 rounded bg-gray-100 text-blue-700 font-semibold hover:bg-gray-200 transition"

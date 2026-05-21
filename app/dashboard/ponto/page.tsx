@@ -25,6 +25,9 @@ import {
 import { JUSTIFICATIVAS_HORA_EXTRA } from '@/lib/types'
 import type { PontoConfig } from '@/lib/types'
 import { fyEmit } from '@/lib/fy-event-bus'
+import { LABELS } from '@/lib/labels'
+import { buildObservacaoComAnotacao } from '@/lib/presenca-anotacoes'
+import { PontifyDatePicker } from '@/components/pontify-date-calendar'
 import { Clock, AlertCircle, Save, Info, CheckCircle, Timer, Coffee } from 'lucide-react'
  
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -150,7 +153,7 @@ function PageHeader({ currentTime }: { currentTime: Date }) {
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card/50 backdrop-blur-sm px-4 sticky top-0 z-10">
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-2 h-4" />
-      <h1 className="text-lg font-semibold text-foreground">Registrar Ponto</h1>
+      <h1 className="text-lg font-semibold text-foreground">{LABELS.REGISTRAR_PRESENCA}</h1>
       <div className="ml-auto flex items-center gap-2">
         <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-sm">
           <Timer className="h-4 w-4 text-primary" />
@@ -167,7 +170,7 @@ function RecessoCard({ dataFimRecesso }: { dataFimRecesso?: string }) {
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card/50 backdrop-blur-sm px-4 sticky top-0 z-10">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
-        <h1 className="text-lg font-semibold text-foreground">Registrar Ponto</h1>
+        <h1 className="text-lg font-semibold text-foreground">{LABELS.REGISTRAR_PRESENCA}</h1>
       </header>
       <main className="flex-1 p-4 md:p-6 bg-muted/30">
         <div className="max-w-2xl mx-auto">
@@ -593,7 +596,7 @@ function JustificativaAlert({
  
 export default function PontoPage() {
   const { user } = useAuth()
-  const { addPonto, updatePonto, getPontoByDate, getActivePontoConfig } = useData()
+  const { addPonto, updatePonto, getPontoByDate, getActivePontoConfig, isPresencaBloqueada } = useData()
   const activeConfig = getActivePontoConfig()
  
   const [mounted, setMounted] = useState(false)
@@ -661,6 +664,11 @@ export default function PontoPage() {
     () => !!user && isInRecessPeriod(selectedDate, user.dataInicioRecesso, user.dataFimRecesso),
     [user, selectedDate],
   )
+
+  const presencaBloqueada = useMemo(
+    () => !!user && isPresencaBloqueada(user.id, selectedDate),
+    [user, selectedDate, isPresencaBloqueada],
+  )
  
   const totalMinutos = useMemo(
     () => calculateDayTotal(
@@ -691,6 +699,12 @@ export default function PontoPage() {
       fyEmit({ type: 'ponto:error' })
       return
     }
+
+    if (presencaBloqueada) {
+      toast.error(LABELS.PRESENCA_BLOQUEADA)
+      fyEmit({ type: 'ponto:error' })
+      return
+    }
  
     const erros = validate()
     setErrors(erros)
@@ -711,16 +725,19 @@ export default function PontoPage() {
       entrada2: campos.entrada2 || null,
       saida2:   campos.saida2   || null,
       totalMinutos,
-      observacao: null,
+      observacao: buildObservacaoComAnotacao(
+        selectedDate,
+        pontoHoje?.observacao ?? null,
+      ),
       justificativaHoraExtra: precisaJustificativa ? justificativa : null,
     }
- 
+
     if (pontoHoje) {
       updatePonto(pontoHoje.id, pontoData)
-      toast.success('Ponto atualizado com sucesso!')
+      toast.success('Presença atualizada com sucesso!')
     } else {
       addPonto(pontoData)
-      toast.success('Ponto registrado com sucesso!')
+      toast.success('Presença registrada com sucesso!')
     }
 
     // Emitir evento de sucesso para o Fy
@@ -729,6 +746,25 @@ export default function PontoPage() {
   }
  
   if (emRecesso) return <RecessoCard dataFimRecesso={user!.dataFimRecesso ?? undefined} />
+
+  if (presencaBloqueada) {
+    return (
+      <>
+        <PageHeader currentTime={currentTime} />
+        <main className="flex-1 p-4 md:p-6">
+          <Card className="max-w-lg mx-auto mt-8">
+            <CardHeader>
+              <CardTitle>{LABELS.PRESENCA_BLOQUEADA}</CardTitle>
+              <CardDescription>
+                O administrador bloqueou o registro de presença para {formatDate(selectedDate)}.
+                Nenhum valor será descontado do seu {LABELS.SALDO.toLowerCase()}.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </main>
+      </>
+    )
+  }
  
   const fadeIn = (delay = 0) => ({
     initial: { opacity: 0, y: 16 },
@@ -744,11 +780,11 @@ export default function PontoPage() {
         <div className="max-w-6xl mx-auto">
           {/* Título */}
           <motion.div className="mb-6" {...fadeIn(0)}>
-            <h2 className="text-2xl font-bold text-foreground">Ponto do Dia</h2>
+            <h2 className="text-2xl font-bold text-foreground">{LABELS.PRESENCA_DO_DIA}</h2>
             <p className="text-muted-foreground">{formatDate(selectedDate)}</p>
           </motion.div>
  
-          {/* Seletor de data */}
+          {/* Seletor de data (compacto, popover Pontify) */}
           <motion.div {...fadeIn(0.05)}>
             <Card className="mb-6">
               <CardContent className="pt-6">
@@ -757,11 +793,11 @@ export default function PontoPage() {
                     <FieldLabel htmlFor="registro-data" className="text-foreground">
                       Selecionar dia do mês
                     </FieldLabel>
-                    <Input
+                    <PontifyDatePicker
                       id="registro-data"
-                      type="date"
                       value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
+                      onChange={setSelectedDate}
+                      maxDate={getTodayString()}
                     />
                   </Field>
                 </FieldGroup>
@@ -856,7 +892,7 @@ export default function PontoPage() {
                     className="w-full h-12 text-base font-semibold transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
                   >
                     <Save className="mr-2 h-5 w-5" />
-                    {pontoHoje ? 'Atualizar Ponto' : 'Registrar Ponto'}
+                    {pontoHoje ? LABELS.ATUALIZAR_PRESENCA : LABELS.REGISTRAR_PRESENCA}
                   </Button>
                 </form>
               </CardContent>

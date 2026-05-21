@@ -307,7 +307,7 @@ export function FyGuide() {
                     router.push('/dashboard/ponto')
                   }}
                 >
-                  Bater ponto
+                  Registrar presença
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuSeparator />

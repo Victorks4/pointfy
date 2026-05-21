@@ -32,6 +32,11 @@ export interface PontoRegistro {
   updatedAt: string
 }
 
+export type StatusCompensacao =
+  | 'pendente_gestor'
+  | 'aprovada_gestor'
+  | 'rejeitada_gestor'
+
 export interface Justificativa {
   id: string
   userId: string
@@ -39,7 +44,22 @@ export interface Justificativa {
   tipo: 'atestado' | 'compensacao'
   descricao: string
   arquivoUrl: string | null
-  minutosAbatidos: number // Para compensação: 360 (6h)
+  minutosAbatidos: number // Para compensação aprovada: -360 (6h)
+  createdAt: string
+  /** Fluxo de compensação — atestado ignora estes campos */
+  statusCompensacao?: StatusCompensacao
+  gestorId?: string | null
+  decididaEm?: string | null
+  motivoRejeicao?: string | null
+}
+
+/** Bloqueio de registro de presença (admin). userId null = todos estagiários */
+export interface BloqueioPresenca {
+  id: string
+  userId: string | null
+  dataInicio: string
+  dataFim: string | null
+  motivo: string | null
   createdAt: string
 }
 
@@ -56,22 +76,6 @@ export interface BancoHoras {
   userId: string
   saldoMinutos: number // positivo = horas extras, negativo = horas devendo
   mesAno: string // YYYY-MM
-}
-
-/** Assinatura em PNG (data URL) guardada no cliente — demo sem backend. */
-export interface AssinaturaSalva {
-  dataUrl: string
-  atualizadoEm: string
-}
-
-/** Controle de assinaturas da folha de ponto mensal por estagiário. */
-export interface FolhaPontoMensal {
-  id: string
-  estagiarioId: string
-  gestorId: string
-  mesAno: string
-  gestorAssinouEm: string | null
-  estagiarioAssinouEm: string | null
 }
 
 export type TipoDesafio = 'meta_horas' | 'streak' | 'pontualidade' | 'custom'

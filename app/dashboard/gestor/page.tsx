@@ -22,7 +22,14 @@ import {
 } from '@/lib/time-utils'
 import { Calendar, Clock, FileText, Bell, User, TrendingUp, TrendingDown, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { GestorFolhaPontoCard } from '@/components/folha-ponto-assinatura-cards'
+import { LABELS } from '@/lib/labels'
+import {
+  STATUS_COMPENSACAO_LABELS,
+  effectiveStatusCompensacao,
+} from '@/lib/compensacao-utils'
+import { toast } from 'sonner'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 const MESES = [
   { value: '01', label: 'Janeiro' },
@@ -58,6 +65,11 @@ export default function GestorDashboardPage() {
     getBancoHoras,
     getPontoByDate,
     getActivePontoConfig,
+    getCompensacoesPendentesGestor,
+    getCompensacoesHistoricoGestor,
+    aprovarCompensacao,
+    rejeitarCompensacao,
+    usuarios,
   } = useData()
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -95,6 +107,10 @@ export default function GestorDashboardPage() {
   const justificativas = selected ? getJustificativasByUser(selected.id) : []
   const notificacoes = selected ? getNotificacoesByUser(selected.id) : []
   const bancoHoras = selected ? getBancoHoras(selected.id) : 0
+  const compensacoesPendentes = user ? getCompensacoesPendentesGestor(user.id) : []
+  const compensacoesHistorico = user ? getCompensacoesHistoricoGestor(user.id) : []
+  const [motivoRejeicao, setMotivoRejeicao] = useState('')
+  const [rejeitarId, setRejeitarId] = useState<string | null>(null)
   const pontoHoje = selected ? getPontoByDate(selected.id, getTodayString()) : null
   const streakAtual = calcularSequenciaAtual(pontos.map((p) => p.data))
   const naoLidas = notificacoes.filter((n) => !n.lida).length
@@ -122,7 +138,7 @@ export default function GestorDashboardPage() {
     const fromPontos: AtividadeItem[] = pontos.slice(0, 12).map((p) => ({
       id: `p-${p.id}`,
       tipo: 'ponto',
-      titulo: `Registro de ponto — ${formatDate(p.data)}`,
+      titulo: `Registro de presença — ${formatDate(p.data)}`,
       detalhe: `Total ${formatMinutesToDisplay(p.totalMinutos)}`,
       dataRef: p.updatedAt ?? p.createdAt ?? p.data,
     }))
@@ -211,15 +227,13 @@ export default function GestorDashboardPage() {
                 </Button>
               </div>
 
-              {user ? <GestorFolhaPontoCard gestor={user} estagiario={selected} /> : null}
-
               <Tabs defaultValue="resumo" className="w-full">
                 <TabsList className="flex w-full flex-wrap h-auto gap-1 bg-muted/50 p-1">
                   <TabsTrigger value="resumo" className="flex-1 min-w-[5.5rem]">
                     Resumo
                   </TabsTrigger>
                   <TabsTrigger value="pontos" className="flex-1 min-w-[5.5rem]">
-                    Pontos
+                    Presença
                   </TabsTrigger>
                   <TabsTrigger value="historico" className="flex-1 min-w-[5.5rem]">
                     Histórico
@@ -238,7 +252,7 @@ export default function GestorDashboardPage() {
                       <CardHeader className="pb-2">
                         <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5" />
-                          Ponto hoje
+                          {LABELS.PRESENCA_DO_DIA}
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -270,7 +284,7 @@ export default function GestorDashboardPage() {
                           ) : (
                             <TrendingDown className="h-3.5 w-3.5 text-destructive" />
                           )}
-                          Banco de horas
+                          {LABELS.SALDO}
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -300,7 +314,7 @@ export default function GestorDashboardPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">Últimos registros</CardTitle>
-                      <CardDescription>Os cinco dias mais recentes com ponto</CardDescription>
+                      <CardDescription>Os cinco dias mais recentes com presença registrada</CardDescription>
                     </CardHeader>
                     <CardContent>
                       {pontos.length === 0 ? (
@@ -332,7 +346,7 @@ export default function GestorDashboardPage() {
                 <TabsContent value="pontos" className="mt-4">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Todos os registros de ponto</CardTitle>
+                      <CardTitle className="text-base">Todos os registros de presença</CardTitle>
                       <CardDescription>Ordem do mais recente ao mais antigo</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -491,51 +505,149 @@ export default function GestorDashboardPage() {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="justificativas" className="mt-4">
+                <TabsContent value="justificativas" className="mt-4 space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Compensações pendentes de aprovação</CardTitle>
+                      <CardDescription>
+                        Aprove para enviar ao RH e debitar 6h do saldo do estagiário
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {compensacoesPendentes.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">
+                          Nenhuma compensação pendente.
+                        </p>
+                      ) : (
+                        compensacoesPendentes.map((j) => {
+                          const est = usuarios.find((u) => u.id === j.userId)
+                          return (
+                            <div key={j.id} className="rounded-lg border p-4 space-y-3">
+                              <div className="flex flex-wrap gap-2 items-center">
+                                <Badge variant="outline">Compensação solicitada</Badge>
+                                <span className="text-sm font-medium">{est?.nome}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {LABELS.DATA_AUSENCIA}: {formatDate(j.data)}
+                                </span>
+                              </div>
+                              <p className="text-sm">{j.descricao}</p>
+                              {rejeitarId === j.id ? (
+                                <div className="space-y-2">
+                                  <Label htmlFor={`motivo-${j.id}`}>Motivo da rejeição (opcional)</Label>
+                                  <Input
+                                    id={`motivo-${j.id}`}
+                                    value={motivoRejeicao}
+                                    onChange={(e) => setMotivoRejeicao(e.target.value)}
+                                  />
+                                </div>
+                              ) : null}
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    if (!user) return
+                                    const r = aprovarCompensacao(user.id, j.id)
+                                    if (r.ok) toast.success('Compensação aprovada')
+                                    else toast.error('Não foi possível aprovar')
+                                  }}
+                                >
+                                  Aprovar
+                                </Button>
+                                {rejeitarId === j.id ? (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      if (!user) return
+                                      const r = rejeitarCompensacao(user.id, j.id, motivoRejeicao)
+                                      if (r.ok) {
+                                        toast.success('Compensação rejeitada')
+                                        setRejeitarId(null)
+                                        setMotivoRejeicao('')
+                                      } else toast.error('Não foi possível rejeitar')
+                                    }}
+                                  >
+                                    Confirmar rejeição
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setRejeitarId(j.id)}
+                                  >
+                                    Rejeitar
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </CardContent>
+                  </Card>
+
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base flex items-center gap-2">
                         <FileText className="h-4 w-4" />
-                        Justificativas enviadas
+                        Histórico de compensações do time
                       </CardTitle>
-                      <CardDescription>Atestados e compensações registrados pelo estagiário</CardDescription>
+                      <CardDescription>
+                        Inclui solicitadas, aprovadas e rejeitadas (RH só vê as aprovadas)
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {justificativas.length === 0 ? (
+                      {compensacoesHistorico.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-8">
-                          Nenhuma justificativa cadastrada.
+                          Nenhuma compensação no histórico.
                         </p>
                       ) : (
                         <ul className="space-y-3">
-                          {justificativas
-                            .slice()
-                            .sort(
-                              (a, b) =>
-                                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-                            )
-                            .map((j) => (
+                          {compensacoesHistorico.map((j) => {
+                            const est = usuarios.find((u) => u.id === j.userId)
+                            const st = effectiveStatusCompensacao(j)
+                            return (
                               <li
                                 key={j.id}
                                 className="rounded-lg border border-border/80 bg-muted/20 px-4 py-3 text-sm"
                               >
                                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                                  <Badge variant="outline">{j.tipo}</Badge>
+                                  <span className="font-medium">{est?.nome}</span>
+                                  {st ? (
+                                    <Badge variant="outline">{STATUS_COMPENSACAO_LABELS[st]}</Badge>
+                                  ) : null}
                                   <span className="text-muted-foreground text-xs">
-                                    {formatDate(j.data)} ·{' '}
-                                    {new Date(j.createdAt).toLocaleString('pt-BR', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })}
+                                    {formatDate(j.data)}
                                   </span>
                                 </div>
                                 <p className="text-foreground leading-snug">{j.descricao}</p>
-                                {j.tipo === 'compensacao' ? (
-                                  <p className="text-xs text-muted-foreground mt-2">
-                                    Abatido: {formatMinutesToDisplay(j.minutosAbatidos)}
-                                  </p>
+                                {j.motivoRejeicao ? (
+                                  <p className="text-xs text-destructive mt-1">{j.motivoRejeicao}</p>
                                 ) : null}
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Atestados do estagiário selecionado</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {justificativas.filter((j) => j.tipo === 'atestado').length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Nenhum atestado.
+                        </p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {justificativas
+                            .filter((j) => j.tipo === 'atestado')
+                            .map((j) => (
+                              <li key={j.id} className="text-sm border rounded-md p-3">
+                                {formatDate(j.data)} — {j.descricao}
                               </li>
                             ))}
                         </ul>

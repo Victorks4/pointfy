@@ -57,7 +57,7 @@ export function DashboardSidebar() {
       icon: LayoutDashboard,
     },
     {
-      title: 'Registrar Ponto',
+      title: 'Registrar Presença',
       href: '/dashboard/ponto',
       icon: Clock,
     },
@@ -70,6 +70,11 @@ export function DashboardSidebar() {
       title: 'Justificativas',
       href: '/dashboard/justificativas',
       icon: FileText,
+    },
+    {
+      title: 'Relatórios',
+      href: '/dashboard/relatorios',
+      icon: FileBarChart2,
     },
     {
       title: 'Notificações',
@@ -94,11 +99,6 @@ export function DashboardSidebar() {
       title: 'Notificações',
       href: '/dashboard/admin/notificacoes',
       icon: Megaphone,
-    },
-    {
-      title: 'Relatórios',
-      href: '/dashboard/admin/relatorios',
-      icon: FileBarChart2,
     },
     {
       title: 'Desafios',

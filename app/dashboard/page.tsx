@@ -14,7 +14,6 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import type { DesafioSemanal, PontoRegistro } from '@/lib/types'
-import { EstagiarioFolhaPontoCard } from '@/components/folha-ponto-assinatura-cards'
 
 function desafioProgressoFromPontos(
   desafio: DesafioSemanal,
@@ -208,17 +207,11 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {user && user.cargo === 'estagiario' ? (
-          <div className="mb-6">
-            <EstagiarioFolhaPontoCard estagiario={user} />
-          </div>
-        ) : null}
-
         {/* Cards de Resumo */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
           <Card className={`group hover:shadow-lg hover:border-zinc-300 transition-all duration-300 bg-white border-zinc-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '100ms' }}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-zinc-900">Ponto Hoje</CardTitle>
+              <CardTitle className="text-sm font-medium text-zinc-900">Presença hoje</CardTitle>
               <div className="p-2 rounded-lg bg-zinc-100 group-hover:bg-zinc-200 transition-colors">
                 <Clock className="h-4 w-4 text-zinc-700" />
               </div>
@@ -247,7 +240,7 @@ export default function DashboardPage() {
 
           <Card className={`group hover:shadow-lg hover:border-zinc-300 transition-all duration-300 bg-white border-zinc-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '200ms' }}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-zinc-900">Banco de Horas</CardTitle>
+              <CardTitle className="text-sm font-medium text-zinc-900">Saldo</CardTitle>
               <div className={`p-2 rounded-lg transition-colors ${bancoHoras >= 0 ? 'bg-green-100 group-hover:bg-green-200' : 'bg-red-100 group-hover:bg-red-200'}`}>
                 {bancoHoras >= 0 ? (
                   <TrendingUp className="h-4 w-4 text-green-600" />
@@ -377,7 +370,7 @@ export default function DashboardPage() {
                   <Clock className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg text-blue-900">Registrar Ponto</CardTitle>
+                  <CardTitle className="text-lg text-blue-900">Registrar Presença</CardTitle>
                   <CardDescription className="text-blue-600/70">
                     Registre sua entrada e saída
                   </CardDescription>
@@ -449,7 +442,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle className="text-zinc-900">Últimos Registros</CardTitle>
               <CardDescription className="text-zinc-600">
-                Seus 5 últimos registros de ponto
+                Seus 5 últimos registros de presença
               </CardDescription>
             </CardHeader>
             <CardContent>

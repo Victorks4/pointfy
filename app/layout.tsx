@@ -10,8 +10,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Sistema de Ponto Digital',
-  description: 'Sistema de Gestão de Ponto Digital para Estagiários',
+  title: 'Sistema de Presença Digital',
+  description: 'Sistema de Gestão de Presença Digital para Estagiários',
   icons: {
     icon: [
       {

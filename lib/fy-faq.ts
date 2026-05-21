@@ -12,7 +12,7 @@ export type FyFaqItem = {
 const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
   {
     id: 'horario-formato',
-    question: 'Que formato uso nos horários de ponto?',
+    question: 'Que formato uso nos horários de presença?',
     answer:
       'Use sempre relógio de 24 horas no estilo HH:mm, por exemplo 08:15 ou 17:45. O sistema compara entrada e saída nessa base: a saída precisa ser depois da entrada no mesmo período.',
   },
@@ -20,20 +20,20 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
     id: 'rh-empresa',
     question: 'Quem responde sobre contrato ou políticas da empresa?',
     answer:
-      'No Pontify o foco é registro de ponto, histórico e justificativas. Para contrato, benefícios ou regras internas da instituição, procure o RH ou seu coordenador de estágio.',
+      'No Pontify o foco é registro de presença, histórico e justificativas. Para contrato, benefícios ou regras internas da instituição, procure o RH ou seu coordenador de estágio.',
   },
   {
     id: 'onde-registrar',
-    question: 'Onde registro meu ponto?',
+    question: 'Onde registro minha presença?',
     answer:
-      'No menu lateral, abra “Registrar Ponto”. Lá você preenche os horários do dia (até quatro marcos: duas entradas e duas saídas) e confirma com o botão de registrar. No dashboard também há atalhos rápidos.',
+      'No menu lateral, abra “Registrar Presença”. Lá você preenche os horários do dia (até quatro marcos: duas entradas e duas saídas) e confirma com o botão de registrar. No dashboard também há atalhos rápidos.',
     roles: ['estagiario'],
   },
   {
     id: 'historico',
     question: 'Onde vejo meus dias e totais anteriores?',
     answer:
-      'Em “Histórico” você filtra por mês e ano, vê cada dia com horários e o total do período, além do saldo de banco de horas exibido no resumo.',
+      'Em “Histórico” você filtra por mês e ano, vê cada dia com horários e o total do período, além do saldo exibido no resumo.',
     roles: ['estagiario'],
   },
   {
@@ -45,7 +45,7 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
   },
   {
     id: 'banco-horas',
-    question: 'O que é banco de horas?',
+    question: 'O que é o saldo de horas?',
     answer:
       'É a diferença entre o que você registrou e a carga esperada no período (com base na sua jornada). Positivo indica horas a mais; negativo, horas a compensar. O histórico e o dashboard mostram esse saldo para você acompanhar.',
     roles: ['estagiario'],
@@ -68,7 +68,7 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
     id: 'sequencia-produtividade',
     question: 'O que é “sequência” e a pontuação do dashboard?',
     answer:
-      'A sequência conta dias seguidos com registro de ponto. A pontuação mistura consistência, bater a meta diária e pontualidade. Manter o ritmo sobe os indicadores — é um retrato do seu hábito, não uma nota escolar.',
+      'A sequência conta dias seguidos com presença registrada. A pontuação mistura consistência, atingir a meta diária e pontualidade. Manter o ritmo sobe os indicadores — é um retrato do seu hábito, não uma nota escolar.',
     roles: ['estagiario'],
   },
   {
@@ -80,7 +80,7 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
   },
   {
     id: 'admin-config-ponto',
-    question: 'O que a configuração de ponto altera?',
+    question: 'O que a configuração de presença altera?',
     answer:
       'A regra ativa vale para todo mundo: meta de horas por dia, limite acima do qual exige justificativa, horário esperado de entrada e outras opções. Qualquer mudança combina com o RH antes de publicar.',
     roles: ['admin'],
@@ -89,14 +89,14 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
     id: 'admin-relatorios',
     question: 'Como fecho o mês com relatórios?',
     answer:
-      'Em Relatórios você filtra por período e departamento, revisa totais e pode exportar em PDF para alinhar com a coordenação ou o RH.',
+      'Os estagiários baixam o relatório mensal em PDF na área Relatórios e enviam ao portal de assinatura externo. No admin, use o painel para acompanhar totais e histórico por usuário.',
     roles: ['admin'],
   },
   {
     id: 'gestor-painel',
     question: 'O que eu vejo no painel do gestor?',
     answer:
-      'Só estagiários vinculados a você no cadastro. Para cada um há abas de resumo, registros de ponto, histórico por mês, justificativas e uma linha do tempo com notificações e atividades recentes.',
+      'Só estagiários vinculados a você no cadastro. Para cada um há abas de resumo, registros de presença, histórico por mês, justificativas e uma linha do tempo com notificações e atividades recentes.',
     roles: ['gestor'],
   },
   {

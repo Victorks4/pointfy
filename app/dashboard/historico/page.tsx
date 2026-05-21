@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { LABELS } from '@/lib/labels'
 import { formatDate, formatMinutesToDisplay } from '@/lib/time-utils'
 import { Calendar, TrendingUp, TrendingDown } from 'lucide-react'
 
@@ -30,7 +31,7 @@ const MESES = [
 
 export default function HistoricoPage() {
   const { user } = useAuth()
-  const { usuarios, getPontosByUser, getBancoHoras, getActivePontoConfig, getEstagiariosDoGestor } = useData()
+  const { usuarios, getPontosByUser, getBancoHoras, getActivePontoConfig, getEstagiariosDoGestor, isPresencaBloqueada } = useData()
   const activeConfig = getActivePontoConfig()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -79,7 +80,9 @@ export default function HistoricoPage() {
     return ano === selectedYear && mes === selectedMonth
   })
 
-  const totalMes = pontosFiltrados.reduce((acc, p) => acc + p.totalMinutos, 0)
+  const totalMes = pontosFiltrados
+    .filter((p) => !targetUserId || !isPresencaBloqueada(targetUserId, p.data))
+    .reduce((acc, p) => acc + p.totalMinutos, 0)
 
   // Gerar anos disponíveis
   const years = Array.from({ length: 5 }, (_, i) => String(currentYear - i))
@@ -100,7 +103,7 @@ export default function HistoricoPage() {
         <div data-fy-anchor="fy-historico-panel" className="space-y-6">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-foreground">
-            Histórico de Pontos {targetUser ? `- ${targetUser.nome}` : ''}
+            Histórico de presença {targetUser ? `- ${targetUser.nome}` : ''}
           </h2>
           <p className="text-muted-foreground">
             {user?.cargo === 'admin'
@@ -162,7 +165,7 @@ export default function HistoricoPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Banco de Horas</CardTitle>
+              <CardTitle className="text-sm font-medium">{LABELS.SALDO}</CardTitle>
               {bancoHoras >= 0 ? (
                 <TrendingUp className="h-4 w-4 text-green-600" />
               ) : (
@@ -204,27 +207,44 @@ export default function HistoricoPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pontosFiltrados.map((ponto) => (
+                    {pontosFiltrados.map((ponto) => {
+                      const bloqueada =
+                        targetUserId && isPresencaBloqueada(targetUserId, ponto.data)
+                      return (
                       <TableRow key={ponto.id}>
                         <TableCell className="font-medium">
                           {formatDate(ponto.data)}
-                        </TableCell>
-                        <TableCell>{ponto.entrada1 || '-'}</TableCell>
-                        <TableCell>{ponto.saida1 || '-'}</TableCell>
-                        <TableCell>{ponto.entrada2 || '-'}</TableCell>
-                        <TableCell>{ponto.saida2 || '-'}</TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {formatMinutesToDisplay(ponto.totalMinutos)}
-                        </TableCell>
-                        <TableCell>
-                          {ponto.totalMinutos > activeConfig.limiteMinutosSemJustificativa && ponto.justificativaHoraExtra && (
-                            <Badge variant="outline" className="text-xs">
-                              {ponto.justificativaHoraExtra}
+                          {bloqueada ? (
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              {LABELS.PRESENCA_BLOQUEADA}
                             </Badge>
+                          ) : null}
+                        </TableCell>
+                        <TableCell>{bloqueada ? '—' : ponto.entrada1 || '-'}</TableCell>
+                        <TableCell>{bloqueada ? '—' : ponto.saida1 || '-'}</TableCell>
+                        <TableCell>{bloqueada ? '—' : ponto.entrada2 || '-'}</TableCell>
+                        <TableCell>{bloqueada ? '—' : ponto.saida2 || '-'}</TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {bloqueada ? '—' : formatMinutesToDisplay(ponto.totalMinutos)}
+                        </TableCell>
+                        <TableCell className="max-w-[220px] text-sm text-muted-foreground">
+                          {bloqueada ? (
+                            LABELS.PRESENCA_BLOQUEADA
+                          ) : (
+                            <>
+                              {ponto.observacao ? <p>{ponto.observacao}</p> : null}
+                              {ponto.totalMinutos > activeConfig.limiteMinutosSemJustificativa &&
+                                ponto.justificativaHoraExtra && (
+                                  <Badge variant="outline" className="text-xs mt-1">
+                                    {ponto.justificativaHoraExtra}
+                                  </Badge>
+                                )}
+                              {!ponto.observacao && !ponto.justificativaHoraExtra ? '—' : null}
+                            </>
                           )}
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )})}
                   </TableBody>
                 </Table>
               </div>

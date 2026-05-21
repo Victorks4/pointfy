@@ -16,7 +16,11 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { formatDate, formatMinutesToDisplay, getTodayString } from '@/lib/time-utils'
-import { MINUTOS_COMPENSACAO } from '@/lib/types'
+import { LABELS } from '@/lib/labels'
+import {
+  STATUS_COMPENSACAO_LABELS,
+  effectiveStatusCompensacao,
+} from '@/lib/compensacao-utils'
 import { FileText, Clock, Send, Info } from 'lucide-react'
 
 export default function JustificativasPage() {
@@ -88,10 +92,10 @@ export default function JustificativasPage() {
       tipo: 'compensacao',
       descricao: compDescricao.trim(),
       arquivoUrl: null,
-      minutosAbatidos: -MINUTOS_COMPENSACAO,
+      minutosAbatidos: 0,
     })
 
-    toast.success(`Compensação registrada! ${formatMinutesToDisplay(MINUTOS_COMPENSACAO)} debitadas no banco.`)
+    toast.success('Solicitação de compensação enviada ao gestor para aprovação.')
 
     setCompDataFalta('')
     setCompDescricao('')
@@ -125,7 +129,7 @@ export default function JustificativasPage() {
         {/* Card de Banco de Horas */}
         <Card className="mb-6">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">Seu Banco de Horas</CardTitle>
+            <CardTitle className="text-lg">{LABELS.SEU_SALDO}</CardTitle>
             <Clock className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -168,14 +172,14 @@ export default function JustificativasPage() {
                   <Info className="h-4 w-4" />
                   <AlertDescription>
                     O atestado será enviado automaticamente para o RH por email para validação.
-                    Faltas justificadas não geram débito no banco de horas.
+                    Faltas justificadas não geram débito no saldo.
                   </AlertDescription>
                 </Alert>
 
                 <form onSubmit={handleAtestadoSubmit} className="space-y-4">
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="atestado-data">Data da Falta</FieldLabel>
+                      <FieldLabel htmlFor="atestado-data">{LABELS.DATA_AUSENCIA}</FieldLabel>
                       <Input
                         id="atestado-data"
                         type="date"
@@ -232,22 +236,22 @@ export default function JustificativasPage() {
               <CardHeader>
                 <CardTitle>Registrar Compensação</CardTitle>
                 <CardDescription>
-                  Ao registrar compensação, 6h serão debitadas do banco de horas
+                  A compensação precisa ser aprovada pelo gestor antes de impactar o saldo
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Alert className="mb-4">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    Regra de negócio: toda compensação debita <strong>6h</strong> do banco.
-                    Se o saldo for positivo, ele reduz 6h; se for zero/negativo, a dívida aumenta em 6h.
+                    Após aprovação do gestor, <strong>6h</strong> serão debitadas do saldo e a solicitação
+                    ficará visível para o RH (administrador).
                   </AlertDescription>
                 </Alert>
 
                 <form onSubmit={handleCompensacaoSubmit} className="space-y-4">
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="comp-data-falta">Data da Falta</FieldLabel>
+                      <FieldLabel htmlFor="comp-data-falta">{LABELS.DATA_AUSENCIA}</FieldLabel>
                       <Input
                         id="comp-data-falta"
                         type="date"
@@ -272,7 +276,7 @@ export default function JustificativasPage() {
 
                   <Button type="submit" className="w-full">
                     <Clock className="mr-2 h-4 w-4" />
-                    Registrar Compensação (-6h no banco)
+                    Solicitar compensação ao gestor
                   </Button>
                 </form>
               </CardContent>
@@ -296,6 +300,7 @@ export default function JustificativasPage() {
                     <TableRow>
                       <TableHead>Data</TableHead>
                       <TableHead>Tipo</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Descrição</TableHead>
                       <TableHead>Arquivo</TableHead>
                       <TableHead className="text-right">Horas</TableHead>
@@ -311,6 +316,23 @@ export default function JustificativasPage() {
                           <Badge variant={j.tipo === 'atestado' ? 'secondary' : 'default'}>
                             {j.tipo === 'atestado' ? 'Atestado' : 'Compensação'}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {j.tipo === 'compensacao' && effectiveStatusCompensacao(j) ? (
+                            <Badge
+                              variant={
+                                effectiveStatusCompensacao(j) === 'aprovada_gestor'
+                                  ? 'default'
+                                  : effectiveStatusCompensacao(j) === 'rejeitada_gestor'
+                                    ? 'destructive'
+                                    : 'outline'
+                              }
+                            >
+                              {STATUS_COMPENSACAO_LABELS[effectiveStatusCompensacao(j)!]}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate">
                           {j.descricao}

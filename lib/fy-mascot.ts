@@ -19,7 +19,7 @@ export type FyReaction = {
 
 export const FY_SYSTEM_PROMPT = `Você é o Fy, mascote do sistema Pontify — plataforma de registro de ponto para estagiários do SENAI.
 
-Seu papel é ajudar usuários a registrar ponto corretamente e a usar o sistema com confiança.
+Seu papel é ajudar usuários a registrar presença corretamente e a usar o sistema com confiança.
 
 Regras:
 - Seja direto e amigável.
@@ -68,7 +68,7 @@ export const FY_DOCK_TIPS_ESTAGIARIO: string[] = [
   'Bater a meta de horas do dia ajuda o score: revise o card de nível e o que falta para o próximo tier.',
   'Chegar e registrar perto do horário combinado melhora a nota de pontualidade — use o relógio do sistema.',
   'Desafios da semana somam com seu ritmo: acompanhe o progresso nos cards do dashboard.',
-  'Histórico e banco de horas mostram o retrato real do mês; confira antes de falar com o RH.',
+  'Histórico e saldo mostram o retrato real do mês; confira antes de falar com o RH.',
   'Justificativa bem preenchida evita atrito: descreva o contexto com clareza quando precisar.',
   'Pequena rotina vence: abrir o Pontify no mesmo horário do estágio vira hábito em poucas semanas.',
 ]
@@ -88,7 +88,7 @@ export const FY_DOCK_TIPS_ADMIN: string[] = [
 export const FY_DOCK_TIPS_GESTOR: string[] = [
   'Seu painel reúne só estagiários vinculados a você; o administrador define esse vínculo no cadastro.',
   'Alterne entre Resumo, registros e histórico para ver o dia e o mês sem misturar perfis.',
-  'Banco de horas e sequência ajudam a perceber padrões antes de conversar com o estagiário.',
+  'Saldo e sequência ajudam a perceber padrões antes de conversar com o estagiário.',
   'Abra o histórico completo pelo atalho quando precisar do mesmo filtro por mês da tela principal.',
   'Justificativas pendentes ou respondidas aparecem na aba dedicada; combine com as notificações do estagiário.',
 ]
@@ -129,7 +129,7 @@ export const FY_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
     ordem: 1,
     titulo: 'Oi, eu sou o Fy',
     mensagem:
-      'Sou o guia do Pontify. Vou te mostrar onde registrar ponto, justificar e acompanhar sua sequência, passo a passo.',
+      'Sou o guia do Pontify. Vou te mostrar onde registrar presença, justificar e acompanhar sua sequência, passo a passo.',
     rotaSugerida: '/dashboard',
     anchorId: 'fy-dashboard-hero',
   },
@@ -138,16 +138,16 @@ export const FY_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
     ordem: 2,
     titulo: 'Menu lateral',
     mensagem:
-      'Aqui ficam todas as áreas: Dashboard, Registrar Ponto, Histórico, Justificativas e Notificações. Toque no item para navegar.',
+      'Aqui ficam todas as áreas: Dashboard, Registrar Presença, Histórico, Justificativas e Notificações. Toque no item para navegar.',
     rotaSugerida: null,
     anchorId: 'fy-sidebar-menu',
   },
   {
     id: 'registrar-ponto',
     ordem: 3,
-    titulo: 'Registrar ponto',
+    titulo: 'Registrar presença',
     mensagem:
-      'Aqui você registra seu expediente: preencha entrada e saída em HH:MM e use “Registrar Ponto” sempre que iniciar ou encerrar períodos.',
+      'Aqui você registra seu expediente: preencha entrada e saída em HH:MM e use “Registrar Presença” sempre que iniciar ou encerrar períodos.',
     rotaSugerida: '/dashboard/ponto',
     anchorId: 'fy-ponto-form',
   },
@@ -174,7 +174,7 @@ export const FY_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
     ordem: 6,
     titulo: 'Histórico',
     mensagem:
-      'Veja dias anteriores, filtre por mês e confira totais e banco de horas antes de falar com o RH ou a coordenação.',
+      'Veja dias anteriores, filtre por mês e confira totais e saldo antes de falar com o RH ou a coordenação.',
     rotaSugerida: '/dashboard/historico',
     anchorId: 'fy-historico-panel',
   },
@@ -369,7 +369,7 @@ const FY_ROUTE_HINTS: { prefix: string; hint: FyRouteHint }[] = [
   { prefix: '/dashboard/admin/configuracoes-ponto', hint: { emotion: 'aviso', text: 'Mudança de config ativa afeta meta e limite de justificativa para todos.' } },
   { prefix: '/dashboard/admin/justificativas', hint: { emotion: 'neutro', text: 'Responde com objetividade — o estagiário vê o retorno no painel dele.' } },
   { prefix: '/dashboard/admin', hint: { emotion: 'neutro', text: 'Visão geral do admin. Use o menu para ir direto a cada módulo.' } },
-  { prefix: '/dashboard', hint: { emotion: 'neutro', text: 'Resumo do dia, sequência e desafios. Atalho: Registrar Ponto no menu.' } },
+  { prefix: '/dashboard', hint: { emotion: 'neutro', text: 'Resumo do dia, sequência e desafios. Atalho: Registrar Presença no menu.' } },
 ]
 
 function hashString(s: string): number {
@@ -422,7 +422,7 @@ export function resolveFyBubbleMessage(input: {
   ) {
     const day = new Date().getDay()
     if (day >= 1 && day <= 5) {
-      return { emotion: 'atencao', text: 'Ainda não registrou ponto hoje? Leva um minuto no menu “Registrar Ponto”.' }
+      return { emotion: 'atencao', text: 'Ainda não registrou presença hoje? Leva um minuto no menu “Registrar Presença”.' }
     }
   }
 
