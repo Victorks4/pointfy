@@ -7,8 +7,17 @@ import { Toaster } from '@/components/ui/sonner'
 import { WebVitalsReporter } from '@/components/web-vitals-reporter'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const geistSans = Geist({
+  subsets: ['latin'],
+  variable: '--font-geist-sans',
+  display: 'swap',
+})
+
+const geistMono = Geist_Mono({
+  subsets: ['latin'],
+  variable: '--font-geist-mono',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Sistema de Presença Digital',
@@ -38,8 +47,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="pt-BR">
-      <body className="min-h-dvh font-sans antialiased">
+    <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${geistSans.className} min-h-dvh font-sans antialiased`}>
         <AuthProvider>
           <DataProvider>
             {children}

@@ -30,6 +30,7 @@ import { fyEmit } from '@/lib/fy-event-bus'
 import { LABELS } from '@/lib/labels'
 import { buildObservacaoComAnotacao } from '@/lib/presenca-anotacoes'
 import { PontifyDatePicker } from '@/components/pontify-date-calendar'
+import { TimeField } from '@/components/time-field'
 import { Clock, AlertCircle, Save, Info, CheckCircle, Coffee } from 'lucide-react'
  
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -458,29 +459,49 @@ function PeriodoInput({
   const isPrimeiro = numero === 1
  
   return (
-    <div className={`p-4 rounded-xl border ${isPrimeiro ? 'bg-muted/50 border-border' : 'bg-muted/30 border-border/50'}`}>
-      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2 text-foreground">
-        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isPrimeiro ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+    <div
+      className={cn(
+        'rounded-lg border p-4',
+        isPrimeiro ? 'border-border bg-card' : 'border-border/60 bg-muted/20',
+      )}
+    >
+      <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+        <div
+          className={cn(
+            'flex h-6 w-6 items-center justify-center rounded-md text-xs font-semibold',
+            isPrimeiro
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground',
+          )}
+        >
           {numero}
         </div>
-        {isPrimeiro ? 'Primeiro Período' : 'Segundo Período'}
-        {obrigatorio && <span className="text-xs font-normal text-muted-foreground">(obrigatório)</span>}
+        {isPrimeiro ? 'Primeiro período' : 'Segundo período'}
+        {obrigatorio && (
+          <span className="text-xs font-normal text-muted-foreground">(obrigatório)</span>
+        )}
       </h3>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {[
-          { id: entradaId, label: 'Entrada', value: entradaValue, onChange: onEntradaChange },
-          { id: saidaId,   label: 'Saída',   value: saidaValue,   onChange: onSaidaChange },
+          {
+            id: entradaId,
+            label: 'Horário de entrada',
+            value: entradaValue,
+            onChange: onEntradaChange,
+          },
+          {
+            id: saidaId,
+            label: 'Horário de saída',
+            value: saidaValue,
+            onChange: onSaidaChange,
+          },
         ].map(({ id, label, value, onChange }) => (
           <FieldGroup key={id}>
-            <Field>
-              <FieldLabel htmlFor={id} className="text-foreground">{label}</FieldLabel>
-              <Input
-                id={id}
-                type="time"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="text-center font-mono text-lg h-12"
-              />
+            <Field className="gap-2">
+              <FieldLabel htmlFor={id} className="text-sm font-medium text-foreground/80">
+                {label}
+              </FieldLabel>
+              <TimeField id={id} value={value} onChange={onChange} />
             </Field>
           </FieldGroup>
         ))}
