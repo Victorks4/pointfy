@@ -275,15 +275,15 @@ export default function UsuariosAdminPage() {
                 Novo Usuário
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Cadastrar usuário</DialogTitle>
                 <DialogDescription>Estagiário (com vínculo opcional ao gestor) ou gestor</DialogDescription>
               </DialogHeader>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <FieldGroup>
-                  <Field>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field className="sm:col-span-2">
                     <FieldLabel htmlFor="tipo-cadastro">Tipo</FieldLabel>
                     <Select
                       value={novoCargoCadastro}
@@ -341,7 +341,7 @@ export default function UsuariosAdminPage() {
                   <Field>
                     <FieldLabel htmlFor="departamento">Departamento</FieldLabel>
                     <Select value={departamento} onValueChange={setDepartamento}>
-                      <SelectTrigger>
+                      <SelectTrigger id="departamento">
                         <SelectValue placeholder="Selecione o departamento" />
                       </SelectTrigger>
                       <SelectContent>
@@ -354,10 +354,10 @@ export default function UsuariosAdminPage() {
                     </Select>
                   </Field>
 
-                  <Field>
+                  <Field className={novoCargoCadastro === 'gestor' ? 'sm:col-span-2' : undefined}>
                     <FieldLabel htmlFor="cargaHoraria">Carga Horária Semanal</FieldLabel>
                     <Select value={cargaHoraria} onValueChange={setCargaHoraria}>
-                      <SelectTrigger>
+                      <SelectTrigger id="cargaHoraria">
                         <SelectValue placeholder="Selecione a carga horária" />
                       </SelectTrigger>
                       <SelectContent>
@@ -402,7 +402,7 @@ export default function UsuariosAdminPage() {
                       </Field>
                     </>
                   ) : null}
-                </FieldGroup>
+                </div>
 
                 <Alert>
                   <Info className="h-4 w-4" />

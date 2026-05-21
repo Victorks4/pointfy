@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "analyze": "node scripts/analyze-bundle.mjs",
+    "analyze:build": "node scripts/analyze-bundle.mjs --build",
+    "analyze:visual": "cross-env ANALYZE=true next build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -67,7 +70,10 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.1.6",
     "@tailwindcss/postcss": "^4.2.0",
+    "cross-env": "^7.0.3",
+    "web-vitals": "^5.1.0",
     "@types/node": "^22",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",

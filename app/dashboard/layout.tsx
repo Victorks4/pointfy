@@ -1,12 +1,21 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
-import { FyGuide } from '@/components/fy-guide'
-import { FyTourOverlay } from '@/components/fy-tour-overlay'
 import { FyTourProvider } from '@/lib/fy-tour-context'
+
+const FyGuide = dynamic(
+  () => import('@/components/fy-guide').then((m) => ({ default: m.FyGuide })),
+  { ssr: false },
+)
+
+const FyTourOverlay = dynamic(
+  () => import('@/components/fy-tour-overlay').then((m) => ({ default: m.FyTourOverlay })),
+  { ssr: false },
+)
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 

@@ -20,7 +20,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { motion } from 'framer-motion'
 import { PontifyDataFlowBrand } from '@/components/pontify-data-flow-brand'
 import {
   Clock,
@@ -136,11 +135,7 @@ export function DashboardSidebar() {
   return (
     <Sidebar className="border-r border-[#31435f] [&_[data-sidebar=sidebar]]:!bg-gradient-to-b [&_[data-sidebar=sidebar]]:!from-[#24364e] [&_[data-sidebar=sidebar]]:!to-[#16263a]">
       <SidebarHeader className="border-b border-[#31435f] !gap-0 !p-0">
-        <motion.div
-          className="pontify-logo-shell mx-2 mb-0.5 mt-0.5"
-          whileHover={{ scale: 1.03 }}
-          transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-        >
+        <div className="pontify-logo-shell mx-2 mb-0.5 mt-0.5 transition-transform duration-200 hover:scale-[1.03]">
           <div className="pontify-logo-shell-inner">
             <Link
               href={logoHref}
@@ -155,14 +150,13 @@ export function DashboardSidebar() {
                   className="pontify-logo-img block h-9 w-auto max-w-[min(100%,14.75rem)] object-contain object-left sm:h-24 sm:max-w-[min(100%,14.85rem)]"
                   sizes="(max-width: 768px) 240px, 252px"
                   priority
-                  unoptimized
                 />
                 <span aria-hidden className="pontify-logo-shine pointer-events-none absolute inset-0 -translate-x-full" />
               </span>
               <PontifyDataFlowBrand variant="sidebar" />
             </Link>
           </div>
-        </motion.div>
+        </div>
       </SidebarHeader>
 
       <SidebarContent className="gap-1.5 px-2 [&>[data-sidebar=group]:first-child]:pt-0">

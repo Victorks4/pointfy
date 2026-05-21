@@ -107,7 +107,7 @@ export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
           alt=""
           fill
           priority
-          unoptimized
+          sizes="(max-width: 1024px) 100vw, 50vw"
           className="object-cover object-[50%_50%]"
         />
       </motion.div>

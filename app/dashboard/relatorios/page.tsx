@@ -13,7 +13,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LABELS } from '@/lib/labels'
 import { formatMinutesToDisplay } from '@/lib/time-utils'
 import { Download, FileBarChart2, Info, Loader2 } from 'lucide-react'
-import { downloadRelatorioUsuarioPdf } from '@/lib/pdf/relatorios'
 import { toast } from 'sonner'
 
 const MESES = [
@@ -84,6 +83,7 @@ export default function RelatoriosEstagiarioPage() {
 
     setDownloading(true)
     try {
+      const { downloadRelatorioUsuarioPdf } = await import('@/lib/pdf/relatorios')
       await downloadRelatorioUsuarioPdf({
         titulo: 'Relatório de Presença',
         periodoLabel,

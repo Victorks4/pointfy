@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { memo, useEffect, useMemo, useState, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
@@ -89,7 +89,7 @@ function useTourSidebarOpen(anchorId: string | null | undefined, active: boolean
   }, [active, anchorId, isMobile, setOpen, setOpenMobile])
 }
 
-export function FyGuide() {
+function FyGuideInner() {
   const pathname = usePathname()
   const router = useRouter()
   const { user } = useAuth()
@@ -287,7 +287,13 @@ export function FyGuide() {
               >
                 <span className="sr-only">Abrir menu do assistente</span>
                 <FyMotionWrapper mood={mood} isHovered={isHovered} isClicked={isClicked}>
-                  <FyChromaVideo src={VIDEO_SRC} layout="fab" canvasBaseWidth={128} className="pointer-events-none" />
+                  <FyChromaVideo
+                    src={VIDEO_SRC}
+                    layout="fab"
+                    canvasBaseWidth={128}
+                    className="pointer-events-none"
+                    playbackActive={!prefersReducedMotion}
+                  />
                 </FyMotionWrapper>
                 {showParticles && <FyReactionParticles active />}
                 {showSleepZ && <FySleepZ />}
@@ -475,7 +481,13 @@ export function FyGuide() {
         )}
       >
         <FyMotionWrapper mood={mood} isHovered={isHovered}>
-          <FyChromaVideo src={VIDEO_SRC} className="drop-shadow-xl" />
+          <FyChromaVideo
+            src={VIDEO_SRC}
+            className="drop-shadow-xl"
+            playbackActive={
+              !prefersReducedMotion && (tour.uiMode === 'dock' || tour.isTourActive)
+            }
+          />
         </FyMotionWrapper>
         {showParticles && <FyReactionParticles active />}
         {showSleepZ && <FySleepZ />}
@@ -485,3 +497,5 @@ export function FyGuide() {
     </>
   )
 }
+
+export const FyGuide = memo(FyGuideInner)

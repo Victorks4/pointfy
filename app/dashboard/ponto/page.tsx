@@ -1,7 +1,9 @@
 'use client'
  
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { memo, useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { LiveClock } from '@/components/live-clock'
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,7 +30,7 @@ import { fyEmit } from '@/lib/fy-event-bus'
 import { LABELS } from '@/lib/labels'
 import { buildObservacaoComAnotacao } from '@/lib/presenca-anotacoes'
 import { PontifyDatePicker } from '@/components/pontify-date-calendar'
-import { Clock, AlertCircle, Save, Info, CheckCircle, Timer, Coffee } from 'lucide-react'
+import { Clock, AlertCircle, Save, Info, CheckCircle, Coffee } from 'lucide-react'
  
 // ─── Tipos ────────────────────────────────────────────────────────────────────
  
@@ -148,17 +150,14 @@ function useValidatePonto(
  
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
  
-function PageHeader({ currentTime }: { currentTime: Date }) {
+function PageHeader() {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card/50 backdrop-blur-sm px-4 sticky top-0 z-10">
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-2 h-4" />
       <h1 className="text-lg font-semibold text-foreground">{LABELS.REGISTRAR_PRESENCA}</h1>
       <div className="ml-auto flex items-center gap-2">
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-sm">
-          <Timer className="h-4 w-4 text-primary" />
-          <span className="font-mono text-primary font-medium">{formatTime(currentTime)}</span>
-        </div>
+        <LiveClock />
       </div>
     </header>
   )
@@ -240,12 +239,12 @@ const ESTADO_BADGE_CLASS: Record<EstadoClock, string> = {
   green: 'bg-green-100 text-green-700',
 }
 
-function WaveClock({ totalMinutos, meta }: { totalMinutos: number; meta: number }) {
+const WaveClock = memo(function WaveClock({ totalMinutos, meta }: { totalMinutos: number; meta: number }) {
   const progresso = Math.min((totalMinutos / meta) * 100, 100)
   const estado = getEstadoClock(totalMinutos, meta)
   const config = CLOCK_STATE_CONFIG[estado]
   const isComplete = estado === 'green'
-  const fillHeight = `${Math.max(progresso, 4)}%`
+  const fillScale = Math.max(progresso / 100, 0.04)
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -262,43 +261,37 @@ function WaveClock({ totalMinutos, meta }: { totalMinutos: number; meta: number 
           />
         )}
 
-        <motion.div
-          className={`relative w-24 h-24 rounded-full border-4 overflow-hidden ${config.ringColor}`}
-          animate={{ borderColor: config.waveColor }}
-          transition={{ duration: 0.5 }}
+        <div
+          className={`relative w-24 h-24 rounded-full border-4 overflow-hidden transition-colors duration-500 ${config.ringColor}`}
+          style={{ borderColor: config.waveColor }}
           aria-label={`Progresso diário: ${Math.round(progresso)}%`}
           role="img"
         >
           <div className="absolute inset-0 bg-slate-900" />
 
-          <motion.div
-            className="absolute inset-x-0 bottom-0 overflow-hidden"
-            animate={{ height: fillHeight }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
+          <div
+            className="absolute inset-x-0 bottom-0 h-full origin-bottom transition-transform duration-500 ease-out will-change-transform"
+            style={{ transform: `scaleY(${fillScale})` }}
           >
-            <div
-              style={{
-                position: 'absolute',
-                top: -10,
-                left: 0,
-                width: '200%',
-                height: 20,
-                animation: 'wave-move 2s linear infinite',
-              }}
-            >
-              <svg
-                viewBox="0 0 200 20"
-                preserveAspectRatio="none"
-                style={{ width: '100%', height: '100%', display: 'block' }}
+            <div className="absolute inset-0 overflow-hidden">
+              <div
+                className="absolute top-[-10px] left-0 w-[200%] h-5"
+                style={{ animation: 'wave-move 2s linear infinite' }}
               >
-                <path d={WAVE_PATH} fill={config.waveColor} />
-              </svg>
+                <svg
+                  viewBox="0 0 200 20"
+                  preserveAspectRatio="none"
+                  className="block h-full w-full"
+                >
+                  <path d={WAVE_PATH} fill={config.waveColor} />
+                </svg>
+              </div>
+              <div
+                className="absolute inset-x-0 bottom-0 top-2.5"
+                style={{ background: config.waveColor }}
+              />
             </div>
-            <div
-              className="absolute inset-x-0 bottom-0"
-              style={{ top: 10, background: config.waveColor }}
-            />
-          </motion.div>
+          </div>
 
           <div className="absolute inset-0 flex items-center justify-center">
             <AnimatePresence mode="wait">
@@ -325,20 +318,17 @@ function WaveClock({ totalMinutos, meta }: { totalMinutos: number; meta: number 
               )}
             </AnimatePresence>
           </div>
-        </motion.div>
+        </div>
       </div>
 
-      <motion.span
-        key={estado}
-        initial={{ opacity: 0, y: 4 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`text-xs font-medium px-2 py-0.5 rounded-full ${ESTADO_BADGE_CLASS[estado]}`}
+      <span
+        className={`text-xs font-medium px-2 py-0.5 rounded-full transition-opacity duration-300 ${ESTADO_BADGE_CLASS[estado]}`}
       >
         {config.label}
-      </motion.span>
+      </span>
     </div>
   )
-}
+})
  
 // ─── Card Total do Dia ────────────────────────────────────────────────────────
  
@@ -600,7 +590,6 @@ export default function PontoPage() {
   const activeConfig = getActivePontoConfig()
  
   const [mounted, setMounted] = useState(false)
-  const [currentTime, setCurrentTime] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(getTodayString())
   const [errors, setErrors] = useState<string[]>([])
  
@@ -623,8 +612,6 @@ export default function PontoPage() {
   // Efeitos
   useEffect(() => {
     setMounted(true)
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-    return () => clearInterval(timer)
   }, [])
  
   useEffect(() => {
@@ -750,7 +737,7 @@ export default function PontoPage() {
   if (presencaBloqueada) {
     return (
       <>
-        <PageHeader currentTime={currentTime} />
+        <PageHeader />
         <main className="flex-1 p-4 md:p-6">
           <Card className="max-w-lg mx-auto mt-8">
             <CardHeader>
@@ -766,26 +753,26 @@ export default function PontoPage() {
     )
   }
  
-  const fadeIn = (delay = 0) => ({
-    initial: { opacity: 0, y: 16 },
-    animate: mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 },
-    transition: { duration: 0.35, delay, ease: 'easeOut' },
-  })
- 
+  const sectionReveal = (delayMs: number) =>
+    cn(
+      'transition-all duration-350 ease-out',
+      mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4',
+    )
+
   return (
     <>
-      <PageHeader currentTime={currentTime} />
- 
+      <PageHeader />
+
       <main className="flex-1 p-4 md:p-6 bg-muted/30">
         <div className="max-w-6xl mx-auto">
           {/* Título */}
-          <motion.div className="mb-6" {...fadeIn(0)}>
+          <div className={cn('mb-6', sectionReveal(0))} style={{ transitionDelay: '0ms' }}>
             <h2 className="text-2xl font-bold text-foreground">{LABELS.PRESENCA_DO_DIA}</h2>
             <p className="text-muted-foreground">{formatDate(selectedDate)}</p>
-          </motion.div>
- 
+          </div>
+
           {/* Seletor de data (compacto, popover Pontify) */}
-          <motion.div {...fadeIn(0.05)}>
+          <div className={sectionReveal(50)} style={{ transitionDelay: '50ms' }}>
             <Card className="mb-6">
               <CardContent className="pt-6">
                 <FieldGroup>
@@ -803,12 +790,12 @@ export default function PontoPage() {
                 </FieldGroup>
               </CardContent>
             </Card>
-          </motion.div>
- 
+          </div>
+
           {/* Cards de totais e regras */}
-          <motion.div
-            className="grid gap-6 mb-6 md:grid-cols-2"
-            {...fadeIn(0.1)}
+          <div
+            className={cn('grid gap-6 mb-6 md:grid-cols-2', sectionReveal(100))}
+            style={{ transitionDelay: '100ms' }}
           >
             <CardTotalDia
               totalMinutos={totalMinutos}
@@ -817,10 +804,10 @@ export default function PontoPage() {
               limiteMinutos={activeConfig.limiteMinutosSemJustificativa}
             />
             <CardRegraPreenchimento limiteMinutos={activeConfig.limiteMinutosSemJustificativa} />
-          </motion.div>
- 
+          </div>
+
           {/* Formulário */}
-          <motion.div {...fadeIn(0.18)}>
+          <div className={sectionReveal(180)} style={{ transitionDelay: '180ms' }}>
             <Card data-fy-anchor="fy-ponto-form">
               <CardHeader>
                 <CardTitle className="text-foreground">Horários</CardTitle>
@@ -897,7 +884,7 @@ export default function PontoPage() {
                 </form>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
         </div>
       </main>
     </>
