@@ -22,6 +22,7 @@ import {
   effectiveStatusCompensacao,
 } from '@/lib/compensacao-utils'
 import { FileText, Clock, Send, Info } from 'lucide-react'
+import { uploadJustificativaArquivoAction } from '@/app/actions/justificativas'
 
 export default function JustificativasPage() {
   const { user } = useAuth()
@@ -39,7 +40,7 @@ export default function JustificativasPage() {
   const [compDataFalta, setCompDataFalta] = useState('')
   const [compDescricao, setCompDescricao] = useState('')
 
-  const handleAtestadoSubmit = (e: React.FormEvent) => {
+  const handleAtestadoSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!user) return
@@ -54,18 +55,29 @@ export default function JustificativasPage() {
       return
     }
 
+    let arquivoPath: string | null = null
+    if (atestadoArquivo) {
+      const formData = new FormData()
+      formData.append('file', atestadoArquivo)
+      const upload = await uploadJustificativaArquivoAction(formData)
+      if ('error' in upload) {
+        toast.error(upload.error)
+        return
+      }
+      arquivoPath = upload.path
+    }
+
     addJustificativa({
       userId: user.id,
       data: atestadoData,
       tipo: 'atestado',
       descricao: atestadoDescricao,
-      arquivoUrl: atestadoArquivo ? URL.createObjectURL(atestadoArquivo) : null,
-      minutosAbatidos: 0, // Atestado não abate horas, apenas justifica falta
+      arquivoUrl: arquivoPath,
+      minutosAbatidos: 0,
     })
 
-    toast.success('Atestado enviado com sucesso! O RH será notificado por email.')
+    toast.success('Atestado enviado com sucesso!')
 
-    // Limpar formulário
     setAtestadoData('')
     setAtestadoDescricao('')
     setAtestadoArquivo(null)

@@ -4,11 +4,44 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
-import { cloneDemoUsersForDataState } from '@/lib/demo-users'
+import { useAuth } from '@/lib/auth-context'
+import { fetchDashboardData } from '@/lib/data-api'
+import { isPresencaBloqueada as checkPresencaBloqueada } from '@/lib/presenca-bloqueio'
+import {
+  compensacaoAfetaSaldo,
+  minutosCompensacaoEfetivos,
+} from '@/lib/compensacao-utils'
+import {
+  calcularBancoHoras,
+  calcularBancoHorasPorPeriodo,
+} from '@/lib/server/banco-horas'
+import { createPontoAction, updatePontoAction } from '@/app/actions/pontos'
+import {
+  createJustificativaAction,
+  aprovarCompensacaoAction,
+  rejeitarCompensacaoAction,
+} from '@/app/actions/justificativas'
+import {
+  createUsuarioAction,
+  updateUsuarioAction,
+  deleteUsuarioAction,
+  createNotificacaoAction,
+  markNotificacaoReadAction,
+  addBloqueioAction,
+  removeBloqueioAction,
+  addDesafioAction,
+  updateDesafioAction,
+  deleteDesafioAction,
+  upsertDesafioProgressoAction,
+  addPontoConfigAction,
+  updatePontoConfigAction,
+  deletePontoConfigAction,
+} from '@/app/actions/admin'
 import type {
   PontoRegistro,
   Justificativa,
@@ -20,13 +53,12 @@ import type {
   BloqueioPresenca,
 } from './types'
 import { MINUTOS_COMPENSACAO } from './types'
-import { isPresencaBloqueada as checkPresencaBloqueada } from '@/lib/presenca-bloqueio'
-import {
-  compensacaoAfetaSaldo,
-  minutosCompensacaoEfetivos,
-} from '@/lib/compensacao-utils'
 
 interface DataContextType {
+  isDataLoading: boolean
+  dataError: string | null
+  refreshData: () => Promise<void>
+
   pontos: PontoRegistro[]
   addPonto: (ponto: Omit<PontoRegistro, 'id' | 'createdAt' | 'updatedAt'>) => void
   updatePonto: (id: string, ponto: Partial<PontoRegistro>) => void
@@ -57,7 +89,7 @@ interface DataContextType {
   getNotificacoesByUser: (userId: string) => Notificacao[]
 
   usuarios: User[]
-  addUsuario: (usuario: Omit<User, 'id' | 'createdAt'>) => void
+  addUsuario: (usuario: Omit<User, 'id' | 'createdAt'> & { senha?: string }) => void
   updateUsuario: (id: string, usuario: Partial<User>) => void
   deleteUsuario: (id: string) => void
   getEstagiariosDoGestor: (gestorId: string) => User[]
@@ -100,42 +132,86 @@ const DEFAULT_PONTO_CONFIG: PontoConfig = {
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const { user: authUser, isLoading: authLoading } = useAuth()
+  const [isDataLoading, setIsDataLoading] = useState(true)
+  const [dataError, setDataError] = useState<string | null>(null)
+
   const [pontos, setPontos] = useState<PontoRegistro[]>([])
   const [justificativas, setJustificativas] = useState<Justificativa[]>([])
-  const [notificacoes, setNotificacoes] = useState<Notificacao[]>([
-    {
-      id: '1',
-      userId: null,
-      titulo: 'Bem-vindo ao sistema de presença',
-      mensagem:
-        'Lembre-se de registrar sua presença diariamente. Horários devem ser informados no formato HH:mm (ex: 08:15).',
-      lida: false,
-      createdAt: new Date().toISOString(),
-    },
-  ])
-  const [usuarios, setUsuarios] = useState<User[]>(() => cloneDemoUsersForDataState())
+  const [notificacoes, setNotificacoes] = useState<Notificacao[]>([])
+  const [usuarios, setUsuarios] = useState<User[]>([])
   const [desafios, setDesafios] = useState<DesafioSemanal[]>([])
   const [desafioProgressos, setDesafioProgressos] = useState<DesafioProgresso[]>([])
   const [pontoConfigs, setPontoConfigs] = useState<PontoConfig[]>([DEFAULT_PONTO_CONFIG])
   const [bloqueiosPresenca, setBloqueiosPresenca] = useState<BloqueioPresenca[]>([])
 
-  const addPonto = useCallback((ponto: Omit<PontoRegistro, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newPonto: PontoRegistro = {
-      ...ponto,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  const refreshData = useCallback(async () => {
+    if (!authUser) return
+    setIsDataLoading(true)
+    setDataError(null)
+    try {
+      const data = await fetchDashboardData()
+      setPontos(data.pontos)
+      setJustificativas(data.justificativas)
+      setNotificacoes(data.notificacoes)
+      setUsuarios(data.usuarios)
+      setDesafios(data.desafios)
+      setDesafioProgressos(data.desafioProgressos)
+      setPontoConfigs(data.pontoConfigs.length ? data.pontoConfigs : [DEFAULT_PONTO_CONFIG])
+      setBloqueiosPresenca(data.bloqueiosPresenca)
+    } catch (e) {
+      setDataError(e instanceof Error ? e.message : 'Erro ao carregar dados')
+    } finally {
+      setIsDataLoading(false)
     }
-    setPontos((prev) => [...prev, newPonto])
-  }, [])
+  }, [authUser])
 
-  const updatePonto = useCallback((id: string, pontoUpdate: Partial<PontoRegistro>) => {
-    setPontos((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, ...pontoUpdate, updatedAt: new Date().toISOString() } : p,
-      ),
-    )
-  }, [])
+  useEffect(() => {
+    if (authLoading) return
+    if (!authUser) {
+      setPontos([])
+      setJustificativas([])
+      setNotificacoes([])
+      setUsuarios([])
+      setDesafios([])
+      setDesafioProgressos([])
+      setBloqueiosPresenca([])
+      setIsDataLoading(false)
+      return
+    }
+    refreshData()
+  }, [authUser, authLoading, refreshData])
+
+  const addPonto = useCallback(
+    (ponto: Omit<PontoRegistro, 'id' | 'createdAt' | 'updatedAt'>) => {
+      void createPontoAction({
+        data: ponto.data,
+        entrada1: ponto.entrada1,
+        saida1: ponto.saida1,
+        entrada2: ponto.entrada2,
+        saida2: ponto.saida2,
+        totalMinutos: ponto.totalMinutos,
+        observacao: ponto.observacao,
+        justificativaHoraExtra: ponto.justificativaHoraExtra,
+      }).then(() => refreshData())
+    },
+    [refreshData],
+  )
+
+  const updatePonto = useCallback(
+    (id: string, pontoUpdate: Partial<PontoRegistro>) => {
+      void updatePontoAction(id, {
+        entrada1: pontoUpdate.entrada1,
+        saida1: pontoUpdate.saida1,
+        entrada2: pontoUpdate.entrada2,
+        saida2: pontoUpdate.saida2,
+        totalMinutos: pontoUpdate.totalMinutos,
+        observacao: pontoUpdate.observacao,
+        justificativaHoraExtra: pontoUpdate.justificativaHoraExtra,
+      }).then(() => refreshData())
+    },
+    [refreshData],
+  )
 
   const getPontosByUser = useCallback(
     (userId: string) =>
@@ -155,59 +231,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [bloqueiosPresenca],
   )
 
-  const addBloqueioPresenca = useCallback((bloqueio: Omit<BloqueioPresenca, 'id' | 'createdAt'>) => {
-    const row: BloqueioPresenca = {
-      ...bloqueio,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    }
-    setBloqueiosPresenca((prev) => [...prev, row])
-  }, [])
+  const addBloqueioPresenca = useCallback(
+    (bloqueio: Omit<BloqueioPresenca, 'id' | 'createdAt'>) => {
+      void addBloqueioAction({
+        userId: bloqueio.userId,
+        dataInicio: bloqueio.dataInicio,
+        dataFim: bloqueio.dataFim,
+        motivo: bloqueio.motivo,
+      }).then(() => refreshData())
+    },
+    [refreshData],
+  )
 
-  const removeBloqueioPresenca = useCallback((id: string) => {
-    setBloqueiosPresenca((prev) => prev.filter((b) => b.id !== id))
-  }, [])
+  const removeBloqueioPresenca = useCallback(
+    (id: string) => {
+      void removeBloqueioAction(id).then(() => refreshData())
+    },
+    [refreshData],
+  )
 
   const addJustificativa = useCallback(
     (justificativa: Omit<Justificativa, 'id' | 'createdAt'>) => {
-      const est = usuarios.find((u) => u.id === justificativa.userId)
-      const base: Justificativa = {
-        ...justificativa,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-      }
-      if (justificativa.tipo === 'compensacao') {
-        const newJustificativa: Justificativa = {
-          ...base,
-          minutosAbatidos: 0,
-          statusCompensacao: 'pendente_gestor',
-          gestorId: est?.gestorId ?? null,
-          decididaEm: null,
-          motivoRejeicao: null,
-        }
-        setJustificativas((prev) => [...prev, newJustificativa])
-        if (est?.gestorId) {
-          setNotificacoes((prev) => [
-            {
-              id: `${Date.now()}-comp`,
-              userId: est.gestorId!,
-              titulo: 'Compensação pendente',
-              mensagem: `${est.nome} solicitou compensação para ${justificativa.data}.`,
-              lida: false,
-              createdAt: new Date().toISOString(),
-            },
-            ...prev,
-          ])
-        }
-        return
-      }
-      setJustificativas((prev) => [...prev, base])
+      void createJustificativaAction({
+        data: justificativa.data,
+        tipo: justificativa.tipo,
+        descricao: justificativa.descricao,
+        arquivoPath: justificativa.arquivoUrl,
+      }).then(() => refreshData())
     },
-    [usuarios],
+    [refreshData],
   )
 
   const aprovarCompensacao = useCallback(
     (gestorId: string, justificativaId: string): { ok: true } | { ok: false; reason: string } => {
+      let result: { ok: true } | { ok: false; reason: string } = { ok: false, reason: 'pendente' }
+      void aprovarCompensacaoAction(justificativaId).then((r) => {
+        result = r
+        refreshData()
+      })
       const j = justificativas.find((x) => x.id === justificativaId)
       if (!j || j.tipo !== 'compensacao') return { ok: false, reason: 'nao_encontrada' }
       const est = usuarios.find((u) => u.id === j.userId)
@@ -225,20 +286,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
             : row,
         ),
       )
-      setNotificacoes((prev) => [
-        {
-          id: `${Date.now()}-cap`,
-          userId: j.userId,
-          titulo: 'Compensação aprovada',
-          mensagem: 'Sua solicitação de compensação foi aprovada pelo gestor.',
-          lida: false,
-          createdAt: new Date().toISOString(),
-        },
-        ...prev,
-      ])
       return { ok: true }
     },
-    [justificativas, usuarios],
+    [justificativas, usuarios, refreshData],
   )
 
   const rejeitarCompensacao = useCallback(
@@ -247,11 +297,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       justificativaId: string,
       motivoRejeicao?: string,
     ): { ok: true } | { ok: false; reason: string } => {
+      void rejeitarCompensacaoAction(justificativaId, motivoRejeicao).then(() => refreshData())
       const j = justificativas.find((x) => x.id === justificativaId)
       if (!j || j.tipo !== 'compensacao') return { ok: false, reason: 'nao_encontrada' }
       const est = usuarios.find((u) => u.id === j.userId)
       if (!est || est.gestorId !== gestorId) return { ok: false, reason: 'nao_autorizado' }
       if (j.statusCompensacao !== 'pendente_gestor') return { ok: false, reason: 'ja_decidida' }
+      const motivo = motivoRejeicao?.trim() || null
       setJustificativas((prev) =>
         prev.map((row) =>
           row.id === justificativaId
@@ -260,27 +312,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 statusCompensacao: 'rejeitada_gestor',
                 minutosAbatidos: 0,
                 decididaEm: new Date().toISOString(),
-                motivoRejeicao: motivoRejeicao?.trim() || null,
+                motivoRejeicao: motivo,
               }
             : row,
         ),
       )
-      setNotificacoes((prev) => [
-        {
-          id: `${Date.now()}-crej`,
-          userId: j.userId,
-          titulo: 'Compensação não aprovada',
-          mensagem: motivoRejeicao?.trim()
-            ? `Sua compensação foi rejeitada: ${motivoRejeicao.trim()}`
-            : 'Sua solicitação de compensação foi rejeitada pelo gestor.',
-          lida: false,
-          createdAt: new Date().toISOString(),
-        },
-        ...prev,
-      ])
       return { ok: true }
     },
-    [justificativas, usuarios],
+    [justificativas, usuarios, refreshData],
   )
 
   const getCompensacoesPendentesGestor = useCallback(
@@ -328,43 +367,62 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [justificativas],
   )
 
-  const addNotificacao = useCallback((notificacao: Omit<Notificacao, 'id' | 'createdAt'>) => {
-    const newNotificacao: Notificacao = {
-      ...notificacao,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    }
-    setNotificacoes((prev) => [newNotificacao, ...prev])
-  }, [])
+  const addNotificacao = useCallback(
+    (notificacao: Omit<Notificacao, 'id' | 'createdAt'>) => {
+      void createNotificacaoAction({
+        userId: notificacao.userId,
+        titulo: notificacao.titulo,
+        mensagem: notificacao.mensagem,
+      }).then(() => refreshData())
+    },
+    [refreshData],
+  )
 
-  const markNotificacaoAsRead = useCallback((id: string) => {
-    setNotificacoes((prev) => prev.map((n) => (n.id === id ? { ...n, lida: true } : n)))
-  }, [])
+  const markNotificacaoAsRead = useCallback(
+    (id: string) => {
+      if (!authUser) return
+      setNotificacoes((prev) => prev.map((n) => (n.id === id ? { ...n, lida: true } : n)))
+      void markNotificacaoReadAction(id, authUser.id).then(() => refreshData())
+    },
+    [authUser, refreshData],
+  )
 
   const getNotificacoesByUser = useCallback(
     (userId: string) => notificacoes.filter((n) => n.userId === null || n.userId === userId),
     [notificacoes],
   )
 
-  const addUsuario = useCallback((usuario: Omit<User, 'id' | 'createdAt'>) => {
-    const newUsuario: User = {
-      ...usuario,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    }
-    setUsuarios((prev) => [...prev, newUsuario])
-  }, [])
+  const addUsuario = useCallback(
+    (usuario: Omit<User, 'id' | 'createdAt'> & { senha?: string }) => {
+      void createUsuarioAction({
+        email: usuario.email,
+        senha: usuario.senha ?? 'changeme123',
+        ra: usuario.ra,
+        nome: usuario.nome,
+        cargo: usuario.cargo,
+        departamento: usuario.departamento,
+        cargaHorariaSemanal: usuario.cargaHorariaSemanal,
+        dataInicioRecesso: usuario.dataInicioRecesso,
+        dataFimRecesso: usuario.dataFimRecesso,
+        gestorId: usuario.gestorId,
+      }).then(() => refreshData())
+    },
+    [refreshData],
+  )
 
-  const updateUsuario = useCallback((id: string, usuarioUpdate: Partial<User>) => {
-    setUsuarios((prev) => prev.map((u) => (u.id === id ? { ...u, ...usuarioUpdate } : u)))
-  }, [])
+  const updateUsuario = useCallback(
+    (id: string, usuarioUpdate: Partial<User>) => {
+      void updateUsuarioAction(id, usuarioUpdate).then(() => refreshData())
+    },
+    [refreshData],
+  )
 
-  const deleteUsuario = useCallback((id: string) => {
-    setUsuarios((prev) => prev.filter((u) => u.id !== id))
-    setPontos((prev) => prev.filter((p) => p.userId !== id))
-    setJustificativas((prev) => prev.filter((j) => j.userId !== id))
-    setNotificacoes((prev) => prev.filter((n) => n.userId !== id))
-  }, [])
+  const deleteUsuario = useCallback(
+    (id: string) => {
+      void deleteUsuarioAction(id).then(() => refreshData())
+    },
+    [refreshData],
+  )
 
   const getEstagiariosDoGestor = useCallback(
     (gestorId: string) =>
@@ -372,97 +430,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [usuarios],
   )
 
-  const calcularBancoHoras = useCallback(
+  const calcularBancoHorasFn = useCallback(
     (userId: string): number => {
-      const user = usuarios.find((u) => u.id === userId)
-      if (!user) return 0
-
-      const userPontos = pontos.filter(
-        (p) => p.userId === userId && !checkPresencaBloqueada(bloqueiosPresenca, userId, p.data),
-      )
-      const userJustificativas = justificativas.filter((j) => j.userId === userId)
-
-      const totalTrabalhado = userPontos.reduce((acc, p) => acc + p.totalMinutos, 0)
-      const totalCompensado = userJustificativas
-        .filter(
-          (j) =>
-            compensacaoAfetaSaldo(j) &&
-            !checkPresencaBloqueada(bloqueiosPresenca, userId, j.data),
-        )
-        .reduce((acc, j) => acc + minutosCompensacaoEfetivos(j), 0)
-
-      const diasTrabalhados = userPontos.length
-      const cargaDiaria = user.cargaHorariaSemanal / 5
-      const cargaEsperada = diasTrabalhados * cargaDiaria
-
-      return totalTrabalhado - cargaEsperada + totalCompensado
+      const u = usuarios.find((x) => x.id === userId)
+      if (!u) return 0
+      return calcularBancoHoras(u, pontos, justificativas, bloqueiosPresenca)
     },
     [usuarios, pontos, justificativas, bloqueiosPresenca],
   )
 
-  const calcularBancoHorasPorPeriodo = useCallback(
+  const calcularBancoHorasPorPeriodoFn = useCallback(
     (userId: string, year: string, month: string): number => {
-      const user = usuarios.find((u) => u.id === userId)
-      if (!user) return 0
-
-      const yearMonthKey = `${year}-${String(month).padStart(2, '0')}`
-      const getYearMonthFromDate = (dateString: string) => dateString.slice(0, 7)
-
-      const pontosNoPeriodo = pontos.filter(
-        (p) =>
-          p.userId === userId &&
-          getYearMonthFromDate(p.data) === yearMonthKey &&
-          !checkPresencaBloqueada(bloqueiosPresenca, userId, p.data),
-      )
-      const justificativasNoPeriodo = justificativas.filter(
-        (j) =>
-          j.userId === userId &&
-          getYearMonthFromDate(j.data) === yearMonthKey &&
-          !checkPresencaBloqueada(bloqueiosPresenca, userId, j.data),
-      )
-
-      const totalTrabalhado = pontosNoPeriodo.reduce((acc, p) => acc + p.totalMinutos, 0)
-      const totalCompensado = justificativasNoPeriodo
-        .filter((j) => compensacaoAfetaSaldo(j))
-        .reduce((acc, j) => acc + minutosCompensacaoEfetivos(j), 0)
-
-      const diasTrabalhados = pontosNoPeriodo.length
-      const cargaDiaria = user.cargaHorariaSemanal / 5
-      const cargaEsperada = diasTrabalhados * cargaDiaria
-
-      return totalTrabalhado - cargaEsperada + totalCompensado
+      const u = usuarios.find((x) => x.id === userId)
+      if (!u) return 0
+      return calcularBancoHorasPorPeriodo(u, pontos, justificativas, bloqueiosPresenca, year, month)
     },
     [usuarios, pontos, justificativas, bloqueiosPresenca],
   )
 
-  const getBancoHoras = useCallback(
-    (userId: string) => calcularBancoHoras(userId),
-    [calcularBancoHoras],
+  const addDesafio = useCallback(
+    (desafio: Omit<DesafioSemanal, 'id' | 'createdAt'>) => {
+      void addDesafioAction(desafio).then(() => refreshData())
+    },
+    [refreshData],
   )
 
-  const getBancoHorasPorPeriodo = useCallback(
-    (userId: string, year: string, month: string) =>
-      calcularBancoHorasPorPeriodo(userId, year, month),
-    [calcularBancoHorasPorPeriodo],
+  const updateDesafio = useCallback(
+    (id: string, update: Partial<DesafioSemanal>) => {
+      void updateDesafioAction(id, update).then(() => refreshData())
+    },
+    [refreshData],
   )
 
-  const addDesafio = useCallback((desafio: Omit<DesafioSemanal, 'id' | 'createdAt'>) => {
-    const newDesafio: DesafioSemanal = {
-      ...desafio,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    }
-    setDesafios((prev) => [...prev, newDesafio])
-  }, [])
-
-  const updateDesafio = useCallback((id: string, update: Partial<DesafioSemanal>) => {
-    setDesafios((prev) => prev.map((d) => (d.id === id ? { ...d, ...update } : d)))
-  }, [])
-
-  const deleteDesafio = useCallback((id: string) => {
-    setDesafios((prev) => prev.filter((d) => d.id !== id))
-    setDesafioProgressos((prev) => prev.filter((dp) => dp.desafioId !== id))
-  }, [])
+  const deleteDesafio = useCallback(
+    (id: string) => {
+      void deleteDesafioAction(id).then(() => refreshData())
+    },
+    [refreshData],
+  )
 
   const getDesafiosSemanaAtual = useCallback((): DesafioSemanal[] => {
     const today = new Date()
@@ -483,77 +488,33 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const atualizarProgressoDesafio = useCallback(
     (userId: string, desafioId: string, progressoAtual: number, concluido: boolean) => {
-      setDesafioProgressos((prev) => {
-        const existing = prev.find((dp) => dp.userId === userId && dp.desafioId === desafioId)
-        if (existing) {
-          if (existing.progressoAtual === progressoAtual && existing.concluido === concluido) {
-            return prev
-          }
-          return prev.map((dp) =>
-            dp.id === existing.id
-              ? {
-                  ...dp,
-                  progressoAtual,
-                  concluido,
-                  concluidoEm: concluido ? dp.concluidoEm ?? new Date().toISOString() : null,
-                }
-              : dp,
-          )
-        }
-        return [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            desafioId,
-            userId,
-            progressoAtual,
-            concluido,
-            concluidoEm: concluido ? new Date().toISOString() : null,
-          },
-        ]
-      })
+      void upsertDesafioProgressoAction(userId, desafioId, progressoAtual, concluido).then(() =>
+        refreshData(),
+      )
     },
-    [],
+    [refreshData],
   )
 
-  const addPontoConfig = useCallback((config: Omit<PontoConfig, 'id' | 'createdAt'>) => {
-    const newConfig: PontoConfig = {
-      ...config,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    }
-    if (newConfig.ativo) {
-      setPontoConfigs((prev) => prev.map((c) => ({ ...c, ativo: false })).concat(newConfig))
-    } else {
-      setPontoConfigs((prev) => [...prev, newConfig])
-    }
-  }, [])
+  const addPontoConfig = useCallback(
+    (config: Omit<PontoConfig, 'id' | 'createdAt'>) => {
+      void addPontoConfigAction(config).then(() => refreshData())
+    },
+    [refreshData],
+  )
 
-  const updatePontoConfig = useCallback((id: string, update: Partial<PontoConfig>) => {
-    setPontoConfigs((prev) => {
-      let configs = prev.map((c) => (c.id === id ? { ...c, ...update } : c))
-      if (update.ativo === true) {
-        configs = configs.map((c) => (c.id === id ? c : { ...c, ativo: false }))
-      }
-      return configs
-    })
-  }, [])
+  const updatePontoConfig = useCallback(
+    (id: string, update: Partial<PontoConfig>) => {
+      void updatePontoConfigAction(id, update).then(() => refreshData())
+    },
+    [refreshData],
+  )
 
-  const deletePontoConfig = useCallback((id: string) => {
-    setPontoConfigs((prev) => {
-      const target = prev.find((c) => c.id === id)
-      if (target?.padrao) return prev
-      const remaining = prev.filter((c) => c.id !== id)
-      if (target?.ativo && remaining.length > 0) {
-        const defaultConfig = remaining.find((c) => c.padrao)
-        if (defaultConfig) {
-          return remaining.map((c) => (c.id === defaultConfig.id ? { ...c, ativo: true } : c))
-        }
-        return remaining.map((c, i) => (i === 0 ? { ...c, ativo: true } : c))
-      }
-      return remaining
-    })
-  }, [])
+  const deletePontoConfig = useCallback(
+    (id: string) => {
+      void deletePontoConfigAction(id).then(() => refreshData())
+    },
+    [refreshData],
+  )
 
   const getActivePontoConfig = useCallback((): PontoConfig => {
     return pontoConfigs.find((c) => c.ativo) ?? pontoConfigs.find((c) => c.padrao) ?? DEFAULT_PONTO_CONFIG
@@ -562,6 +523,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const contextValue = useMemo(
     () =>
       ({
+        isDataLoading,
+        dataError,
+        refreshData,
         pontos,
         addPonto,
         updatePonto,
@@ -588,10 +552,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updateUsuario,
         deleteUsuario,
         getEstagiariosDoGestor,
-        getBancoHoras,
-        calcularBancoHoras,
-        getBancoHorasPorPeriodo,
-        calcularBancoHorasPorPeriodo,
+        getBancoHoras: calcularBancoHorasFn,
+        calcularBancoHoras: calcularBancoHorasFn,
+        getBancoHorasPorPeriodo: calcularBancoHorasPorPeriodoFn,
+        calcularBancoHorasPorPeriodo: calcularBancoHorasPorPeriodoFn,
         desafios,
         addDesafio,
         updateDesafio,
@@ -607,6 +571,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         getActivePontoConfig,
       }) satisfies DataContextType,
     [
+      isDataLoading,
+      dataError,
+      refreshData,
       pontos,
       addPonto,
       updatePonto,
@@ -633,10 +600,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updateUsuario,
       deleteUsuario,
       getEstagiariosDoGestor,
-      getBancoHoras,
-      calcularBancoHoras,
-      getBancoHorasPorPeriodo,
-      calcularBancoHorasPorPeriodo,
+      calcularBancoHorasFn,
+      calcularBancoHorasPorPeriodoFn,
       desafios,
       addDesafio,
       updateDesafio,

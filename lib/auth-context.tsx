@@ -1,47 +1,84 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import { findDemoLoginUser } from '@/lib/demo-users'
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from 'react'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import type { User } from './types'
+import type { ProfileRow } from '@/lib/server/db-types'
+import { mapProfile } from '@/lib/server/mappers'
 
 interface AuthContextType {
   user: User | null
   login: (email: string, senha: string) => Promise<boolean>
-  logout: () => void
+  logout: () => Promise<void>
   isLoading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+async function fetchProfile(userId: string): Promise<User | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
+  if (error || !data) return null
+  return mapProfile(data as ProfileRow)
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const supabase = createClient()
 
-  useEffect(() => {
-    // Verificar se há usuário salvo no sessionStorage
-    const savedUser = sessionStorage.getItem('currentUser')
-    if (savedUser) {
-      setUser(JSON.parse(savedUser))
-    }
-    setIsLoading(false)
+  const loadUser = useCallback(async (userId: string) => {
+    const profile = await fetchProfile(userId)
+    setUser(profile)
+    return profile
   }, [])
 
-  const login = async (email: string, senha: string): Promise<boolean> => {
-    await new Promise((resolve) => setTimeout(resolve, 280))
-
-    const foundUser = findDemoLoginUser(email, senha)
-    if (foundUser) {
-      setUser(foundUser)
-      sessionStorage.setItem('currentUser', JSON.stringify(foundUser))
-      return true
+  useEffect(() => {
+    const init = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (session?.user) {
+        await loadUser(session.user.id)
+      }
+      setIsLoading(false)
     }
+    init()
 
-    return false
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        await loadUser(session.user.id)
+      } else {
+        setUser(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase.auth, loadUser])
+
+  const login = async (email: string, senha: string): Promise<boolean> => {
+    if (!isSupabaseConfigured()) {
+      console.error('Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env.local')
+      return false
+    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha })
+    if (error || !data.user) return false
+    const profile = await loadUser(data.user.id)
+    return !!profile
   }
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut()
     setUser(null)
-    sessionStorage.removeItem('currentUser')
   }
 
   return (

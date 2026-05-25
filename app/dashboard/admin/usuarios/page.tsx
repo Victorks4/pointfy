@@ -129,7 +129,7 @@ export default function UsuariosAdminPage() {
         dataInicioRecesso: null,
         dataFimRecesso: null,
       })
-      toast.success(`Gestor ${nome} cadastrado com sucesso!`)
+      toast.success(`Gestor ${nome} cadastrado! Senha inicial: changeme123`)
     } else {
       const dataFimRecesso = dataRecesso ? calculateRecessEnd(dataRecesso) : null
       addUsuario({
@@ -143,7 +143,7 @@ export default function UsuariosAdminPage() {
         dataFimRecesso,
         gestorId: novoGestorId === '_none' ? null : novoGestorId,
       })
-      toast.success(`Estagiário ${nome} cadastrado com sucesso!`)
+      toast.success(`Estagiário ${nome} cadastrado! Senha inicial: changeme123`)
     }
 
     resetNovoUsuarioForm()

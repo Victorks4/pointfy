@@ -23,12 +23,23 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    if (user.cargo === "admin") {
+      router.push("/dashboard/admin");
+    } else if (user.cargo === "gestor") {
+      router.push("/dashboard/gestor");
+    } else {
+      router.push("/dashboard");
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,15 +49,8 @@ export default function LoginPage() {
     try {
       const success = await login(email, senha);
       if (success) {
-        const savedUser = sessionStorage.getItem("currentUser");
-        const parsedUser = savedUser ? JSON.parse(savedUser) : null;
-        if (parsedUser?.cargo === "admin") {
-          router.push("/dashboard/admin");
-        } else if (parsedUser?.cargo === "gestor") {
-          router.push("/dashboard/gestor");
-        } else {
-          router.push("/dashboard");
-        }
+        // user é atualizado pelo AuthProvider após login; redirecionamos na próxima render
+        router.refresh();
       } else {
         setError("Email ou senha incorretos");
       }
