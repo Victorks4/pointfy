@@ -67,12 +67,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, senha: string): Promise<boolean> => {
     if (!isSupabaseConfigured()) {
-      console.error('Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env.local')
+      console.error('Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env')
       return false
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha })
-    if (error || !data.user) return false
+    if (error) {
+      console.error('Login Supabase:', error.message)
+      return false
+    }
+    if (!data.user) return false
     const profile = await loadUser(data.user.id)
+    if (!profile) {
+      console.error(
+        'Usuário autenticado mas sem perfil em profiles. Rode as migrations SQL e: npm run db:seed',
+      )
+    }
     return !!profile
   }
 

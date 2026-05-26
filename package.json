@@ -10,7 +10,8 @@
     "analyze": "node scripts/analyze-bundle.mjs",
     "analyze:build": "node scripts/analyze-bundle.mjs --build",
     "analyze:visual": "cross-env ANALYZE=true next build",
-    "db:seed": "node scripts/seed-demo-users.mjs"
+    "db:seed": "node scripts/seed-demo-users.mjs",
+    "db:check": "node scripts/check-supabase.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

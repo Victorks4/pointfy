@@ -52,7 +52,9 @@ export default function LoginPage() {
         // user é atualizado pelo AuthProvider após login; redirecionamos na próxima render
         router.refresh();
       } else {
-        setError("Email ou senha incorretos");
+        setError(
+          "Não foi possível entrar. Confira email/senha, se rodou as migrations e npm run db:seed no Supabase.",
+        );
       }
     } catch {
       setError("Erro ao fazer login. Tente novamente.");

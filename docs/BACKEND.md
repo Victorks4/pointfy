@@ -4,25 +4,75 @@
 
 O backend roda no mesmo projeto Next.js 16. Dados persistem no **Supabase** (PostgreSQL + Auth + Storage). A UI continua usando `useAuth()` e `useData()`; por baixo, sessão e CRUD passam pelo Supabase.
 
+## Onde ficam os “usuários” no Supabase?
+
+Não existe tabela `usuarios`. O sistema usa **duas camadas**:
+
+| Onde no dashboard | Tabela / área | O que guarda |
+|-------------------|---------------|--------------|
+| **Authentication → Users** | `auth.users` | Login (email/senha) |
+| **Table Editor → profiles** | `profiles` | Nome, cargo, RA, gestor, etc. |
+
+O login só funciona se existir registro **nos dois**: Auth + `profiles` com o mesmo `id`.
+
 ## Configuração local
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
-2. Copie `.env.example` → `.env.local` e preencha:
+2. Copie `.env.example` → `.env` (ou `.env.local`) e preencha:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
 3. No SQL Editor do Supabase, execute em ordem:
    - `supabase/migrations/001_initial_schema.sql`
    - `supabase/migrations/002_rls_policies.sql`
+   - `supabase/migrations/003_fix_auth_user_trigger.sql` (se o seed falhar com "Database error")
    - `supabase/seed.sql` (bucket Storage)
 4. Rode o seed de usuários demo:
    ```bash
    npm run db:seed
    ```
-5. Inicie o app:
+5. Crie os usuários demo:
+   ```bash
+   npm run db:seed
+   ```
+6. Confira se deu certo:
+   ```bash
+   npm run db:check
+   ```
+7. Inicie o app:
    ```bash
    npm run dev
    ```
+
+## Problemas comuns
+
+### “Não loga” com admin@empresa.com / admin123
+
+1. **Migrations não rodaram** — no Table Editor não aparece `profiles` → execute `001_initial_schema.sql` e `002_rls_policies.sql` no SQL Editor.
+2. **Seed não rodou** — Authentication → Users vazio → rode `npm run db:seed`.
+3. **Auth OK mas perfil falta** — existe em Authentication mas não em `profiles` → rode `npm run db:seed` de novo.
+4. **URL errada no `.env`** — copie de **General → Project URL** (ex.: `https://xxxxx.supabase.co`).
+5. **Chaves trocadas** — anon (publishable) ≠ service_role (secret).
+
+### Email/password desabilitado
+
+Em **Authentication → Providers → Email**, deixe **Enable Email** ligado.
+
+### `Invalid path specified in request URL` (404)
+
+Você colou a URL da **Data API** com `/rest/v1/` no `.env`.
+
+**Errado:** `https://xxx.supabase.co/rest/v1/`  
+**Certo:** `https://xxx.supabase.co` (Settings → **General** → Project URL)
+
+### `ENOTFOUND` / `fetch failed` no `db:seed`
+
+O domínio em `NEXT_PUBLIC_SUPABASE_URL` **não existe** (URL errada ou projeto apagado).
+
+1. Dashboard Supabase → **Settings → General** → copie **Project URL** exata.
+2. Substitua no `.env` — deve ser `https://ALGO.supabase.co` (o `ALGO` muda por projeto).
+3. Teste no navegador: abrir essa URL deve responder (não dar “site não encontrado”).
+4. Rode `npm run db:seed` de novo.
 
 ### Logins demo
 
