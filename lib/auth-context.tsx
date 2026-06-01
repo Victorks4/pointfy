@@ -6,8 +6,10 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from 'react'
+import { signOutAction } from '@/app/actions/auth'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import type { User } from './types'
 import type { ProfileRow } from '@/lib/server/db-types'
@@ -33,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
+  const isLoggingOut = useRef(false)
 
   const loadUser = useCallback(async (userId: string) => {
     const profile = await fetchProfile(userId)
@@ -55,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (isLoggingOut.current) return
       if (session?.user) {
         await loadUser(session.user.id)
       } else {
@@ -86,8 +90,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    await supabase.auth.signOut()
+    isLoggingOut.current = true
     setUser(null)
+    try {
+      await signOutAction()
+      await supabase.auth.signOut({ scope: 'global' })
+    } finally {
+      isLoggingOut.current = false
+    }
   }
 
   return (

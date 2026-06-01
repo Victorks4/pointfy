@@ -60,14 +60,14 @@ export default function JustificativasPage() {
       const formData = new FormData()
       formData.append('file', atestadoArquivo)
       const upload = await uploadJustificativaArquivoAction(formData)
-      if ('error' in upload) {
+      if (!upload.success) {
         toast.error(upload.error)
         return
       }
-      arquivoPath = upload.path
+      arquivoPath = upload.data.path
     }
 
-    addJustificativa({
+    const result = await addJustificativa({
       userId: user.id,
       data: atestadoData,
       tipo: 'atestado',
@@ -76,6 +76,11 @@ export default function JustificativasPage() {
       minutosAbatidos: 0,
     })
 
+    if (!result.success) {
+      toast.error(result.error)
+      return
+    }
+
     toast.success('Atestado enviado com sucesso!')
 
     setAtestadoData('')
@@ -83,7 +88,7 @@ export default function JustificativasPage() {
     setAtestadoArquivo(null)
   }
 
-  const handleCompensacaoSubmit = (e: React.FormEvent) => {
+  const handleCompensacaoSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!user) return
@@ -98,7 +103,7 @@ export default function JustificativasPage() {
       return
     }
 
-    addJustificativa({
+    const result = await addJustificativa({
       userId: user.id,
       data: compDataFalta,
       tipo: 'compensacao',
@@ -106,6 +111,11 @@ export default function JustificativasPage() {
       arquivoUrl: null,
       minutosAbatidos: 0,
     })
+
+    if (!result.success) {
+      toast.error(result.error)
+      return
+    }
 
     toast.success('Solicitação de compensação enviada ao gestor para aprovação.')
 

@@ -23,6 +23,7 @@ import {
 import { Calendar, Clock, FileText, Bell, User, TrendingUp, TrendingDown, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LABELS } from '@/lib/labels'
+import { precisaJustificativaHoraExtra } from '@/lib/ponto-config-utils'
 import {
   STATUS_COMPENSACAO_LABELS,
   effectiveStatusCompensacao,
@@ -488,7 +489,7 @@ export default function GestorDashboardPage() {
                                     {formatMinutesToDisplay(ponto.totalMinutos)}
                                   </TableCell>
                                   <TableCell>
-                                    {ponto.totalMinutos > activeConfig.limiteMinutosSemJustificativa &&
+                                    {precisaJustificativaHoraExtra(ponto.totalMinutos, activeConfig) &&
                                     ponto.justificativaHoraExtra ? (
                                       <Badge variant="outline" className="text-xs">
                                         {ponto.justificativaHoraExtra}
@@ -544,11 +545,11 @@ export default function GestorDashboardPage() {
                               <div className="flex gap-2">
                                 <Button
                                   size="sm"
-                                  onClick={() => {
+                                  onClick={async () => {
                                     if (!user) return
-                                    const r = aprovarCompensacao(user.id, j.id)
-                                    if (r.ok) toast.success('Compensação aprovada')
-                                    else toast.error('Não foi possível aprovar')
+                                    const r = await aprovarCompensacao(user.id, j.id)
+                                    if (r.success) toast.success('Compensação aprovada')
+                                    else toast.error(r.error)
                                   }}
                                 >
                                   Aprovar
@@ -557,14 +558,14 @@ export default function GestorDashboardPage() {
                                   <Button
                                     size="sm"
                                     variant="destructive"
-                                    onClick={() => {
+                                    onClick={async () => {
                                       if (!user) return
-                                      const r = rejeitarCompensacao(user.id, j.id, motivoRejeicao)
-                                      if (r.ok) {
+                                      const r = await rejeitarCompensacao(user.id, j.id, motivoRejeicao)
+                                      if (r.success) {
                                         toast.success('Compensação rejeitada')
                                         setRejeitarId(null)
                                         setMotivoRejeicao('')
-                                      } else toast.error('Não foi possível rejeitar')
+                                      } else toast.error(r.error)
                                     }}
                                   >
                                     Confirmar rejeição

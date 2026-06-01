@@ -2,16 +2,24 @@ import { z } from 'zod'
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/
 
+const timeField = z
+  .union([z.literal(''), z.string().regex(timeRegex, 'Horário inválido (use HH:mm)')])
+  .transform((v) => (v === '' ? null : v))
+  .nullable()
+  .optional()
+
 export const pontoInputSchema = z.object({
-  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  entrada1: z.string().regex(timeRegex).nullable().optional(),
-  saida1: z.string().regex(timeRegex).nullable().optional(),
-  entrada2: z.string().regex(timeRegex).nullable().optional(),
-  saida2: z.string().regex(timeRegex).nullable().optional(),
-  totalMinutos: z.number().int().min(0),
+  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida'),
+  entrada1: timeField,
+  saida1: timeField,
+  entrada2: timeField,
+  saida2: timeField,
+  totalMinutos: z.number().int().min(0, 'Total de minutos inválido'),
   observacao: z.string().nullable().optional(),
   justificativaHoraExtra: z.string().nullable().optional(),
 })
+
+export const pontoUpdateSchema = pontoInputSchema.partial()
 
 export const justificativaInputSchema = z.object({
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -67,3 +75,39 @@ export const pontoConfigInputSchema = z.object({
   ativo: z.boolean(),
   padrao: z.boolean().optional(),
 })
+
+export const compensacaoDecisionSchema = z.object({
+  justificativaId: z.string().uuid('ID da justificativa inválido'),
+  motivoRejeicao: z.string().optional(),
+})
+
+export const desafioProgressoSchema = z.object({
+  userId: z.string().uuid(),
+  desafioId: z.string().uuid(),
+  progressoAtual: z.number().int().min(0),
+  concluido: z.boolean(),
+})
+
+export const notificacaoReadSchema = z.object({
+  notificacaoId: z.string().uuid(),
+  userId: z.string().uuid(),
+})
+
+export const ALLOWED_UPLOAD_MIME = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+] as const
+
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
+export function validateUploadFile(file: File): string | null {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return 'Arquivo muito grande (máximo 5MB)'
+  }
+  if (!ALLOWED_UPLOAD_MIME.includes(file.type as (typeof ALLOWED_UPLOAD_MIME)[number])) {
+    return 'Tipo de arquivo não permitido (use PDF, JPG ou PNG)'
+  }
+  return null
+}

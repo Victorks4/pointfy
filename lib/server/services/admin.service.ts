@@ -6,9 +6,12 @@ import {
   mapPontoConfig,
 } from '@/lib/server/mappers'
 import { requireRole } from '@/lib/server/auth'
+import { getLimiteMinutosSemJustificativa } from '@/lib/ponto-config-utils'
+import { parseInput } from '@/lib/validations/parse'
 import {
   bloqueioInputSchema,
   desafioInputSchema,
+  desafioProgressoSchema,
   pontoConfigInputSchema,
 } from '@/lib/validations/schemas'
 import type {
@@ -33,7 +36,7 @@ export async function listBloqueios(): Promise<BloqueioPresenca[]> {
 
 export async function addBloqueio(input: unknown): Promise<BloqueioPresenca> {
   await requireRole('admin')
-  const parsed = bloqueioInputSchema.parse(input)
+  const parsed = parseInput(bloqueioInputSchema, input)
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('bloqueios_presenca')
@@ -77,7 +80,7 @@ export async function getDesafiosSemanaAtual(): Promise<DesafioSemanal[]> {
 
 export async function addDesafio(input: unknown): Promise<DesafioSemanal> {
   await requireRole('admin')
-  const parsed = desafioInputSchema.parse(input)
+  const parsed = parseInput(desafioInputSchema, input)
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('desafios_semanais')
@@ -99,7 +102,7 @@ export async function addDesafio(input: unknown): Promise<DesafioSemanal> {
 
 export async function updateDesafio(id: string, input: unknown): Promise<DesafioSemanal> {
   await requireRole('admin')
-  const parsed = desafioInputSchema.partial().parse(input)
+  const parsed = parseInput(desafioInputSchema.partial(), input)
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('desafios_semanais')
@@ -140,6 +143,7 @@ export async function upsertDesafioProgresso(
   progressoAtual: number,
   concluido: boolean,
 ): Promise<DesafioProgresso> {
+  parseInput(desafioProgressoSchema, { userId, desafioId, progressoAtual, concluido })
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('desafio_progressos')
@@ -173,7 +177,7 @@ export async function getActivePontoConfig(): Promise<PontoConfig> {
 
 export async function addPontoConfig(input: unknown): Promise<PontoConfig> {
   await requireRole('admin')
-  const parsed = pontoConfigInputSchema.parse(input)
+  const parsed = parseInput(pontoConfigInputSchema, input)
   const supabase = await createClient()
 
   if (parsed.ativo) {
@@ -185,7 +189,9 @@ export async function addPontoConfig(input: unknown): Promise<PontoConfig> {
     .insert({
       nome: parsed.nome,
       meta_diaria_minutos: parsed.metaDiariaMinutos,
-      limite_minutos_sem_justificativa: parsed.limiteMinutosSemJustificativa,
+      limite_minutos_sem_justificativa: getLimiteMinutosSemJustificativa({
+        metaDiariaMinutos: parsed.metaDiariaMinutos,
+      }),
       rejeitar_minutos_zero: parsed.rejeitarMinutosZero,
       formato_decimal: parsed.formatoDecimal,
       horario_entrada_esperado: parsed.horarioEntradaEsperado,
@@ -200,7 +206,7 @@ export async function addPontoConfig(input: unknown): Promise<PontoConfig> {
 
 export async function updatePontoConfig(id: string, input: unknown): Promise<PontoConfig> {
   await requireRole('admin')
-  const parsed = pontoConfigInputSchema.partial().parse(input)
+  const parsed = parseInput(pontoConfigInputSchema.partial(), input)
   const supabase = await createClient()
 
   if (parsed.ativo) {
@@ -211,9 +217,11 @@ export async function updatePontoConfig(id: string, input: unknown): Promise<Pon
     .from('ponto_configs')
     .update({
       ...(parsed.nome && { nome: parsed.nome }),
-      ...(parsed.metaDiariaMinutos && { meta_diaria_minutos: parsed.metaDiariaMinutos }),
-      ...(parsed.limiteMinutosSemJustificativa && {
-        limite_minutos_sem_justificativa: parsed.limiteMinutosSemJustificativa,
+      ...(parsed.metaDiariaMinutos && {
+        meta_diaria_minutos: parsed.metaDiariaMinutos,
+        limite_minutos_sem_justificativa: getLimiteMinutosSemJustificativa({
+          metaDiariaMinutos: parsed.metaDiariaMinutos,
+        }),
       }),
       ...(parsed.rejeitarMinutosZero !== undefined && {
         rejeitar_minutos_zero: parsed.rejeitarMinutosZero,

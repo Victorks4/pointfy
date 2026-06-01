@@ -43,6 +43,7 @@ import {
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, SlidersHorizontal, Check } from 'lucide-react'
 import { formatMinutesToDisplay, formatDate } from '@/lib/time-utils'
+import { getLimiteMinutosSemJustificativa } from '@/lib/ponto-config-utils'
 import { LABELS } from '@/lib/labels'
 
 type FormState = {
@@ -121,18 +122,10 @@ export default function AdminConfiguracoesPontoPage() {
     }
 
     const metaDiaria = Number(form.metaDiariaMinutos)
-    const limiteJustificativa = Number(form.limiteMinutosSemJustificativa)
+    const limiteJustificativa = getLimiteMinutosSemJustificativa({ metaDiariaMinutos: metaDiaria })
 
     if (isNaN(metaDiaria) || metaDiaria <= 0) {
       toast.error('Meta diária deve ser um número positivo.')
-      return
-    }
-    if (isNaN(limiteJustificativa) || limiteJustificativa <= 0) {
-      toast.error('Limite sem justificativa deve ser um número positivo.')
-      return
-    }
-    if (limiteJustificativa <= metaDiaria) {
-      toast.error('Limite sem justificativa deve ser maior que a meta diária.')
       return
     }
 
@@ -443,18 +436,24 @@ export default function AdminConfiguracoesPontoPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cfg-limite">Limite s/ Justificativa (min)</Label>
+                <Label htmlFor="cfg-limite">Justificativa obrigatória a partir de</Label>
                 <Input
                   id="cfg-limite"
-                  type="number"
-                  min={1}
-                  value={form.limiteMinutosSemJustificativa}
-                  onChange={e => setForm(prev => ({ ...prev, limiteMinutosSemJustificativa: e.target.value }))}
+                  type="text"
+                  readOnly
+                  disabled
+                  value={
+                    Number(form.metaDiariaMinutos) > 0
+                      ? formatMinutesToDisplay(
+                          getLimiteMinutosSemJustificativa({
+                            metaDiariaMinutos: Number(form.metaDiariaMinutos),
+                          }),
+                        )
+                      : '—'
+                  }
                 />
                 <p className="text-xs text-muted-foreground">
-                  {Number(form.limiteMinutosSemJustificativa) > 0
-                    ? formatMinutesToDisplay(Number(form.limiteMinutosSemJustificativa))
-                    : '—'}
+                  Regra fixa: até este tempo (meta + 1h) sem justificativa; acima disso, obrigatório informar motivo.
                 </p>
               </div>
             </div>

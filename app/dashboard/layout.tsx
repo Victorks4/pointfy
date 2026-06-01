@@ -18,6 +18,7 @@ const FyTourOverlay = dynamic(
 )
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useGsapMount } from '@/hooks/use-gsap-mount'
 
 export default function DashboardLayout({
   children,
@@ -26,6 +27,7 @@ export default function DashboardLayout({
 }) {
   const { user, isLoading } = useAuth()
   const router = useRouter()
+  const gsapRootRef = useGsapMount({ selector: '[data-gsap-reveal]' })
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -51,9 +53,11 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <DashboardSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-h-0 overflow-hidden">
         <FyTourProvider>
-          <div className="flex flex-1 flex-col pb-24 md:pb-10">{children}</div>
+          <div ref={gsapRootRef} className="flex min-h-0 min-w-0 flex-1 flex-col pb-24 md:pb-10">
+            {children}
+          </div>
           <FyTourOverlay />
           <FyGuide />
         </FyTourProvider>

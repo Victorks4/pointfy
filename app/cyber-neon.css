@@ -1,0 +1,366 @@
+/* ─── Pontify Cyber-Neon — acentos ciberpunk em pontos estratégicos ─── */
+
+:root {
+  --neon-cyan: #06b6d4;
+  --neon-blue: #3b82f6;
+  --neon-violet: #8b5cf6;
+  --neon-magenta: #d946ef;
+  --neon-green: #22c55e;
+  --neon-orange: #f97316;
+  --neon-glow-primary: rgba(59, 130, 246, 0.45);
+  --neon-glow-cyan: rgba(6, 182, 212, 0.4);
+  --neon-glow-green: rgba(34, 197, 94, 0.42);
+  --neon-glow-orange: rgba(249, 115, 22, 0.45);
+  --neon-glow-magenta: rgba(217, 70, 239, 0.35);
+}
+
+.dark {
+  --neon-glow-primary: rgba(96, 165, 250, 0.55);
+  --neon-glow-cyan: rgba(34, 211, 238, 0.5);
+  --neon-glow-green: rgba(74, 222, 128, 0.5);
+  --neon-glow-orange: rgba(251, 146, 60, 0.55);
+  --neon-glow-magenta: rgba(232, 121, 249, 0.45);
+}
+
+@keyframes neon-border-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--neon-blue) 55%, transparent),
+      0 0 18px -4px var(--neon-glow-primary),
+      inset 0 1px 0 color-mix(in srgb, var(--neon-cyan) 25%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--neon-cyan) 70%, transparent),
+      0 0 28px -2px var(--neon-glow-cyan),
+      inset 0 1px 0 color-mix(in srgb, var(--neon-cyan) 35%, transparent);
+  }
+}
+
+@keyframes neon-line-scan {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes neon-text-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  93% {
+    opacity: 0.88;
+  }
+  94% {
+    opacity: 1;
+  }
+}
+
+/* Fundo sutil — grade + brilho (dashboard) */
+.neon-ambient {
+  position: relative;
+  isolation: isolate;
+}
+
+.neon-ambient::before {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--neon-cyan) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--neon-cyan) 5%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 85% 65% at 50% 12%, black 15%, transparent 72%);
+}
+
+.dark .neon-ambient::before {
+  opacity: 0.22;
+}
+
+.neon-ambient > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hero do dashboard */
+.neon-hero {
+  position: relative;
+  border-bottom-color: color-mix(in srgb, var(--neon-cyan) 28%, var(--border)) !important;
+}
+
+.neon-hero::after {
+  content: '';
+  position: absolute;
+  left: 2.5rem;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--neon-cyan),
+    var(--neon-blue),
+    var(--neon-violet),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: neon-line-scan 6s linear infinite;
+  opacity: 0.75;
+}
+
+.neon-text-glow {
+  text-shadow:
+    0 0 20px var(--neon-glow-primary),
+    0 0 40px color-mix(in srgb, var(--neon-cyan) 25%, transparent);
+}
+
+.neon-text-glow-subtle {
+  text-shadow: 0 0 14px var(--neon-glow-cyan);
+}
+
+.neon-clock {
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--neon-cyan) 35%, transparent);
+  background: color-mix(in srgb, var(--neon-cyan) 8%, var(--card));
+  box-shadow:
+    0 0 12px -4px var(--neon-glow-cyan),
+    inset 0 0 12px -8px var(--neon-glow-cyan);
+  color: color-mix(in srgb, var(--neon-cyan) 75%, var(--foreground));
+}
+
+.dark .neon-clock {
+  color: #67e8f9;
+}
+
+/* Cards interativos */
+.neon-card {
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.2s ease;
+}
+
+.neon-card:hover {
+  border-color: color-mix(in srgb, var(--neon-cyan) 45%, var(--border)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-cyan) 20%, transparent),
+    0 8px 28px -8px var(--neon-glow-primary);
+}
+
+.neon-card-presence:hover {
+  border-color: color-mix(in srgb, var(--neon-blue) 50%, var(--border)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-blue) 25%, transparent),
+    0 10px 32px -10px var(--neon-glow-primary);
+}
+
+.neon-metric-positive {
+  border-color: color-mix(in srgb, var(--neon-green) 35%, var(--border)) !important;
+}
+
+.neon-metric-positive:hover {
+  border-color: color-mix(in srgb, var(--neon-green) 55%, var(--border)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-green) 22%, transparent),
+    0 10px 28px -10px var(--neon-glow-green);
+}
+
+.neon-metric-negative:hover {
+  border-color: color-mix(in srgb, #f87171 50%, var(--border)) !important;
+  box-shadow: 0 10px 28px -12px rgba(248, 113, 113, 0.35);
+}
+
+.neon-card-streak {
+  border-color: color-mix(in srgb, var(--neon-orange) 30%, var(--border)) !important;
+}
+
+.neon-card-streak:hover {
+  border-color: color-mix(in srgb, var(--neon-orange) 55%, var(--border)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-orange) 25%, transparent),
+    0 10px 30px -10px var(--neon-glow-orange);
+}
+
+/* CTA principal — Registrar presença */
+.neon-card-cta {
+  position: relative;
+  overflow: hidden;
+  animation: neon-border-pulse 3.5s ease-in-out infinite;
+}
+
+.neon-card-cta::before {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    125deg,
+    transparent 40%,
+    color-mix(in srgb, var(--neon-cyan) 12%, transparent) 50%,
+    transparent 60%
+  );
+  opacity: 0.9;
+}
+
+.neon-card-cta:hover {
+  transform: translateY(-2px);
+}
+
+.neon-icon-glow {
+  box-shadow:
+    0 0 16px -2px var(--neon-glow-primary),
+    inset 0 0 12px -6px color-mix(in srgb, var(--neon-cyan) 40%, transparent);
+}
+
+/* Botões */
+.neon-btn-primary {
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-blue) 40%, transparent),
+    0 4px 20px -4px var(--neon-glow-primary);
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.15s ease,
+    filter 0.2s ease;
+}
+
+.neon-btn-primary:hover {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-cyan) 55%, transparent),
+    0 0 24px -2px var(--neon-glow-cyan),
+    0 8px 28px -6px var(--neon-glow-primary);
+  filter: brightness(1.06);
+}
+
+.neon-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.neon-btn-outline:hover {
+  border-color: color-mix(in srgb, var(--neon-cyan) 55%, var(--border)) !important;
+  box-shadow: 0 0 18px -6px var(--neon-glow-cyan);
+}
+
+/* Progress bars */
+.neon-progress > div {
+  box-shadow: 0 0 10px -2px var(--neon-glow-primary);
+}
+
+.neon-progress-amber > div {
+  box-shadow: 0 0 10px -2px var(--neon-glow-orange);
+}
+
+/* Sidebar — item ativo */
+.neon-sidebar-active {
+  box-shadow:
+    inset 3px 0 0 var(--neon-cyan),
+    0 0 20px -12px var(--neon-glow-cyan);
+}
+
+.neon-sidebar-active .neon-sidebar-icon {
+  box-shadow:
+    0 0 14px -2px var(--neon-glow-primary),
+    inset 0 0 8px -4px color-mix(in srgb, var(--neon-cyan) 35%, transparent);
+}
+
+/* Logo na sidebar */
+.neon-logo-shell:hover {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-cyan) 45%, transparent),
+    0 0 24px -6px var(--neon-glow-cyan);
+}
+
+/* Ponto — regras + salvar */
+.neon-regras-card {
+  border-color: color-mix(in srgb, var(--neon-cyan) 32%, var(--border)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-cyan) 15%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--neon-cyan) 12%, transparent);
+}
+
+.neon-regras-card:hover {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-cyan) 35%, transparent),
+    0 8px 24px -12px var(--neon-glow-cyan);
+}
+
+/* Login */
+.neon-login-submit {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-blue) 35%, transparent),
+    0 8px 28px -8px var(--neon-glow-primary) !important;
+}
+
+.neon-login-submit:hover:not(:disabled) {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-cyan) 50%, transparent),
+    0 0 28px -4px var(--neon-glow-cyan),
+    0 12px 32px -8px var(--neon-glow-primary) !important;
+}
+
+.neon-input-glow:focus-visible {
+  border-color: color-mix(in srgb, var(--neon-cyan) 55%, var(--border)) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--neon-cyan) 18%, transparent),
+    0 0 16px -4px var(--neon-glow-cyan);
+}
+
+/* Fy — destaque do tour / spotlight */
+.fy-spotlight-active {
+  outline-color: var(--neon-cyan) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon-cyan) 40%, transparent),
+    0 0 20px -2px var(--neon-glow-cyan) !important;
+}
+
+@keyframes fy-spotlight-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--neon-cyan) 30%, transparent),
+      0 0 8px 0 var(--neon-glow-cyan);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--neon-magenta) 35%, transparent),
+      0 0 18px 2px var(--neon-glow-magenta);
+  }
+}
+
+/* Ícone Zap no hero */
+.neon-zap-icon {
+  filter: drop-shadow(0 0 6px var(--neon-glow-cyan));
+  animation: neon-text-flicker 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neon-hero::after,
+  .neon-card-cta,
+  .neon-zap-icon {
+    animation: none;
+  }
+
+  .neon-card-cta {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--neon-blue) 45%, transparent),
+      0 4px 16px -8px var(--neon-glow-primary);
+  }
+
+  .neon-card:hover,
+  .neon-card-cta:hover {
+    transform: none;
+  }
+}

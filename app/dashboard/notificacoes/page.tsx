@@ -7,14 +7,17 @@ import { Button } from '@/components/ui/button'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { Bell, BellOff, Check, CheckCheck } from 'lucide-react'
+import Link from 'next/link'
+import { Bell, BellOff, Check, CheckCheck, ExternalLink } from 'lucide-react'
 
 export default function NotificacoesPage() {
   const { user } = useAuth()
-  const { getNotificacoesByUser, markNotificacaoAsRead } = useData()
+  const { getNotificacoesByUser, markNotificacaoAsRead, getCompensacoesPendentesGestor } = useData()
 
   const notificacoes = user ? getNotificacoesByUser(user.id) : []
-  const naoLidas = notificacoes.filter(n => !n.lida)
+  const naoLidas = notificacoes.filter((n) => !n.lida)
+  const compensacoesPendentes =
+    user?.cargo === 'gestor' ? getCompensacoesPendentesGestor(user.id).length : 0
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -44,18 +47,29 @@ export default function NotificacoesPage() {
       </header>
 
       <main data-fy-anchor="fy-notificacoes-panel" className="flex-1 p-4 md:p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">
-              Suas Notificações
-            </h2>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div data-gsap-reveal>
+            <h2 className="text-2xl font-bold text-foreground">Suas Notificações</h2>
             <p className="text-muted-foreground">
-              {naoLidas.length > 0 
+              {naoLidas.length > 0
                 ? `Você tem ${naoLidas.length} notificação(ões) não lida(s)`
-                : 'Todas as notificações foram lidas'
-              }
+                : 'Todas as notificações foram lidas'}
             </p>
+            {user?.cargo === 'gestor' && compensacoesPendentes > 0 ? (
+              <p className="mt-2 text-sm text-amber-600 dark:text-[#d29922]">
+                {compensacoesPendentes} compensação(ões) aguardando sua aprovação.
+              </p>
+            ) : null}
           </div>
+
+          {user?.cargo === 'gestor' && compensacoesPendentes > 0 ? (
+            <Button asChild variant="default" className="bg-amber-600 hover:bg-amber-700 dark:bg-[#d29922]">
+              <Link href="/dashboard/gestor">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Aprovar compensações
+              </Link>
+            </Button>
+          ) : null}
 
           {naoLidas.length > 0 && (
             <Button variant="outline" onClick={handleMarkAllAsRead}>
@@ -68,8 +82,9 @@ export default function NotificacoesPage() {
         {notificacoes.length > 0 ? (
           <div className="space-y-4">
             {notificacoes.map((notificacao) => (
-              <Card 
+              <Card
                 key={notificacao.id}
+                data-gsap-reveal
                 className={notificacao.lida ? 'opacity-60' : 'border-primary/20 bg-primary/5'}
               >
                 <CardHeader className="pb-2">

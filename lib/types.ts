@@ -37,11 +37,13 @@ export type StatusCompensacao =
   | 'aprovada_gestor'
   | 'rejeitada_gestor'
 
+export type JustificativaTipo = 'atestado' | 'compensacao'
+
 export interface Justificativa {
   id: string
   userId: string
   data: string
-  tipo: 'atestado' | 'compensacao'
+  tipo: JustificativaTipo
   descricao: string
   arquivoUrl: string | null
   minutosAbatidos: number // Para compensação aprovada: -360 (6h)

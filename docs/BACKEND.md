@@ -31,13 +31,13 @@ O login só funciona se existir registro **nos dois**: Auth + `profiles` com o m
    ```bash
    npm run db:seed
    ```
-5. Crie os usuários demo:
-   ```bash
-   npm run db:seed
-   ```
-6. Confira se deu certo:
+5. Confira se deu certo:
    ```bash
    npm run db:check
+   ```
+6. (Opcional) Testes unitários das regras críticas:
+   ```bash
+   npm test
    ```
 7. Inicie o app:
    ```bash
@@ -92,7 +92,9 @@ lib/server/
   db-types.ts          # Tipos das tabelas
   mappers.ts           # DB row ↔ tipos de domínio
   services/            # Regras por agregado
-lib/validations/       # Schemas Zod
+lib/validations/       # Schemas Zod + parseInput
+lib/server/validators/ # Regras de negócio de ponto (servidor)
+lib/types/action-result.ts  # Tipo { success, data | error } para Actions/UI
 app/actions/           # Server Actions (mutações)
 app/api/v1/            # GET snapshot e banco de horas
 middleware.ts          # Refresh de sessão + proteção /dashboard
@@ -110,8 +112,11 @@ scripts/seed-demo-users.mjs
 
 1. `DataProvider` chama `GET /api/v1/data` ao montar (usuário logado).
 2. Mutações (`addPonto`, `addUsuario`, …) disparam **Server Actions** em `app/actions/`.
-3. Actions delegam para `lib/server/services/*` com cliente Supabase do servidor (RLS aplicada).
-4. Após mutação, `refreshData()` recarrega o snapshot.
+3. Actions retornam `ActionResult` (`success` + `data` ou `error` em PT-BR).
+4. Services validam com Zod (`parseInput`) e, no ponto, `ponto.validator.ts` (bloqueio, recesso, horários, limite, total).
+5. Após sucesso, `refreshData()` recarrega o snapshot; a UI exibe `toast.error` quando `success: false`.
+
+O snapshot (`loadDashboardSnapshot`) carrega `profiles` por papel: estagiário só o próprio; gestor sua equipe; admin todos. Pontos/justificativas do gestor são filtrados por `user_id` da equipe.
 
 ## Tabelas principais
 

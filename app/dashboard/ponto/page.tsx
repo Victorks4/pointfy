@@ -23,12 +23,17 @@ import {
   isValidTimeSequence,
   formatMinutesToDisplay,
   isInRecessPeriod,
+  hasClosedMinutes,
 } from '@/lib/time-utils'
 import { JUSTIFICATIVAS_HORA_EXTRA } from '@/lib/types'
 import type { PontoConfig } from '@/lib/types'
 import { fyEmit } from '@/lib/fy-event-bus'
 import { LABELS } from '@/lib/labels'
 import { buildObservacaoComAnotacao } from '@/lib/presenca-anotacoes'
+import {
+  getLimiteMinutosSemJustificativa,
+  precisaJustificativaHoraExtra,
+} from '@/lib/ponto-config-utils'
 import { PontifyDatePicker } from '@/components/pontify-date-calendar'
 import { TimeField } from '@/components/time-field'
 import { Clock, AlertCircle, Save, Info, CheckCircle, Coffee } from 'lucide-react'
@@ -48,20 +53,19 @@ type EstadoClock = 'red' | 'yellow' | 'green'
 
 function buildRegrasPreenchimento(limiteMinutos: number) {
   return [
-    { icon: AlertCircle, color: 'text-zinc-400', texto: 'Formato HH:MM obrigatório' },
-    { icon: AlertCircle, color: 'text-zinc-400', texto: 'Horários "fechados" (minutos = 00) não são aceitos' },
-    { icon: AlertCircle, color: 'text-zinc-400', texto: 'Saída deve ser após a entrada' },
-    { icon: AlertCircle, color: 'text-zinc-400', texto: 'Sem sobreposição de horários' },
-    { icon: Info,        color: 'text-blue-500',  texto: `Máximo de ${formatMinutesToDisplay(limiteMinutos)} sem justificativa` },
+    { icon: AlertCircle, color: 'text-muted-foreground', texto: 'Formato HH:MM obrigatório' },
+    { icon: AlertCircle, color: 'text-muted-foreground', texto: 'Horários "fechados" (minutos = 00) não são aceitos' },
+    { icon: AlertCircle, color: 'text-muted-foreground', texto: 'Saída deve ser após a entrada' },
+    { icon: AlertCircle, color: 'text-muted-foreground', texto: 'Sem sobreposição de horários' },
+    {
+      icon: Info,
+      color: 'text-primary dark:text-sky-300',
+      texto: `Até ${formatMinutesToDisplay(limiteMinutos)} sem justificativa (1h extra sobre a meta do dia)`,
+    },
   ]
 }
  
 // ─── Helpers ──────────────────────────────────────────────────────────────────
- 
-const hasClosedMinutes = (time: string): boolean => {
-  const [, min] = time.split(':')
-  return Number.isFinite(Number(min)) && Number(min) === 0
-}
  
 const formatTime = (date: Date) =>
   date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -200,12 +204,12 @@ function CardRegraPreenchimento({ limiteMinutos }: { limiteMinutos: number }) {
   const regras = buildRegrasPreenchimento(limiteMinutos)
 
   return (
-    <Card data-fy-anchor="fy-ponto-regras" className="border-zinc-200 h-full">
+    <Card data-fy-anchor="fy-ponto-regras" className="neon-regras-card h-full border-border">
       <CardHeader className="pb-3">
-        <CardTitle className="text-xl text-zinc-900">Regras de Preenchimento</CardTitle>
+        <CardTitle className="text-xl text-card-foreground">Regras de Preenchimento</CardTitle>
       </CardHeader>
       <CardContent>
-        <ul className="space-y-3 text-base text-[#5f7897]">
+        <ul className="space-y-3 text-base text-muted-foreground">
           {regras.map(({ icon: Icon, color, texto }) => (
             <li key={texto} className="flex items-center gap-2">
               <Icon className={`h-4 w-4 ${color}`} />
@@ -526,7 +530,11 @@ function JustificativaAlert({
   // isOutro ficava false, nunca exibindo o campo de texto.
   const [opcaoSelecionada, setOpcaoSelecionada] = useState<string>(() => {
     const opcoesFixas = JUSTIFICATIVAS_HORA_EXTRA.filter((j) => j !== 'Outro')
-    return opcoesFixas.includes(justificativa) ? justificativa : justificativa ? 'Outro' : ''
+    return (opcoesFixas as readonly string[]).includes(justificativa)
+      ? justificativa
+      : justificativa
+        ? 'Outro'
+        : ''
   })
  
   const isOutro = opcaoSelecionada === 'Outro'
@@ -548,10 +556,10 @@ function JustificativaAlert({
   }
  
   return (
-    <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200/80">
-      <Alert className="mb-4 border-blue-200 bg-blue-100/40">
-        <Info className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-800">
+    <div className="rounded-xl border border-primary/25 bg-primary/10 p-4 dark:border-primary/35 dark:bg-primary/15">
+      <Alert className="mb-4 border-primary/30 bg-primary/15 dark:bg-primary/20">
+        <Info className="h-4 w-4 text-primary dark:text-sky-300" />
+        <AlertDescription className="text-foreground">
           Você está registrando mais de {formatMinutesToDisplay(limiteMinutos)}.
           Por favor, selecione uma justificativa.
         </AlertDescription>
@@ -613,6 +621,7 @@ export default function PontoPage() {
   const [mounted, setMounted] = useState(false)
   const [selectedDate, setSelectedDate] = useState(getTodayString())
   const [errors, setErrors] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
  
   const pontoHoje = user ? getPontoByDate(user.id, selectedDate) : null
  
@@ -688,20 +697,21 @@ export default function PontoPage() {
     [campos],
   )
  
-  const precisaJustificativa = totalMinutos > activeConfig.limiteMinutosSemJustificativa
+  const limiteSemJustificativa = getLimiteMinutosSemJustificativa(activeConfig)
+  const precisaJustificativa = precisaJustificativaHoraExtra(totalMinutos, activeConfig)
 
   const { validate } = useValidatePonto(
     campos,
     justificativa,
     precisaJustificativa,
     activeConfig.rejeitarMinutosZero,
-    activeConfig.limiteMinutosSemJustificativa,
+    limiteSemJustificativa,
   )
  
   // Submit
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
- 
+
     if (emRecesso) {
       toast.error('Você está em período de recesso remunerado')
       fyEmit({ type: 'ponto:error' })
@@ -713,18 +723,18 @@ export default function PontoPage() {
       fyEmit({ type: 'ponto:error' })
       return
     }
- 
+
     const erros = validate()
     setErrors(erros)
- 
+
     if (erros.length > 0) {
       toast.error('Corrija os erros antes de salvar')
       fyEmit({ type: 'ponto:error' })
       return
     }
- 
+
     if (!user) return
- 
+
     const pontoData = {
       userId: user.id,
       data: selectedDate,
@@ -740,15 +750,21 @@ export default function PontoPage() {
       justificativaHoraExtra: precisaJustificativa ? justificativa : null,
     }
 
-    if (pontoHoje) {
-      updatePonto(pontoHoje.id, pontoData)
-      toast.success('Presença atualizada com sucesso!')
-    } else {
-      addPonto(pontoData)
-      toast.success('Presença registrada com sucesso!')
+    setSaving(true)
+    const result = pontoHoje
+      ? await updatePonto(pontoHoje.id, pontoData)
+      : await addPonto(pontoData)
+    setSaving(false)
+
+    if (!result.success) {
+      toast.error(result.error)
+      fyEmit({ type: 'ponto:error' })
+      return
     }
 
-    // Emitir evento de sucesso para o Fy
+    toast.success(
+      pontoHoje ? 'Presença atualizada com sucesso!' : 'Presença registrada com sucesso!',
+    )
     fyEmit({ type: 'ponto:saved', success: true })
     setErrors([])
   }
@@ -822,9 +838,9 @@ export default function PontoPage() {
               totalMinutos={totalMinutos}
               precisaJustificativa={precisaJustificativa}
               metaDiaria={activeConfig.metaDiariaMinutos}
-              limiteMinutos={activeConfig.limiteMinutosSemJustificativa}
+              limiteMinutos={limiteSemJustificativa}
             />
-            <CardRegraPreenchimento limiteMinutos={activeConfig.limiteMinutosSemJustificativa} />
+            <CardRegraPreenchimento limiteMinutos={limiteSemJustificativa} />
           </div>
 
           {/* Formulário */}
@@ -867,7 +883,7 @@ export default function PontoPage() {
                         <JustificativaAlert
                           justificativa={justificativa}
                           onJustificativaChange={setJustificativa}
-                          limiteMinutos={activeConfig.limiteMinutosSemJustificativa}
+                          limiteMinutos={limiteSemJustificativa}
                         />
                       </motion.div>
                     )}
@@ -896,8 +912,9 @@ export default function PontoPage() {
  
                   <Button
                     type="submit"
+                    disabled={saving}
                     data-fy-anchor="fy-save-ponto"
-                    className="w-full h-12 text-base font-semibold transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
+                    className="neon-btn-primary w-full h-12 text-base font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <Save className="mr-2 h-5 w-5" />
                     {pontoHoje ? LABELS.ATUALIZAR_PRESENCA : LABELS.REGISTRAR_PRESENCA}

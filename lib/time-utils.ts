@@ -41,17 +41,27 @@ export function formatMinutesToDisplay(minutes: number): string {
 export function isValidTimeFormat(time: string): boolean {
   const parts = time.split(':')
   if (parts.length !== 2) return false
-  
+
   const [hours, minutes] = parts.map(Number)
-  
+
   if (isNaN(hours) || isNaN(minutes)) return false
   if (hours < 0 || hours > 23) return false
   if (minutes < 0 || minutes > 59) return false
-  
-  // Não aceitar horários "fechados" (00 minutos)
-  // DESABILITADO: se quiser habilitar, descomente a linha abaixo
-  // if (minutes === 0) return false
-  
+
+  return true
+}
+
+/** Horário com minutos exatamente :00 (regra "não fechado"). */
+export function hasClosedMinutes(time: string): boolean {
+  const parts = time.split(':')
+  if (parts.length !== 2) return false
+  const minutes = Number(parts[1])
+  return Number.isFinite(minutes) && minutes === 0
+}
+
+export function isValidTimeFormatStrict(time: string, rejeitarMinutosZero: boolean): boolean {
+  if (!isValidTimeFormat(time)) return false
+  if (rejeitarMinutosZero && hasClosedMinutes(time)) return false
   return true
 }
 

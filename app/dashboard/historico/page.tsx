@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { LABELS } from '@/lib/labels'
 import { formatDate, formatMinutesToDisplay } from '@/lib/time-utils'
+import { precisaJustificativaHoraExtra } from '@/lib/ponto-config-utils'
 import { Calendar, TrendingUp, TrendingDown } from 'lucide-react'
 
 const MESES = [
@@ -233,7 +234,7 @@ export default function HistoricoPage() {
                           ) : (
                             <>
                               {ponto.observacao ? <p>{ponto.observacao}</p> : null}
-                              {ponto.totalMinutos > activeConfig.limiteMinutosSemJustificativa &&
+                              {precisaJustificativaHoraExtra(ponto.totalMinutos, activeConfig) &&
                                 ponto.justificativaHoraExtra && (
                                   <Badge variant="outline" className="text-xs mt-1">
                                     {ponto.justificativaHoraExtra}

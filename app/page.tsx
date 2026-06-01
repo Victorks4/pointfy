@@ -12,6 +12,7 @@ import { LoginBrandLoader } from "@/components/login-brand-loader";
 import { PontifyDataFlowBrand } from "@/components/pontify-data-flow-brand";
 import { User, Lock, ArrowRight } from "lucide-react";
 import { LoginLeftPanel } from "@/components/login-left-panel";
+import { GsapLoginEntrance } from "@/components/gsap-login-entrance";
 import {
   LOGIN_SYNC_TRANSITION,
   LoginAmbientProvider,
@@ -23,7 +24,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { login, user } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -31,15 +32,15 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (authLoading || !user) return;
     if (user.cargo === "admin") {
-      router.push("/dashboard/admin");
+      router.replace("/dashboard/admin");
     } else if (user.cargo === "gestor") {
-      router.push("/dashboard/gestor");
+      router.replace("/dashboard/gestor");
     } else {
-      router.push("/dashboard");
+      router.replace("/dashboard");
     }
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,12 +66,18 @@ export default function LoginPage() {
 
   return (
     <LoginAmbientProvider submitting={isLoading}>
+      <GsapLoginEntrance>
       <main className="flex min-h-dvh w-full max-w-full flex-col lg:min-h-dvh lg:flex-row lg:items-stretch">
-        <LoginLeftPanel mounted={mounted}>
-          <div className="pointer-events-none min-h-dvh flex-1 select-none lg:min-h-0" aria-hidden />
-        </LoginLeftPanel>
+        <div data-gsap-login-panel className="min-h-dvh flex-1 lg:min-h-0">
+          <LoginLeftPanel mounted={mounted}>
+            <div className="pointer-events-none min-h-dvh flex-1 select-none lg:min-h-0" aria-hidden />
+          </LoginLeftPanel>
+        </div>
 
-        <div className="flex min-h-dvh flex-1 flex-col items-center justify-center bg-background p-8 lg:min-h-0">
+        <div
+          data-gsap-login-form
+          className="flex min-h-dvh flex-1 flex-col items-center justify-center bg-background p-8 lg:min-h-0"
+        >
           <div
             className={`w-full max-w-md transition-all duration-700 delay-200 ${mounted ? "translate-x-0 opacity-100" : "translate-x-10 opacity-0"}`}
           >
@@ -103,7 +110,7 @@ export default function LoginPage() {
                       placeholder="seu@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="h-12 border-2 border-gray-200 pl-12 text-base transition-all focus:border-gray-500 focus:ring-gray-500/20"
+                      className="neon-input-glow h-12 border-2 border-gray-200 pl-12 text-base transition-all focus:border-gray-500 focus:ring-gray-500/20"
                       required
                     />
                   </div>
@@ -121,7 +128,7 @@ export default function LoginPage() {
                       placeholder="Digite sua senha"
                       value={senha}
                       onChange={(e) => setSenha(e.target.value)}
-                      className="h-12 border-2 border-gray-200 pl-12 text-base transition-all focus:border-gray-500 focus:ring-gray-500/20"
+                      className="neon-input-glow h-12 border-2 border-gray-200 pl-12 text-base transition-all focus:border-gray-500 focus:ring-gray-500/20"
                       required
                     />
                   </div>
@@ -161,7 +168,7 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="h-12 w-full cursor-pointer border border-blue-500/34 bg-gradient-to-br from-[#2875f0] to-[#2061d9] text-base font-semibold text-white shadow-[0_10px_32px_-8px_rgb(41_104_230_/_0.55)] transition-[box-shadow,color] hover:from-[#2e7efb] hover:to-[#2567ea] hover:shadow-[0_14px_36px_-6px_rgb(41_104_230_/_0.62)]"
+                  className="neon-login-submit h-12 w-full cursor-pointer border border-blue-500/34 bg-gradient-to-br from-[#2875f0] to-[#2061d9] text-base font-semibold text-white transition-[box-shadow,color] hover:from-[#2e7efb] hover:to-[#2567ea]"
                 >
                   {isLoading ? (
                     <>
@@ -178,7 +185,7 @@ export default function LoginPage() {
               </motion.div>
             </form>
 
-            <div className="mt-6 flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
+            <div className="mt-6 flex items-center gap-3 rounded-xl border border-cyan-200/80 bg-blue-50/60 p-3 shadow-[0_0_20px_-8px_var(--neon-glow-cyan)] dark:border-cyan-500/25 dark:bg-cyan-950/20 dark:shadow-[0_0_24px_-10px_var(--neon-glow-cyan)]">
               <Image
                 src="/fy-mascote.png"
                 alt="Fy, guia do Pontify"
@@ -194,6 +201,7 @@ export default function LoginPage() {
           </div>
         </div>
       </main>
+      </GsapLoginEntrance>
     </LoginAmbientProvider>
   );
 }

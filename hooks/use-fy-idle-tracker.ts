@@ -91,12 +91,18 @@ export function useFyIdleTracker(options: UseFyIdleTrackerOptions = {}) {
   useEffect(() => {
     if (!enabled) return
 
-    const handleActivity = () => {
+    let lastMoveAt = 0
+
+    const handleActivity = (event: Event) => {
+      if (event.type === 'mousemove') {
+        const now = Date.now()
+        if (now - lastMoveAt < 750) return
+        lastMoveAt = now
+      }
       resetIdle()
     }
 
-    // Event listeners para atividade do usuário
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'wheel']
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'wheel', 'mousemove']
     events.forEach((event) => {
       window.addEventListener(event, handleActivity, { passive: true })
     })

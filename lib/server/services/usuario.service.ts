@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mapProfile, profileToInsert } from '@/lib/server/mappers'
 import { requireRole } from '@/lib/server/auth'
+import { parseInput } from '@/lib/validations/parse'
 import { usuarioInputSchema } from '@/lib/validations/schemas'
 import type { User } from '@/lib/types'
 import type { ProfileRow } from '@/lib/server/db-types'
@@ -27,7 +28,7 @@ export async function getEstagiariosDoGestor(gestorId: string): Promise<User[]> 
 
 export async function createUsuario(input: unknown): Promise<User> {
   await requireRole('admin')
-  const parsed = usuarioInputSchema.parse(input)
+  const parsed = parseInput(usuarioInputSchema, input)
   if (!parsed.senha) throw new Error('Senha obrigatória para novo usuário')
 
   const admin = createAdminClient()
@@ -68,7 +69,7 @@ export async function createUsuario(input: unknown): Promise<User> {
 
 export async function updateUsuario(id: string, input: unknown): Promise<User> {
   await requireRole('admin')
-  const parsed = usuarioInputSchema.partial().parse(input)
+  const parsed = parseInput(usuarioInputSchema.partial(), input)
   const supabase = await createClient()
 
   const update: Record<string, unknown> = {}

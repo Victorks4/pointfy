@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { mapNotificacao } from '@/lib/server/mappers'
 import { requireAuth, requireRole } from '@/lib/server/auth'
-import { notificacaoInputSchema } from '@/lib/validations/schemas'
+import { parseInput } from '@/lib/validations/parse'
+import { notificacaoInputSchema, notificacaoReadSchema } from '@/lib/validations/schemas'
 import type { Notificacao } from '@/lib/types'
 import type { NotificacaoRow } from '@/lib/server/db-types'
 
@@ -29,7 +30,7 @@ export async function listNotificacoesForUser(userId: string): Promise<Notificac
 
 export async function createNotificacao(input: unknown): Promise<Notificacao> {
   await requireRole('admin')
-  const parsed = notificacaoInputSchema.parse(input)
+  const parsed = parseInput(notificacaoInputSchema, input)
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -47,6 +48,7 @@ export async function createNotificacao(input: unknown): Promise<Notificacao> {
 }
 
 export async function markNotificacaoAsRead(notificacaoId: string, userId: string) {
+  parseInput(notificacaoReadSchema, { notificacaoId, userId })
   const supabase = await createClient()
   const { error } = await supabase.from('notificacao_leituras').upsert({
     notificacao_id: notificacaoId,

@@ -52,7 +52,7 @@ import type {
   PontoConfig,
   BloqueioPresenca,
 } from './types'
-import { MINUTOS_COMPENSACAO } from './types'
+import type { ActionResult } from '@/lib/types/action-result'
 
 interface DataContextType {
   isDataLoading: boolean
@@ -60,21 +60,25 @@ interface DataContextType {
   refreshData: () => Promise<void>
 
   pontos: PontoRegistro[]
-  addPonto: (ponto: Omit<PontoRegistro, 'id' | 'createdAt' | 'updatedAt'>) => void
-  updatePonto: (id: string, ponto: Partial<PontoRegistro>) => void
+  addPonto: (
+    ponto: Omit<PontoRegistro, 'id' | 'createdAt' | 'updatedAt'>,
+  ) => Promise<ActionResult<PontoRegistro>>
+  updatePonto: (id: string, ponto: Partial<PontoRegistro>) => Promise<ActionResult<PontoRegistro>>
   getPontosByUser: (userId: string) => PontoRegistro[]
   getPontoByDate: (userId: string, data: string) => PontoRegistro | undefined
 
   justificativas: Justificativa[]
-  addJustificativa: (justificativa: Omit<Justificativa, 'id' | 'createdAt'>) => void
+  addJustificativa: (
+    justificativa: Omit<Justificativa, 'id' | 'createdAt'>,
+  ) => Promise<ActionResult<Justificativa>>
   getJustificativasByUser: (userId: string) => Justificativa[]
   getJustificativasVisiveisRh: () => Justificativa[]
-  aprovarCompensacao: (gestorId: string, justificativaId: string) => { ok: true } | { ok: false; reason: string }
+  aprovarCompensacao: (gestorId: string, justificativaId: string) => Promise<ActionResult<void>>
   rejeitarCompensacao: (
     gestorId: string,
     justificativaId: string,
     motivoRejeicao?: string,
-  ) => { ok: true } | { ok: false; reason: string }
+  ) => Promise<ActionResult<void>>
   getCompensacoesPendentesGestor: (gestorId: string) => Justificativa[]
   getCompensacoesHistoricoGestor: (gestorId: string) => Justificativa[]
 
@@ -183,8 +187,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [authUser, authLoading, refreshData])
 
   const addPonto = useCallback(
-    (ponto: Omit<PontoRegistro, 'id' | 'createdAt' | 'updatedAt'>) => {
-      void createPontoAction({
+    async (ponto: Omit<PontoRegistro, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const result = await createPontoAction({
         data: ponto.data,
         entrada1: ponto.entrada1,
         saida1: ponto.saida1,
@@ -193,14 +197,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
         totalMinutos: ponto.totalMinutos,
         observacao: ponto.observacao,
         justificativaHoraExtra: ponto.justificativaHoraExtra,
-      }).then(() => refreshData())
+      })
+      if (result.success) await refreshData()
+      return result
     },
     [refreshData],
   )
 
   const updatePonto = useCallback(
-    (id: string, pontoUpdate: Partial<PontoRegistro>) => {
-      void updatePontoAction(id, {
+    async (id: string, pontoUpdate: Partial<PontoRegistro>) => {
+      const result = await updatePontoAction(id, {
         entrada1: pontoUpdate.entrada1,
         saida1: pontoUpdate.saida1,
         entrada2: pontoUpdate.entrada2,
@@ -208,7 +214,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         totalMinutos: pontoUpdate.totalMinutos,
         observacao: pontoUpdate.observacao,
         justificativaHoraExtra: pontoUpdate.justificativaHoraExtra,
-      }).then(() => refreshData())
+      })
+      if (result.success) await refreshData()
+      return result
     },
     [refreshData],
   )
@@ -251,75 +259,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
   )
 
   const addJustificativa = useCallback(
-    (justificativa: Omit<Justificativa, 'id' | 'createdAt'>) => {
-      void createJustificativaAction({
+    async (justificativa: Omit<Justificativa, 'id' | 'createdAt'>) => {
+      const result = await createJustificativaAction({
         data: justificativa.data,
         tipo: justificativa.tipo,
         descricao: justificativa.descricao,
         arquivoPath: justificativa.arquivoUrl,
-      }).then(() => refreshData())
+      })
+      if (result.success) await refreshData()
+      return result
     },
     [refreshData],
   )
 
   const aprovarCompensacao = useCallback(
-    (gestorId: string, justificativaId: string): { ok: true } | { ok: false; reason: string } => {
-      let result: { ok: true } | { ok: false; reason: string } = { ok: false, reason: 'pendente' }
-      void aprovarCompensacaoAction(justificativaId).then((r) => {
-        result = r
-        refreshData()
-      })
-      const j = justificativas.find((x) => x.id === justificativaId)
-      if (!j || j.tipo !== 'compensacao') return { ok: false, reason: 'nao_encontrada' }
-      const est = usuarios.find((u) => u.id === j.userId)
-      if (!est || est.gestorId !== gestorId) return { ok: false, reason: 'nao_autorizado' }
-      if (j.statusCompensacao !== 'pendente_gestor') return { ok: false, reason: 'ja_decidida' }
-      setJustificativas((prev) =>
-        prev.map((row) =>
-          row.id === justificativaId
-            ? {
-                ...row,
-                statusCompensacao: 'aprovada_gestor',
-                minutosAbatidos: -MINUTOS_COMPENSACAO,
-                decididaEm: new Date().toISOString(),
-              }
-            : row,
-        ),
-      )
-      return { ok: true }
+    async (_gestorId: string, justificativaId: string): Promise<ActionResult<void>> => {
+      const result = await aprovarCompensacaoAction(justificativaId)
+      if (result.success) await refreshData()
+      return result.success ? { success: true, data: undefined } : { success: false, error: result.error }
     },
-    [justificativas, usuarios, refreshData],
+    [refreshData],
   )
 
   const rejeitarCompensacao = useCallback(
-    (
-      gestorId: string,
+    async (
+      _gestorId: string,
       justificativaId: string,
       motivoRejeicao?: string,
-    ): { ok: true } | { ok: false; reason: string } => {
-      void rejeitarCompensacaoAction(justificativaId, motivoRejeicao).then(() => refreshData())
-      const j = justificativas.find((x) => x.id === justificativaId)
-      if (!j || j.tipo !== 'compensacao') return { ok: false, reason: 'nao_encontrada' }
-      const est = usuarios.find((u) => u.id === j.userId)
-      if (!est || est.gestorId !== gestorId) return { ok: false, reason: 'nao_autorizado' }
-      if (j.statusCompensacao !== 'pendente_gestor') return { ok: false, reason: 'ja_decidida' }
-      const motivo = motivoRejeicao?.trim() || null
-      setJustificativas((prev) =>
-        prev.map((row) =>
-          row.id === justificativaId
-            ? {
-                ...row,
-                statusCompensacao: 'rejeitada_gestor',
-                minutosAbatidos: 0,
-                decididaEm: new Date().toISOString(),
-                motivoRejeicao: motivo,
-              }
-            : row,
-        ),
-      )
-      return { ok: true }
+    ): Promise<ActionResult<void>> => {
+      const result = await rejeitarCompensacaoAction(justificativaId, motivoRejeicao)
+      if (result.success) await refreshData()
+      return result.success ? { success: true, data: undefined } : { success: false, error: result.error }
     },
-    [justificativas, usuarios, refreshData],
+    [refreshData],
   )
 
   const getCompensacoesPendentesGestor = useCallback(

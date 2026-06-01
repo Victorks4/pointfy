@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { mapJustificativa } from '@/lib/server/mappers'
 import { requireAuth, requireRole } from '@/lib/server/auth'
-import { justificativaInputSchema } from '@/lib/validations/schemas'
+import { parseInput } from '@/lib/validations/parse'
+import { compensacaoDecisionSchema, justificativaInputSchema } from '@/lib/validations/schemas'
 import { MINUTOS_COMPENSACAO } from '@/lib/types'
 import type { Justificativa } from '@/lib/types'
 import type { JustificativaRow, ProfileRow } from '@/lib/server/db-types'
@@ -50,7 +52,7 @@ export async function listJustificativasRh(): Promise<Justificativa[]> {
 
 export async function createJustificativa(input: unknown): Promise<Justificativa> {
   const session = await requireAuth()
-  const parsed = justificativaInputSchema.parse(input)
+  const parsed = parseInput(justificativaInputSchema, input)
   const supabase = await createClient()
 
   let gestorId: string | null = null
@@ -60,7 +62,9 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
       .select('gestor_id, nome')
       .eq('id', session.id)
       .single()
-    gestorId = (profile as ProfileRow | null)?.gestor_id ?? null
+    const profileRow = profile as Pick<ProfileRow, 'gestor_id' | 'nome'> | null
+    gestorId = profileRow?.gestor_id ?? null
+    const estagiarioNome = profileRow?.nome ?? session.nome
 
     const { data, error } = await supabase
       .from('justificativas')
@@ -80,11 +84,13 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
     if (error) throw error
 
     if (gestorId) {
-      await supabase.from('notificacoes').insert({
+      const admin = createAdminClient()
+      const { error: notifError } = await admin.from('notificacoes').insert({
         user_id: gestorId,
-        titulo: 'Compensação pendente',
-        mensagem: `${session.nome} solicitou compensação para ${parsed.data}.`,
+        titulo: 'Compensação pendente de aprovação',
+        mensagem: `${estagiarioNome} solicitou compensação para a data ${parsed.data}. Abra "Meus estagiários" para aprovar ou rejeitar.`,
       })
+      if (notifError) console.error('notificacao gestor:', notifError.message)
     }
 
     return mapJustificativa(data as JustificativaRow, await signedUrl(data.arquivo_path))
@@ -110,6 +116,7 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
 export async function aprovarCompensacao(
   justificativaId: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
+  parseInput(compensacaoDecisionSchema, { justificativaId })
   const gestor = await requireRole('gestor', 'admin')
   const supabase = await createClient()
 
@@ -158,6 +165,7 @@ export async function rejeitarCompensacao(
   justificativaId: string,
   motivoRejeicao?: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
+  parseInput(compensacaoDecisionSchema, { justificativaId, motivoRejeicao })
   const gestor = await requireRole('gestor', 'admin')
   const supabase = await createClient()
 

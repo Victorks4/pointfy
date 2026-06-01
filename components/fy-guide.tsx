@@ -145,12 +145,24 @@ function FyGuideInner() {
     if (success) {
       setMood('alegria')
       setShowParticles(true)
+      if (!prefersReducedMotion && typeof document !== 'undefined') {
+        void import('@/lib/gsap/register').then(({ ensureGsapRegistered }) => {
+          const el = document.querySelector('[data-fy-pet-dock] [data-fy-mascot]')
+          if (el) {
+            ensureGsapRegistered().fromTo(
+              el,
+              { scale: 1, y: 0 },
+              { scale: 1.08, y: -10, duration: 0.35, yoyo: true, repeat: 1, ease: 'power2.out' },
+            )
+          }
+        })
+      }
       setTimeout(() => {
         setMood('neutro')
         setShowParticles(false)
       }, 2000)
     }
-  }, [])
+  }, [prefersReducedMotion])
 
   const handlePontoError = useCallback(() => {
     setMood('aviso')
@@ -258,6 +270,9 @@ function FyGuideInner() {
 
   if (!mounted || tour.uiMode === 'hydrating') return null
 
+  const chromaLoad =
+    mood === 'neutro' && !isHovered && !showParticles && !isClicked ? 'low' : 'normal'
+
   const dashboardHref = isAdmin ? '/dashboard/admin' : isGestor ? '/dashboard/gestor' : '/dashboard'
 
   if (tour.uiMode === 'entrance') {
@@ -290,7 +305,8 @@ function FyGuideInner() {
                   <FyChromaVideo
                     src={VIDEO_SRC}
                     layout="fab"
-                    canvasBaseWidth={128}
+                    canvasBaseWidth={112}
+                    chromaLoad={chromaLoad}
                     className="pointer-events-none"
                     playbackActive={!prefersReducedMotion}
                   />
@@ -378,7 +394,7 @@ function FyGuideInner() {
     >
       <div
         className={cn(
-          'relative w-full rounded-2xl border border-sky-200/90 bg-white/95 shadow-lg shadow-sky-900/10 ring-1 ring-sky-100 backdrop-blur-sm',
+          'relative w-full rounded-2xl border border-sky-200/90 bg-card/95 shadow-lg shadow-sky-900/10 ring-1 ring-sky-100 backdrop-blur-sm dark:border-cyan-500/35 dark:bg-card/92 dark:shadow-[0_0_28px_-8px_var(--neon-glow-cyan),0_16px_48px_rgba(8,14,24,0.5)] dark:ring-cyan-500/25',
           tour.uiMode === 'exiting' &&
             (prefersReducedMotion ? 'fy-exit-bubble-reduced' : 'fy-exit-bubble'),
           !tour.isTourActive &&
@@ -393,14 +409,14 @@ function FyGuideInner() {
       >
         <div className="px-3.5 py-2.5 text-sm leading-snug text-slate-800">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="font-medium text-sky-700">{FY_NAME}</span>
+            <span className="font-medium text-sky-700 dark:text-sky-300">{FY_NAME}</span>
             {stepLabel ? (
               <span className="text-xs font-normal text-slate-500">{stepLabel}</span>
             ) : null}
           </div>
           <p className="leading-snug">{bubbleLine}</p>
           {tour.isTourActive ? (
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-sky-100 pt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
               <Button
                 type="button"
                 variant="outline"
@@ -438,7 +454,7 @@ function FyGuideInner() {
             </div>
           ) : null}
           {tour.uiMode === 'dock' && !tour.isTourActive ? (
-            <div className="mt-2 flex flex-wrap items-center justify-end gap-1 border-t border-sky-100 pt-2">
+            <div className="mt-2 flex flex-wrap items-center justify-end gap-1 border-t border-border pt-2">
               <Button
                 type="button"
                 variant="ghost"
@@ -466,12 +482,13 @@ function FyGuideInner() {
           ) : null}
         </div>
         <div
-          className="absolute -bottom-1.5 right-10 h-3 w-3 rotate-45 border border-sky-200/90 border-t-0 border-l-0 bg-white/95"
+          className="absolute -bottom-1.5 right-10 h-3 w-3 rotate-45 border border-sky-200/90 border-t-0 border-l-0 bg-card/95 dark:border-primary/30 dark:bg-card/92"
           aria-hidden
         />
       </div>
 
       <div
+        data-fy-mascot
         className={cn(
           tour.uiMode !== 'exiting' && !prefersReducedMotion && 'animate-fy-pet-jump',
           tour.uiMode === 'exiting' &&
@@ -483,6 +500,8 @@ function FyGuideInner() {
         <FyMotionWrapper mood={mood} isHovered={isHovered}>
           <FyChromaVideo
             src={VIDEO_SRC}
+            canvasBaseWidth={200}
+            chromaLoad={chromaLoad}
             className="drop-shadow-xl"
             playbackActive={
               !prefersReducedMotion && (tour.uiMode === 'dock' || tour.isTourActive)
