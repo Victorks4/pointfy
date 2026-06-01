@@ -182,6 +182,43 @@
   @apply flex-1 bg-background p-4 md:p-6;
 }
 
+/* Login — painel da arte sempre visível */
+.login-page [data-gsap-login-panel],
+.login-page [data-gsap-login-form] {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.login-page-panel {
+  min-height: 42vh;
+}
+
+@media (min-width: 1024px) {
+  .login-page-panel {
+    min-height: 100dvh;
+  }
+}
+
+.login-left-panel {
+  min-height: inherit;
+  background-color: #0a1628;
+  background-image: url('/imagelogin.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.login-left-panel__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
 .fy-spotlight-active {
   position: relative;
   z-index: 1;

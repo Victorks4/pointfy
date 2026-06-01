@@ -5,13 +5,24 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { getDashboardPathForRole } from "@/lib/auth-routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
 import { LoginBrandLoader } from "@/components/login-brand-loader";
 import { PontifyDataFlowBrand } from "@/components/pontify-data-flow-brand";
 import { User, Lock, ArrowRight } from "lucide-react";
-import { LoginLeftPanel } from "@/components/login-left-panel";
+import dynamic from "next/dynamic";
+
+const LoginLeftPanel = dynamic(
+  () => import("@/components/login-left-panel").then((m) => ({ default: m.LoginLeftPanel })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="login-left-panel min-h-[42vh] w-full bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 lg:min-h-dvh" />
+    ),
+  },
+);
 import { GsapLoginEntrance } from "@/components/gsap-login-entrance";
 import {
   LOGIN_SYNC_TRANSITION,
@@ -48,15 +59,14 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const success = await login(email, senha);
-      if (success) {
-        // user é atualizado pelo AuthProvider após login; redirecionamos na próxima render
-        router.refresh();
-      } else {
-        setError(
-          "Não foi possível entrar. Confira email/senha, se rodou as migrations e npm run db:seed no Supabase.",
-        );
+      const profile = await login(email, senha);
+      if (profile) {
+        router.replace(getDashboardPathForRole(profile.cargo));
+        return;
       }
+      setError(
+        "Não foi possível entrar. Confira email/senha, se rodou as migrations e npm run db:seed no Supabase.",
+      );
     } catch {
       setError("Erro ao fazer login. Tente novamente.");
     } finally {
@@ -67,16 +77,17 @@ export default function LoginPage() {
   return (
     <LoginAmbientProvider submitting={isLoading}>
       <GsapLoginEntrance>
-      <main className="flex min-h-dvh w-full max-w-full flex-col lg:min-h-dvh lg:flex-row lg:items-stretch">
-        <div data-gsap-login-panel className="min-h-dvh flex-1 lg:min-h-0">
-          <LoginLeftPanel mounted={mounted}>
-            <div className="pointer-events-none min-h-dvh flex-1 select-none lg:min-h-0" aria-hidden />
-          </LoginLeftPanel>
+      <main className="login-page flex min-h-dvh w-full max-w-full flex-col lg:min-h-dvh lg:flex-row lg:items-stretch">
+        <div
+          data-gsap-login-panel
+          className="login-page-panel relative min-h-[42vh] w-full shrink-0 overflow-hidden lg:min-h-dvh lg:min-w-0 lg:flex-1 lg:basis-0"
+        >
+          <LoginLeftPanel />
         </div>
 
         <div
           data-gsap-login-form
-          className="flex min-h-dvh flex-1 flex-col items-center justify-center bg-background p-8 lg:min-h-0"
+          className="login-page-form flex min-h-0 flex-1 flex-col items-center justify-center bg-background p-8 lg:min-h-dvh lg:min-w-0 lg:flex-1 lg:basis-0"
         >
           <div
             className={`w-full max-w-md transition-all duration-700 delay-200 ${mounted ? "translate-x-0 opacity-100" : "translate-x-10 opacity-0"}`}
@@ -185,7 +196,7 @@ export default function LoginPage() {
               </motion.div>
             </form>
 
-            <div className="mt-6 flex items-center gap-3 rounded-xl border border-cyan-200/80 bg-blue-50/60 p-3 shadow-[0_0_20px_-8px_var(--neon-glow-cyan)] dark:border-cyan-500/25 dark:bg-cyan-950/20 dark:shadow-[0_0_24px_-10px_var(--neon-glow-cyan)]">
+            <div className="mt-6 flex items-center gap-3 rounded-xl border border-cyan-200/80 bg-blue-50/60 p-3 shadow-[0_0_20px_-8px_var(--neon-glow-cyan)]">
               <Image
                 src="/fy-mascote.png"
                 alt="Fy, guia do Pontify"

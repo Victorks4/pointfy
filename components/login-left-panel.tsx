@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef } from 'react'
 import {
   motion,
   useMotionValue,
@@ -13,12 +13,6 @@ import {
 
 import { LOGIN_SYNC_TRANSITION, useLoginSubmittingAmbient } from '@/lib/login-ambient-context'
 
-type LoginLeftPanelProps = {
-  mounted: boolean
-  children: ReactNode
-}
-
-/** Disco glass que segue o cursor — bem compacto para não cobrir a arte */
 const ORB_SIZE = 43
 
 const FLOAT_SHAPES = [
@@ -36,7 +30,7 @@ function centerOrb(mx: MotionValue<number>, my: MotionValue<number>, el: HTMLEle
   my.set(h / 2 - ORB_SIZE / 2)
 }
 
-export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
+export function LoginLeftPanel() {
   const rootRef = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotion()
   const submitting = useLoginSubmittingAmbient()
@@ -80,47 +74,27 @@ export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
   return (
     <div
       ref={rootRef}
-      className="relative hidden min-h-dvh w-full shrink-0 overflow-hidden lg:flex lg:min-h-0 lg:w-1/2 lg:self-stretch"
+      className="login-left-panel relative isolate min-h-[42vh] w-full overflow-hidden lg:min-h-dvh"
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
     >
-      <motion.div
-        className="absolute inset-0"
-        aria-hidden
-        initial={reduce ? false : { opacity: 0, scale: 0.97 }}
-        animate={
-          mounted
-            ? reduce
-              ? { opacity: 1, scale: 1 }
-              : { opacity: 1, scale: 1 }
-            : reduce
-              ? { opacity: 1, scale: 1 }
-              : { opacity: 0, scale: 0.94 }
-        }
-        transition={{
-          duration: reduce ? 0 : 0.78,
-          ease: [0.22, 1, 0.36, 1],
-        }}
-      >
-        <Image
-          src="/imagelogin.png"
-          alt=""
-          fill
-          priority
-          sizes="(max-width: 1024px) 100vw, 50vw"
-          className="object-cover object-[50%_50%]"
-        />
-      </motion.div>
+      <Image
+        src="/imagelogin.png"
+        alt=""
+        fill
+        priority
+        quality={80}
+        sizes="(max-width: 1024px) 100vw, 50vw"
+        className="login-left-panel__bg pointer-events-none z-0 object-cover object-center"
+      />
 
       {!reduce && (
         <motion.div
-          className="pointer-events-none absolute z-[6] backdrop-blur-2xl will-change-transform"
+          className="pointer-events-none absolute z-[2] backdrop-blur-2xl will-change-transform"
           style={
             {
               width: ORB_SIZE,
               height: ORB_SIZE,
-              marginLeft: 0,
-              marginTop: 0,
               borderRadius: ORB_SIZE,
               x: gx,
               y: gy,
@@ -135,9 +109,8 @@ export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
         />
       )}
 
-      {/* Formas translúcidas animadas */}
       <motion.div
-        className="pointer-events-none absolute inset-0 z-[5]"
+        className="pointer-events-none absolute inset-0 z-[3]"
         aria-hidden
         animate={
           submitting && !reduce
@@ -176,7 +149,6 @@ export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
         ))}
       </motion.div>
 
-      {/* Partículas sutis */}
       {!reduce &&
         [12, 22, 33, 48, 58, 71, 84, 90].map((left, idx) => (
           <motion.div
@@ -199,10 +171,9 @@ export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
           </motion.div>
         ))}
 
-      {/* Onda líquida inferior — neon suave */}
       {!reduce && (
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-[30%] min-h-[7rem] max-h-[220px]"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-[30%] min-h-[7rem] max-h-[220px]"
           aria-hidden
         >
           <svg
@@ -230,32 +201,11 @@ export function LoginLeftPanel({ mounted, children }: LoginLeftPanelProps) {
         </div>
       )}
 
-      <motion.div
-        className="relative z-10 flex min-h-dvh w-full flex-1 flex-col lg:min-h-0"
-        initial={reduce ? false : { opacity: 0, scale: 0.96 }}
-        animate={
-          mounted
-            ? { opacity: 1, scale: 1 }
-            : reduce
-              ? { opacity: 1, scale: 1 }
-              : { opacity: 0, scale: 0.93 }
-        }
-        transition={{
-          duration: reduce ? 0 : 0.72,
-          delay: reduce ? 0 : 0.12,
-          ease: [0.22, 1, 0.36, 1],
-        }}
-      >
-        {children}
-      </motion.div>
-
-      {/* Pulso estrutural (sincronizado com botão quando submitting) */}
       {!reduce && (
         <motion.div
-          className="pointer-events-none absolute inset-[2%] z-[8] rounded-[clamp(22px,3vw,40px)] border border-white/[0.13] lg:block"
+          className="pointer-events-none absolute inset-[2%] z-[6] rounded-[clamp(22px,3vw,40px)] border border-white/[0.13]"
           aria-hidden
           initial={false}
-          style={{ boxSizing: 'border-box' }}
           animate={
             submitting
               ? {

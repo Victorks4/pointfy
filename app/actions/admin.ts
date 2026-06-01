@@ -7,7 +7,7 @@ import { runAction } from '@/lib/server/action-result'
 import { parseInput } from '@/lib/validations/parse'
 import { desafioProgressoSchema, notificacaoReadSchema } from '@/lib/validations/schemas'
 import { uuidSchema } from '@/lib/validations/parse'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import type { User, Notificacao, BloqueioPresenca, DesafioSemanal, DesafioProgresso, PontoConfig } from '@/lib/types'
 
 export async function createUsuarioAction(input: unknown) {
@@ -70,6 +70,7 @@ export async function removeBloqueioAction(id: string) {
 export async function addDesafioAction(input: unknown) {
   return runAction<DesafioSemanal>(async () => {
     const r = await adminService.addDesafio(input)
+    revalidateTag('desafios-semanais', 'max')
     revalidatePath('/dashboard')
     return r
   })
@@ -79,6 +80,7 @@ export async function updateDesafioAction(id: string, input: unknown) {
   return runAction<DesafioSemanal>(async () => {
     parseInput(uuidSchema, id)
     const r = await adminService.updateDesafio(id, input)
+    revalidateTag('desafios-semanais', 'max')
     revalidatePath('/dashboard')
     return r
   })
@@ -88,6 +90,7 @@ export async function deleteDesafioAction(id: string) {
   return runAction<void>(async () => {
     parseInput(uuidSchema, id)
     await adminService.deleteDesafio(id)
+    revalidateTag('desafios-semanais', 'max')
     revalidatePath('/dashboard')
   })
 }
@@ -109,6 +112,7 @@ export async function upsertDesafioProgressoAction(
 export async function addPontoConfigAction(input: unknown) {
   return runAction<PontoConfig>(async () => {
     const r = await adminService.addPontoConfig(input)
+    revalidateTag('ponto-configs', 'max')
     revalidatePath('/dashboard')
     return r
   })
@@ -118,6 +122,7 @@ export async function updatePontoConfigAction(id: string, input: unknown) {
   return runAction<PontoConfig>(async () => {
     parseInput(uuidSchema, id)
     const r = await adminService.updatePontoConfig(id, input)
+    revalidateTag('ponto-configs', 'max')
     revalidatePath('/dashboard')
     return r
   })
@@ -127,6 +132,7 @@ export async function deletePontoConfigAction(id: string) {
   return runAction<void>(async () => {
     parseInput(uuidSchema, id)
     await adminService.deletePontoConfig(id)
+    revalidateTag('ponto-configs', 'max')
     revalidatePath('/dashboard')
   })
 }

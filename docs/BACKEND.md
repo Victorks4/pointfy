@@ -110,13 +110,17 @@ scripts/seed-demo-users.mjs
 
 ## Fluxo de dados
 
-1. `DataProvider` chama `GET /api/v1/data` ao montar (usuário logado).
+1. `DataProvider` (somente em `/dashboard`) chama `GET /api/v1/data` (bootstrap leve) e, em paralelo, `GET /api/v1/pontos` e `GET /api/v1/justificativas`.
 2. Mutações (`addPonto`, `addUsuario`, …) disparam **Server Actions** em `app/actions/`.
 3. Actions retornam `ActionResult` (`success` + `data` ou `error` em PT-BR).
 4. Services validam com Zod (`parseInput`) e, no ponto, `ponto.validator.ts` (bloqueio, recesso, horários, limite, total).
-5. Após sucesso, `refreshData()` recarrega o snapshot; a UI exibe `toast.error` quando `success: false`.
+5. Após sucesso, `refreshData()` recarrega bootstrap + domínios; a UI exibe `toast.error` quando `success: false`.
 
-O snapshot (`loadDashboardSnapshot`) carrega `profiles` por papel: estagiário só o próprio; gestor sua equipe; admin todos. Pontos/justificativas do gestor são filtrados por `user_id` da equipe.
+O bootstrap (`loadDashboardBootstrap`) carrega `profiles` por papel, notificações, bloqueios, desafios e configs. Pontos/justificativas usam janela de **180 dias** (limite 500 linhas para admin) e URLs de arquivo só sob demanda (`sign=1`).
+
+**PostgREST / pooling:** o app usa apenas o SDK `@supabase/ssr` (sem `DATABASE_URL` / pooler 6543). Isso é o padrão para Supabase JS; pooling fica no lado Supabase. Só configure `SUPABASE_POOLED_URL` se migrar para SQL direto (Drizzle/Prisma).
+
+Índices de performance: migration `003_performance_indexes.sql`. Validar no SQL Editor com `EXPLAIN (ANALYZE, BUFFERS)` nas queries de compensações e bloqueios.
 
 ## Tabelas principais
 
@@ -138,8 +142,12 @@ Bucket `justificativas`: upload via `uploadJustificativaArquivoAction` em `app/a
 
 | Rota | Método | Descrição |
 |------|--------|-----------|
-| `/api/v1/data` | GET | Snapshot completo para o dashboard |
+| `/api/v1/data` | GET | Bootstrap (usuários, notificações, configs, desafios, bloqueios) — `no-store` |
+| `/api/v1/pontos?from=&to=&userId=` | GET | Pontos por janela/cargo — `no-store` |
+| `/api/v1/justificativas?rh=1&sign=1` | GET | Justificativas (`sign=1` gera URLs assinadas em lote) — `no-store` |
 | `/api/v1/banco-horas?userId=&year=&month=` | GET | Saldo em minutos |
+
+`ponto_configs` e `desafios_semanais` usam `unstable_cache` (TTL 5 min, tags `ponto-configs` / `desafios-semanais`).
 
 ## Segurança
 

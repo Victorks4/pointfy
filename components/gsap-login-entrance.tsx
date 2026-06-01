@@ -15,15 +15,12 @@ export function GsapLoginEntrance({ children }: { children: ReactNode }) {
     const form = ref.current.querySelector('[data-gsap-login-form]')
     if (!panel || !form) return
 
+    gsap.set([panel, form], { opacity: 1, x: 0, y: 0 })
+
     gsap
-      .timeline()
-      .fromTo(panel, { opacity: 0, x: -28 }, { opacity: 1, x: 0, duration: 0.7, ease: 'power3.out' })
-      .fromTo(
-        form,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out' },
-        '-=0.35',
-      )
+      .timeline({ defaults: { clearProps: 'transform' } })
+      .fromTo(panel, { x: -20 }, { x: 0, duration: 0.55, ease: 'power2.out' })
+      .fromTo(form, { y: 14 }, { y: 0, duration: 0.45, ease: 'power2.out' }, '-=0.3')
   }, [prefersReducedMotion])
 
   return <div ref={ref}>{children}</div>

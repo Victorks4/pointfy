@@ -1,53 +1,66 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mapJustificativa } from '@/lib/server/mappers'
 import { requireAuth, requireRole } from '@/lib/server/auth'
 import { parseInput } from '@/lib/validations/parse'
 import { compensacaoDecisionSchema, justificativaInputSchema } from '@/lib/validations/schemas'
+import { JUSTIFICATIVA_COLUMNS } from '@/lib/server/query-columns'
+import { signedUrlsForPaths, signedUrlForPath } from '@/lib/server/storage-signed-urls'
 import { MINUTOS_COMPENSACAO } from '@/lib/types'
 import type { Justificativa } from '@/lib/types'
 import type { JustificativaRow, ProfileRow } from '@/lib/server/db-types'
 
-async function signedUrl(path: string | null) {
-  if (!path) return null
-  const supabase = await createClient()
-  const { data } = await supabase.storage.from('justificativas').createSignedUrl(path, 3600)
-  return data?.signedUrl ?? path
+async function mapJustificativasWithSignedUrls(
+  supabase: SupabaseClient,
+  rows: JustificativaRow[],
+  signFiles: boolean,
+): Promise<Justificativa[]> {
+  if (!signFiles) {
+    return rows.map((r) => mapJustificativa(r, null))
+  }
+  const urlMap = await signedUrlsForPaths(
+    supabase,
+    rows.map((r) => r.arquivo_path),
+  )
+  return rows.map((r) =>
+    mapJustificativa(r, r.arquivo_path ? urlMap.get(r.arquivo_path) ?? null : null),
+  )
 }
 
-export async function listJustificativas(userId?: string): Promise<Justificativa[]> {
+export async function listJustificativas(
+  userId?: string,
+  options?: { signFiles?: boolean },
+): Promise<Justificativa[]> {
   const session = await requireAuth()
   const supabase = await createClient()
   const targetId = userId ?? session.id
 
   const { data, error } = await supabase
     .from('justificativas')
-    .select('*')
+    .select(JUSTIFICATIVA_COLUMNS)
     .eq('user_id', targetId)
     .order('data', { ascending: false })
 
   if (error) throw error
-  const rows = data as JustificativaRow[]
-  return Promise.all(
-    rows.map(async (r) => mapJustificativa(r, await signedUrl(r.arquivo_path))),
+  return mapJustificativasWithSignedUrls(
+    supabase,
+    data as JustificativaRow[],
+    options?.signFiles ?? true,
   )
 }
 
 export async function listJustificativasRh(): Promise<Justificativa[]> {
   await requireRole('admin')
   const supabase = await createClient()
-  const { data, error } = await supabase.from('justificativas').select('*').order('created_at', {
-    ascending: false,
-  })
+  const { data, error } = await supabase
+    .from('justificativas')
+    .select(JUSTIFICATIVA_COLUMNS)
+    .or('tipo.eq.atestado,and(tipo.eq.compensacao,status_compensacao.eq.aprovada_gestor)')
+    .order('created_at', { ascending: false })
+
   if (error) throw error
-  const rows = (data as JustificativaRow[]).filter(
-    (j) =>
-      j.tipo === 'atestado' ||
-      (j.tipo === 'compensacao' && j.status_compensacao === 'aprovada_gestor'),
-  )
-  return Promise.all(
-    rows.map(async (r) => mapJustificativa(r, await signedUrl(r.arquivo_path))),
-  )
+  return mapJustificativasWithSignedUrls(supabase, data as JustificativaRow[], true)
 }
 
 export async function createJustificativa(input: unknown): Promise<Justificativa> {
@@ -93,7 +106,9 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
       if (notifError) console.error('notificacao gestor:', notifError.message)
     }
 
-    return mapJustificativa(data as JustificativaRow, await signedUrl(data.arquivo_path))
+    const row = data as JustificativaRow
+    const arquivoUrl = await signedUrlForPath(supabase, row.arquivo_path)
+    return mapJustificativa(row, arquivoUrl)
   }
 
   const { data, error } = await supabase
@@ -110,7 +125,9 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
     .single()
 
   if (error) throw error
-  return mapJustificativa(data as JustificativaRow, await signedUrl(data.arquivo_path))
+  const row = data as JustificativaRow
+  const arquivoUrl = await signedUrlForPath(supabase, row.arquivo_path)
+  return mapJustificativa(row, arquivoUrl)
 }
 
 export async function aprovarCompensacao(
@@ -227,17 +244,13 @@ export async function listCompensacoesPendentesGestor(gestorId: string) {
 
   const { data, error } = await supabase
     .from('justificativas')
-    .select('*')
+    .select(JUSTIFICATIVA_COLUMNS)
     .eq('tipo', 'compensacao')
     .eq('status_compensacao', 'pendente_gestor')
     .in('user_id', ids)
 
   if (error) throw error
-  return Promise.all(
-    (data as JustificativaRow[]).map(async (r) =>
-      mapJustificativa(r, await signedUrl(r.arquivo_path)),
-    ),
-  )
+  return mapJustificativasWithSignedUrls(supabase, data as JustificativaRow[], true)
 }
 
 export async function listCompensacoesHistoricoGestor(gestorId: string) {
@@ -252,15 +265,11 @@ export async function listCompensacoesHistoricoGestor(gestorId: string) {
 
   const { data, error } = await supabase
     .from('justificativas')
-    .select('*')
+    .select(JUSTIFICATIVA_COLUMNS)
     .eq('tipo', 'compensacao')
     .in('user_id', ids)
     .order('created_at', { ascending: false })
 
   if (error) throw error
-  return Promise.all(
-    (data as JustificativaRow[]).map(async (r) =>
-      mapJustificativa(r, await signedUrl(r.arquivo_path)),
-    ),
-  )
+  return mapJustificativasWithSignedUrls(supabase, data as JustificativaRow[], true)
 }

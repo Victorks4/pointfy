@@ -1,39 +1,54 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import {
   mapPonto,
   mapJustificativa,
   mapBloqueio,
   mapProfile,
-  mapDesafio,
   mapDesafioProgresso,
-  mapPontoConfig,
 } from '@/lib/server/mappers'
-import { requireAuth } from '@/lib/server/auth'
+import { getSessionUser } from '@/lib/server/auth'
 import { calcularBancoHoras, calcularBancoHorasPorPeriodo } from '@/lib/server/banco-horas'
 import { listNotificacoesForUser } from '@/lib/server/services/notificacao.service'
-import type { User } from '@/lib/types'
+import {
+  PROFILE_COLUMNS,
+  PONTO_COLUMNS,
+  JUSTIFICATIVA_COLUMNS,
+  BLOQUEIO_COLUMNS,
+  DESAFIO_PROGRESSO_COLUMNS,
+} from '@/lib/server/query-columns'
+import {
+  ADMIN_BOOTSTRAP_ROW_LIMIT,
+  dashboardWindowStartIso,
+} from '@/lib/server/dashboard-window'
+import { getCachedDesafiosSemanais, getCachedPontoConfigs } from '@/lib/server/cached-static-data'
+import { mapDesafio } from '@/lib/server/mappers'
+import type { User, Notificacao, PontoConfig } from '@/lib/types'
 import type {
   PontoRegistroRow,
   JustificativaRow,
   BloqueioPresencaRow,
   ProfileRow,
-  DesafioSemanalRow,
-  DesafioProgressoRow,
-  PontoConfigRow,
 } from '@/lib/server/db-types'
 
-export type DashboardSnapshot = {
-  pontos: ReturnType<typeof mapPonto>[]
-  justificativas: ReturnType<typeof mapJustificativa>[]
-  bloqueiosPresenca: ReturnType<typeof mapBloqueio>[]
+export type DashboardBootstrap = {
   usuarios: User[]
-  notificacoes: import('@/lib/types').Notificacao[]
+  notificacoes: Notificacao[]
   desafios: ReturnType<typeof mapDesafio>[]
   desafioProgressos: ReturnType<typeof mapDesafioProgresso>[]
-  pontoConfigs: ReturnType<typeof mapPontoConfig>[]
+  pontoConfigs: PontoConfig[]
+  bloqueiosPresenca: ReturnType<typeof mapBloqueio>[]
 }
 
-async function loadUsuariosForSession(session: User, supabase: Awaited<ReturnType<typeof createClient>>) {
+export type DashboardSnapshot = DashboardBootstrap & {
+  pontos: ReturnType<typeof mapPonto>[]
+  justificativas: ReturnType<typeof mapJustificativa>[]
+}
+
+async function loadUsuariosForSession(
+  session: User,
+  supabase: SupabaseClient,
+): Promise<User[]> {
   if (session.cargo === 'estagiario') {
     return [session]
   }
@@ -41,72 +56,218 @@ async function loadUsuariosForSession(session: User, supabase: Awaited<ReturnTyp
   if (session.cargo === 'gestor') {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select(PROFILE_COLUMNS)
       .or(`id.eq.${session.id},gestor_id.eq.${session.id}`)
     if (error) throw error
     return (data as ProfileRow[]).map(mapProfile)
   }
 
-  const { data, error } = await supabase.from('profiles').select('*').order('nome')
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(PROFILE_COLUMNS)
+    .order('nome')
   if (error) throw error
   return (data as ProfileRow[]).map(mapProfile)
 }
 
-export async function loadDashboardSnapshot(): Promise<DashboardSnapshot> {
-  const session = await requireAuth()
-  const supabase = await createClient()
+async function loadBloqueiosScoped(
+  session: User,
+  userIds: string[],
+  supabase: SupabaseClient,
+) {
+  let query = supabase.from('bloqueios_presenca').select(BLOQUEIO_COLUMNS)
 
+  if (session.cargo === 'estagiario') {
+    query = query.eq('user_id', session.id)
+  } else if (session.cargo === 'gestor' && userIds.length > 0) {
+    query = query.in('user_id', userIds)
+  } else if (session.cargo === 'admin') {
+    query = query.limit(ADMIN_BOOTSTRAP_ROW_LIMIT)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data as BloqueioPresencaRow[]).map(mapBloqueio)
+}
+
+async function loadProgressosScoped(
+  session: User,
+  userIds: string[],
+  supabase: SupabaseClient,
+) {
+  let query = supabase.from('desafio_progressos').select(DESAFIO_PROGRESSO_COLUMNS)
+
+  if (session.cargo === 'estagiario') {
+    query = query.eq('user_id', session.id)
+  } else if (session.cargo === 'gestor' && userIds.length > 0) {
+    query = query.in('user_id', userIds)
+  } else if (session.cargo === 'admin') {
+    query = query.limit(ADMIN_BOOTSTRAP_ROW_LIMIT)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []).map(mapDesafioProgresso)
+}
+
+/** Bootstrap leve: sem pontos/justificativas (carregados via APIs dedicadas). */
+export async function loadDashboardBootstrap(
+  existingSupabase?: SupabaseClient,
+): Promise<DashboardBootstrap> {
+  const session = await getSessionUser()
+  if (!session) throw new Error('Não autenticado')
+
+  const supabase = existingSupabase ?? (await createClient())
   const usuarios = await loadUsuariosForSession(session, supabase)
   const userIds = usuarios.map((u) => u.id)
 
-  const pontosQuery = supabase.from('ponto_registros').select('*').order('data', { ascending: false })
-  const justificativasQuery = supabase
-    .from('justificativas')
-    .select('*')
-    .order('data', { ascending: false })
-
-  if (session.cargo === 'gestor' && userIds.length > 0) {
-    pontosQuery.in('user_id', userIds)
-    justificativasQuery.in('user_id', userIds)
-  }
-
-  const [pontosRes, justificativasRes, bloqueiosRes, desafiosRes, progressosRes, configsRes, notificacoes] =
+  const [bloqueiosPresenca, desafios, desafioProgressos, pontoConfigs, notificacoes] =
     await Promise.all([
-      pontosQuery,
-      justificativasQuery,
-      supabase.from('bloqueios_presenca').select('*'),
-      supabase.from('desafios_semanais').select('*'),
-      supabase.from('desafio_progressos').select('*'),
-      supabase.from('ponto_configs').select('*'),
-      listNotificacoesForUser(session.id),
+      loadBloqueiosScoped(session, userIds, supabase),
+      getCachedDesafiosSemanais(),
+      loadProgressosScoped(session, userIds, supabase),
+      getCachedPontoConfigs(),
+      listNotificacoesForUser(session.id, supabase),
     ])
 
-  if (pontosRes.error) throw pontosRes.error
-  if (justificativasRes.error) throw justificativasRes.error
-  if (bloqueiosRes.error) throw bloqueiosRes.error
-  if (desafiosRes.error) throw desafiosRes.error
-  if (progressosRes.error) throw progressosRes.error
-  if (configsRes.error) throw configsRes.error
-
-  const pontos = (pontosRes.data as PontoRegistroRow[] ?? []).map(mapPonto)
-  const justificativas = (justificativasRes.data as JustificativaRow[] ?? []).map((r) =>
-    mapJustificativa(r, r.arquivo_path),
-  )
-  const bloqueiosPresenca = (bloqueiosRes.data as BloqueioPresencaRow[] ?? []).map(mapBloqueio)
-  const desafios = (desafiosRes.data ?? []).map(mapDesafio)
-  const desafioProgressos = (progressosRes.data ?? []).map(mapDesafioProgresso)
-  const pontoConfigs = (configsRes.data as PontoConfigRow[] ?? []).map(mapPontoConfig)
-
   return {
-    pontos,
-    justificativas,
-    bloqueiosPresenca,
     usuarios,
     notificacoes,
     desafios,
     desafioProgressos,
     pontoConfigs,
+    bloqueiosPresenca,
   }
+}
+
+export async function loadDashboardSnapshot(
+  existingSupabase?: SupabaseClient,
+): Promise<DashboardSnapshot> {
+  const supabase = existingSupabase ?? (await createClient())
+  const [bootstrap, pontos, justificativas] = await Promise.all([
+    loadDashboardBootstrap(supabase),
+    listPontosScoped({}, supabase),
+    listJustificativasScoped({ signFiles: false }, supabase),
+  ])
+  return { ...bootstrap, pontos, justificativas }
+}
+
+export type PontosQueryParams = {
+  userId?: string
+  from?: string
+  to?: string
+  limit?: number
+}
+
+export async function listPontosScoped(
+  params: PontosQueryParams = {},
+  existingSupabase?: SupabaseClient,
+): Promise<ReturnType<typeof mapPonto>[]> {
+  const session = await getSessionUser()
+  if (!session) throw new Error('Não autenticado')
+
+  const supabase = existingSupabase ?? (await createClient())
+  const from = params.from ?? dashboardWindowStartIso()
+  const limit = params.limit ?? ADMIN_BOOTSTRAP_ROW_LIMIT
+
+  let query = supabase
+    .from('ponto_registros')
+    .select(PONTO_COLUMNS)
+    .gte('data', from)
+    .order('data', { ascending: false })
+    .limit(limit)
+
+  if (params.to) query = query.lte('data', params.to)
+
+  const targetUserId = params.userId ?? (session.cargo === 'estagiario' ? session.id : undefined)
+  if (targetUserId) {
+    if (session.cargo === 'gestor' && session.id !== targetUserId) {
+      const { data: est } = await supabase
+        .from('profiles')
+        .select('gestor_id')
+        .eq('id', targetUserId)
+        .single()
+      if ((est as { gestor_id: string | null } | null)?.gestor_id !== session.id) {
+        throw new Error('Sem permissão')
+      }
+    } else if (session.cargo === 'estagiario' && session.id !== targetUserId) {
+      throw new Error('Sem permissão')
+    }
+    query = query.eq('user_id', targetUserId)
+  } else if (session.cargo === 'estagiario') {
+    query = query.eq('user_id', session.id)
+  } else if (session.cargo === 'gestor') {
+    const { data: team } = await supabase.from('profiles').select('id').eq('gestor_id', session.id)
+    const ids = (team ?? []).map((t: { id: string }) => t.id)
+    if (ids.length === 0) return []
+    query = query.in('user_id', ids)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data as PontoRegistroRow[]).map(mapPonto)
+}
+
+export type JustificativasQueryParams = {
+  userId?: string
+  rhVisible?: boolean
+  signFiles?: boolean
+  limit?: number
+}
+
+export async function listJustificativasScoped(
+  params: JustificativasQueryParams = {},
+  existingSupabase?: SupabaseClient,
+): Promise<ReturnType<typeof mapJustificativa>[]> {
+  const session = await getSessionUser()
+  if (!session) throw new Error('Não autenticado')
+
+  const supabase = existingSupabase ?? (await createClient())
+  const limit = params.limit ?? ADMIN_BOOTSTRAP_ROW_LIMIT
+  const windowStart = dashboardWindowStartIso()
+
+  let query = supabase
+    .from('justificativas')
+    .select(JUSTIFICATIVA_COLUMNS)
+    .gte('data', windowStart)
+    .order('data', { ascending: false })
+    .limit(limit)
+
+  if (params.rhVisible) {
+    if (session.cargo !== 'admin') throw new Error('Sem permissão')
+    query = query.or(
+      'tipo.eq.atestado,and(tipo.eq.compensacao,status_compensacao.eq.aprovada_gestor)',
+    )
+  }
+
+  const targetUserId = params.userId ?? (session.cargo === 'estagiario' ? session.id : undefined)
+  if (targetUserId) {
+    query = query.eq('user_id', targetUserId)
+  } else if (session.cargo === 'estagiario') {
+    query = query.eq('user_id', session.id)
+  } else if (session.cargo === 'gestor') {
+    const { data: team } = await supabase.from('profiles').select('id').eq('gestor_id', session.id)
+    const ids = (team ?? []).map((t: { id: string }) => t.id)
+    if (ids.length === 0) return []
+    query = query.in('user_id', ids)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  const rows = data as JustificativaRow[]
+
+  if (!params.signFiles) {
+    return rows.map((r) => mapJustificativa(r, null))
+  }
+
+  const { signedUrlsForPaths } = await import('@/lib/server/storage-signed-urls')
+  const urlMap = await signedUrlsForPaths(
+    supabase,
+    rows.map((r) => r.arquivo_path),
+  )
+  return rows.map((r) =>
+    mapJustificativa(r, r.arquivo_path ? urlMap.get(r.arquivo_path) ?? null : null),
+  )
 }
 
 export async function getBancoHorasForUser(
@@ -114,24 +275,32 @@ export async function getBancoHorasForUser(
   year?: string,
   month?: string,
 ): Promise<number> {
-  const snapshot = await loadDashboardSnapshot()
-  const user = snapshot.usuarios.find((u) => u.id === userId)
-  if (!user) return 0
+  const supabase = await createClient()
+  const session = await getSessionUser()
+  if (!session) throw new Error('Não autenticado')
+
+  const { data: profileRow } = await supabase
+    .from('profiles')
+    .select(PROFILE_COLUMNS)
+    .eq('id', userId)
+    .single()
+
+  if (!profileRow) return 0
+  const user = mapProfile(profileRow as ProfileRow)
+
+  const windowStart = dashboardWindowStartIso()
+  const pontos = await listPontosScoped({ userId, from: windowStart }, supabase)
+  const justificativas = await listJustificativasScoped({ userId, signFiles: false }, supabase)
+
+  const { data: bloqueiosData } = await supabase
+    .from('bloqueios_presenca')
+    .select(BLOQUEIO_COLUMNS)
+    .eq('user_id', userId)
+
+  const bloqueios = (bloqueiosData as BloqueioPresencaRow[] ?? []).map(mapBloqueio)
 
   if (year && month) {
-    return calcularBancoHorasPorPeriodo(
-      user,
-      snapshot.pontos,
-      snapshot.justificativas,
-      snapshot.bloqueiosPresenca,
-      year,
-      month,
-    )
+    return calcularBancoHorasPorPeriodo(user, pontos, justificativas, bloqueios, year, month)
   }
-  return calcularBancoHoras(
-    user,
-    snapshot.pontos,
-    snapshot.justificativas,
-    snapshot.bloqueiosPresenca,
-  )
+  return calcularBancoHoras(user, pontos, justificativas, bloqueios)
 }

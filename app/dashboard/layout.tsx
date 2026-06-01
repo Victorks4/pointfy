@@ -5,7 +5,10 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
+import { DashboardProviders } from '@/components/dashboard-providers'
 import { FyTourProvider } from '@/lib/fy-tour-context'
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const FyGuide = dynamic(
   () => import('@/components/fy-guide').then((m) => ({ default: m.FyGuide })),
@@ -16,9 +19,11 @@ const FyTourOverlay = dynamic(
   () => import('@/components/fy-tour-overlay').then((m) => ({ default: m.FyTourOverlay })),
   { ssr: false },
 )
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useGsapMount } from '@/hooks/use-gsap-mount'
+
+const DashboardGsapRoot = dynamic(
+  () => import('@/components/dashboard-gsap-root').then((m) => ({ default: m.DashboardGsapRoot })),
+  { ssr: false },
+)
 
 export default function DashboardLayout({
   children,
@@ -27,7 +32,6 @@ export default function DashboardLayout({
 }) {
   const { user, isLoading } = useAuth()
   const router = useRouter()
-  const gsapRootRef = useGsapMount({ selector: '[data-gsap-reveal]' })
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -51,17 +55,17 @@ export default function DashboardLayout({
   }
 
   return (
-    <SidebarProvider>
-      <DashboardSidebar />
-      <SidebarInset className="min-h-0 overflow-hidden">
-        <FyTourProvider>
-          <div ref={gsapRootRef} className="flex min-h-0 min-w-0 flex-1 flex-col pb-24 md:pb-10">
-            {children}
-          </div>
-          <FyTourOverlay />
-          <FyGuide />
-        </FyTourProvider>
-      </SidebarInset>
-    </SidebarProvider>
+    <DashboardProviders>
+      <SidebarProvider>
+        <DashboardSidebar />
+        <SidebarInset className="min-h-0 overflow-hidden">
+          <FyTourProvider>
+            <DashboardGsapRoot>{children}</DashboardGsapRoot>
+            <FyTourOverlay />
+            <FyGuide />
+          </FyTourProvider>
+        </SidebarInset>
+      </SidebarProvider>
+    </DashboardProviders>
   )
 }

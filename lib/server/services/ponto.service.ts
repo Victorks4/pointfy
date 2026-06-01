@@ -1,10 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCachedPontoConfigs } from '@/lib/server/cached-static-data'
 import { mapPonto, mapProfile, pontoToInsert } from '@/lib/server/mappers'
 import { mapBloqueio } from '@/lib/server/mappers'
 import { mapPontoConfig } from '@/lib/server/mappers'
 import { requireAuth } from '@/lib/server/auth'
 import { parseInput } from '@/lib/validations/parse'
 import { pontoInputSchema, pontoUpdateSchema } from '@/lib/validations/schemas'
+import {
+  PROFILE_COLUMNS,
+  PONTO_COLUMNS,
+  BLOQUEIO_COLUMNS,
+} from '@/lib/server/query-columns'
 import {
   assertPontoBusinessRules,
   type PontoFieldsInput,
@@ -17,7 +23,7 @@ import type {
   PontoConfigRow,
 } from '@/lib/server/db-types'
 
-async function loadPontoValidationContext(userId: string) {
+async function loadPontoValidationContext(userId: string, dataRef: string) {
   const session = await requireAuth()
   if (session.cargo !== 'admin' && session.id !== userId) {
     throw new Error('Sem permissão para registrar ponto deste usuário')
@@ -25,10 +31,15 @@ async function loadPontoValidationContext(userId: string) {
 
   const supabase = await createClient()
 
-  const [profileRes, bloqueiosRes, configsRes] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', userId).single(),
-    supabase.from('bloqueios_presenca').select('*'),
-    supabase.from('ponto_configs').select('*'),
+  const [profileRes, bloqueiosRes, configs] = await Promise.all([
+    supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).single(),
+    supabase
+      .from('bloqueios_presenca')
+      .select(BLOQUEIO_COLUMNS)
+      .eq('user_id', userId)
+      .lte('data_inicio', dataRef)
+      .gte('data_fim', dataRef),
+    getCachedPontoConfigs(),
   ])
 
   if (profileRes.error || !profileRes.data) {
@@ -37,7 +48,6 @@ async function loadPontoValidationContext(userId: string) {
 
   const user = mapProfile(profileRes.data as ProfileRow)
   const bloqueios = (bloqueiosRes.data as BloqueioPresencaRow[] ?? []).map(mapBloqueio)
-  const configs = (configsRes.data as PontoConfigRow[] ?? []).map(mapPontoConfig)
   const activeConfig =
     configs.find((c) => c.ativo) ?? configs.find((c) => c.padrao) ?? defaultPontoConfig()
 
@@ -86,7 +96,7 @@ export async function listPontos(userId?: string): Promise<PontoRegistro[]> {
 
   const { data, error } = await supabase
     .from('ponto_registros')
-    .select('*')
+    .select(PONTO_COLUMNS)
     .eq('user_id', targetId)
     .order('data', { ascending: false })
 
@@ -95,8 +105,16 @@ export async function listPontos(userId?: string): Promise<PontoRegistro[]> {
 }
 
 export async function getPontoByDate(userId: string, data: string) {
-  const pontos = await listPontos(userId)
-  return pontos.find((p) => p.data === data)
+  const supabase = await createClient()
+  const { data: row, error } = await supabase
+    .from('ponto_registros')
+    .select(PONTO_COLUMNS)
+    .eq('user_id', userId)
+    .eq('data', data)
+    .maybeSingle()
+
+  if (error) throw error
+  return row ? mapPonto(row as PontoRegistroRow) : undefined
 }
 
 export async function createPonto(
@@ -110,7 +128,7 @@ export async function createPonto(
 
   const parsed = parseInput(pontoInputSchema, input)
   const uid = userId ?? session.id
-  const ctx = await loadPontoValidationContext(uid)
+  const ctx = await loadPontoValidationContext(uid, parsed.data)
 
   const fields = toPontoFields(parsed)
   assertPontoBusinessRules(fields, ctx)
@@ -149,7 +167,7 @@ export async function updatePonto(id: string, input: unknown): Promise<PontoRegi
 
   const { data: existing, error: fetchError } = await supabase
     .from('ponto_registros')
-    .select('*')
+    .select(PONTO_COLUMNS)
     .eq('id', id)
     .single()
 
@@ -177,7 +195,7 @@ export async function updatePonto(id: string, input: unknown): Promise<PontoRegi
     observacao: partial.observacao !== undefined ? partial.observacao : current.observacao,
   }
 
-  const ctx = await loadPontoValidationContext(current.userId)
+  const ctx = await loadPontoValidationContext(current.userId, merged.data)
   const fields = toPontoFields(merged)
   assertPontoBusinessRules(fields, ctx)
 

@@ -10,7 +10,11 @@ import {
   type ReactNode,
 } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { fetchDashboardData } from '@/lib/data-api'
+import {
+  fetchDashboardBootstrap,
+  fetchPontos,
+  fetchJustificativas,
+} from '@/lib/data-api'
 import { isPresencaBloqueada as checkPresencaBloqueada } from '@/lib/presenca-bloqueio'
 import {
   compensacaoAfetaSaldo,
@@ -56,8 +60,12 @@ import type { ActionResult } from '@/lib/types/action-result'
 
 interface DataContextType {
   isDataLoading: boolean
+  isPontosLoading: boolean
+  isJustificativasLoading: boolean
   dataError: string | null
   refreshData: () => Promise<void>
+  refreshPontos: () => Promise<void>
+  refreshJustificativas: () => Promise<void>
 
   pontos: PontoRegistro[]
   addPonto: (
@@ -138,6 +146,8 @@ const DEFAULT_PONTO_CONFIG: PontoConfig = {
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user: authUser, isLoading: authLoading } = useAuth()
   const [isDataLoading, setIsDataLoading] = useState(true)
+  const [isPontosLoading, setIsPontosLoading] = useState(false)
+  const [isJustificativasLoading, setIsJustificativasLoading] = useState(false)
   const [dataError, setDataError] = useState<string | null>(null)
 
   const [pontos, setPontos] = useState<PontoRegistro[]>([])
@@ -149,26 +159,64 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [pontoConfigs, setPontoConfigs] = useState<PontoConfig[]>([DEFAULT_PONTO_CONFIG])
   const [bloqueiosPresenca, setBloqueiosPresenca] = useState<BloqueioPresenca[]>([])
 
-  const refreshData = useCallback(async () => {
-    if (!authUser) return
-    setIsDataLoading(true)
-    setDataError(null)
-    try {
-      const data = await fetchDashboardData()
-      setPontos(data.pontos)
-      setJustificativas(data.justificativas)
+  const applyBootstrap = useCallback(
+    (data: Awaited<ReturnType<typeof fetchDashboardBootstrap>>) => {
       setNotificacoes(data.notificacoes)
       setUsuarios(data.usuarios)
       setDesafios(data.desafios)
       setDesafioProgressos(data.desafioProgressos)
       setPontoConfigs(data.pontoConfigs.length ? data.pontoConfigs : [DEFAULT_PONTO_CONFIG])
       setBloqueiosPresenca(data.bloqueiosPresenca)
+    },
+    [],
+  )
+
+  const refreshPontos = useCallback(async () => {
+    if (!authUser) return
+    setIsPontosLoading(true)
+    try {
+      setPontos(await fetchPontos())
+    } catch (e) {
+      setDataError(e instanceof Error ? e.message : 'Erro ao carregar pontos')
+    } finally {
+      setIsPontosLoading(false)
+    }
+  }, [authUser])
+
+  const refreshJustificativas = useCallback(async () => {
+    if (!authUser) return
+    setIsJustificativasLoading(true)
+    try {
+      setJustificativas(await fetchJustificativas())
+    } catch (e) {
+      setDataError(e instanceof Error ? e.message : 'Erro ao carregar justificativas')
+    } finally {
+      setIsJustificativasLoading(false)
+    }
+  }, [authUser])
+
+  const refreshData = useCallback(async () => {
+    if (!authUser) return
+    setIsDataLoading(true)
+    setDataError(null)
+    try {
+      const bootstrap = await fetchDashboardBootstrap()
+      applyBootstrap(bootstrap)
+      setIsDataLoading(false)
+      const [pontosData, justificativasData] = await Promise.all([
+        fetchPontos(),
+        fetchJustificativas(),
+      ])
+      setPontos(pontosData)
+      setJustificativas(justificativasData)
     } catch (e) {
       setDataError(e instanceof Error ? e.message : 'Erro ao carregar dados')
     } finally {
       setIsDataLoading(false)
+      setIsPontosLoading(false)
+      setIsJustificativasLoading(false)
     }
-  }, [authUser])
+  }, [authUser, applyBootstrap])
 
   useEffect(() => {
     if (authLoading) return
@@ -496,8 +544,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     () =>
       ({
         isDataLoading,
+        isPontosLoading,
+        isJustificativasLoading,
         dataError,
         refreshData,
+        refreshPontos,
+        refreshJustificativas,
         pontos,
         addPonto,
         updatePonto,
@@ -544,8 +596,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }) satisfies DataContextType,
     [
       isDataLoading,
+      isPontosLoading,
+      isJustificativasLoading,
       dataError,
       refreshData,
+      refreshPontos,
+      refreshJustificativas,
       pontos,
       addPonto,
       updatePonto,

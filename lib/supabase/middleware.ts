@@ -30,14 +30,13 @@ export async function updateSession(request: NextRequest) {
   )
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
 
   const pathname = request.nextUrl.pathname
   const isDashboard = pathname.startsWith('/dashboard')
-  const isLogin = pathname === '/'
 
-  if (isDashboard && !user) {
+  if (isDashboard && !session) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)

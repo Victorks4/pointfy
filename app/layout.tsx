@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/lib/auth-context'
-import { DataProvider } from '@/lib/data-context'
 import { ThemeProvider } from '@/components/theme-provider'
+import { ThemeScope } from '@/components/theme-scope'
 import { Toaster } from '@/components/ui/sonner'
 import { WebVitalsReporter } from '@/components/web-vitals-reporter'
 import './globals.css'
@@ -54,14 +54,20 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className={`${geistSans.className} min-h-dvh font-sans antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <AuthProvider>
-            <DataProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          storageKey="pontify-theme"
+          disableTransitionOnChange
+        >
+          <ThemeScope>
+            <AuthProvider>
               {children}
               <Toaster />
               <WebVitalsReporter />
-            </DataProvider>
-          </AuthProvider>
+            </AuthProvider>
+          </ThemeScope>
         </ThemeProvider>
         <Analytics />
       </body>

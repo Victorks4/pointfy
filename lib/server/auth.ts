@@ -6,14 +6,14 @@ import type { ProfileRow } from '@/lib/server/db-types'
 export async function getSessionUser(): Promise<User | null> {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return null
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) return null
 
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', user.id)
+    .eq('id', session.user.id)
     .single()
 
   if (error || !data) return null
