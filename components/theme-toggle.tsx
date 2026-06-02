@@ -2,7 +2,7 @@
 
 import { Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -12,10 +12,17 @@ type ThemeToggleProps = {
 }
 
 export function ThemeToggle({ className, variant = 'icon' }: ThemeToggleProps) {
-  const { setTheme, resolvedTheme } = useTheme()
+  const { theme, setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => setMounted(true), [])
+
+  const activeTheme = resolvedTheme ?? theme ?? 'light'
+  const isDark = activeTheme === 'dark'
+
+  const toggleTheme = useCallback(() => {
+    setTheme(isDark ? 'light' : 'dark')
+  }, [isDark, setTheme])
 
   if (!mounted) {
     return (
@@ -30,8 +37,6 @@ export function ThemeToggle({ className, variant = 'icon' }: ThemeToggleProps) {
     )
   }
 
-  const isDark = resolvedTheme === 'dark'
-
   return (
     <Button
       type="button"
@@ -43,7 +48,7 @@ export function ThemeToggle({ className, variant = 'icon' }: ThemeToggleProps) {
           : 'h-9 w-9',
         className,
       )}
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      onClick={toggleTheme}
       aria-label={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

@@ -360,7 +360,7 @@ export default function DashboardPage() {
         <div data-fy-anchor="fy-dashboard-actions" className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card
             data-gsap-reveal
-            className="neon-card-cta group border-2 border-primary/40 bg-card shadow-sm transition-all duration-300"
+            className="neon-card-cta group border bg-card shadow-sm transition-all duration-300"
           >
             <CardHeader>
               <div className="flex items-center gap-3">

@@ -394,7 +394,8 @@ function FyGuideInner() {
     >
       <div
         className={cn(
-          'relative w-full rounded-2xl border border-sky-200/90 bg-card/95 shadow-lg shadow-sky-900/10 ring-1 ring-sky-100 backdrop-blur-sm dark:border-cyan-500/35 dark:bg-card/92 dark:shadow-[0_0_28px_-8px_var(--neon-glow-cyan),0_16px_48px_rgba(8,14,24,0.5)] dark:ring-cyan-500/25',
+          'relative w-full rounded-2xl border border-sky-200/90 bg-card/95 text-foreground shadow-lg shadow-sky-900/10 ring-1 ring-sky-100 backdrop-blur-sm',
+          'dark:border-cyan-500/45 dark:bg-[#1a2d44] dark:text-slate-100 dark:shadow-[0_0_28px_-8px_var(--neon-glow-cyan),0_16px_48px_rgba(8,14,24,0.55)] dark:ring-cyan-400/30',
           tour.uiMode === 'exiting' &&
             (prefersReducedMotion ? 'fy-exit-bubble-reduced' : 'fy-exit-bubble'),
           !tour.isTourActive &&
@@ -407,14 +408,14 @@ function FyGuideInner() {
         role="status"
         aria-live="polite"
       >
-        <div className="px-3.5 py-2.5 text-sm leading-snug text-slate-800">
+        <div className="px-3.5 py-2.5 text-sm leading-snug">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="font-medium text-sky-700 dark:text-sky-300">{FY_NAME}</span>
+            <span className="font-medium text-sky-700 dark:text-cyan-300">{FY_NAME}</span>
             {stepLabel ? (
-              <span className="text-xs font-normal text-slate-500">{stepLabel}</span>
+              <span className="text-xs font-normal text-muted-foreground">{stepLabel}</span>
             ) : null}
           </div>
-          <p className="leading-snug">{bubbleLine}</p>
+          <p className="leading-snug text-foreground/90 dark:text-slate-100">{bubbleLine}</p>
           {tour.isTourActive ? (
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
               <Button
@@ -438,14 +439,20 @@ function FyGuideInner() {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               )}
-              <Button type="button" variant="ghost" size="sm" className="text-slate-500" onClick={() => tour.skipTour()}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => tour.skipTour()}
+              >
                 Pular tour
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="gap-1 text-sky-700"
+                className="gap-1 text-sky-700 dark:text-cyan-300 dark:hover:text-cyan-200"
                 onClick={() => setFaqOpen(true)}
               >
                 <CircleHelp className="h-4 w-4" />
@@ -459,20 +466,26 @@ function FyGuideInner() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="gap-1 text-sky-700"
+                className="gap-1 text-sky-700 dark:text-cyan-300 dark:hover:text-cyan-200"
                 onClick={() => setFaqOpen(true)}
               >
                 <CircleHelp className="h-4 w-4" />
                 Dúvidas
               </Button>
-              <Button type="button" variant="ghost" size="sm" className="text-sky-700" onClick={() => tour.startTourFromMenu()}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-sky-700 dark:text-cyan-300 dark:hover:text-cyan-200"
+                onClick={() => tour.startTourFromMenu()}
+              >
                 Ver tour
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="gap-1 text-slate-600"
+                className="gap-1 text-muted-foreground hover:text-foreground"
                 onClick={() => tour.collapseToFab()}
               >
                 <Minimize2 className="h-4 w-4" />
@@ -482,7 +495,7 @@ function FyGuideInner() {
           ) : null}
         </div>
         <div
-          className="absolute -bottom-1.5 right-10 h-3 w-3 rotate-45 border border-sky-200/90 border-t-0 border-l-0 bg-card/95 dark:border-primary/30 dark:bg-card/92"
+          className="absolute -bottom-1.5 right-10 h-3 w-3 rotate-45 border border-sky-200/90 border-t-0 border-l-0 bg-card/95 dark:border-cyan-500/45 dark:bg-[#1a2d44]"
           aria-hidden
         />
       </div>

@@ -189,10 +189,6 @@
   transform: none !important;
 }
 
-.login-page-panel {
-  min-height: 42vh;
-}
-
 @media (min-width: 1024px) {
   .login-page-panel {
     min-height: 100dvh;

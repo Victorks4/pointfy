@@ -29,12 +29,25 @@ import {
   LoginAmbientProvider,
 } from "@/lib/login-ambient-context";
 
+function useIsDesktopLoginPanel() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setShow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return show;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const showLoginPanel = useIsDesktopLoginPanel();
   const { login, user, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -78,16 +91,18 @@ export default function LoginPage() {
     <LoginAmbientProvider submitting={isLoading}>
       <GsapLoginEntrance>
       <main className="login-page flex min-h-dvh w-full max-w-full flex-col lg:min-h-dvh lg:flex-row lg:items-stretch">
-        <div
-          data-gsap-login-panel
-          className="login-page-panel relative min-h-[42vh] w-full shrink-0 overflow-hidden lg:min-h-dvh lg:min-w-0 lg:flex-1 lg:basis-0"
-        >
-          <LoginLeftPanel />
-        </div>
+        {showLoginPanel ? (
+          <div
+            data-gsap-login-panel
+            className="login-page-panel relative w-full shrink-0 overflow-hidden lg:min-h-dvh lg:min-w-0 lg:flex-1 lg:basis-0"
+          >
+            <LoginLeftPanel />
+          </div>
+        ) : null}
 
         <div
           data-gsap-login-form
-          className="login-page-form flex min-h-0 flex-1 flex-col items-center justify-center bg-background p-8 lg:min-h-dvh lg:min-w-0 lg:flex-1 lg:basis-0"
+          className="login-page-form flex min-h-dvh w-full flex-1 flex-col items-center justify-center bg-background p-6 sm:p-8 lg:min-h-dvh lg:min-w-0 lg:flex-1 lg:basis-0"
         >
           <div
             className={`w-full max-w-md transition-all duration-700 delay-200 ${mounted ? "translate-x-0 opacity-100" : "translate-x-10 opacity-0"}`}
@@ -196,7 +211,7 @@ export default function LoginPage() {
               </motion.div>
             </form>
 
-            <div className="mt-6 flex items-center gap-3 rounded-xl border border-cyan-200/80 bg-blue-50/60 p-3 shadow-[0_0_20px_-8px_var(--neon-glow-cyan)]">
+            <div className="mt-6 flex items-center gap-3 rounded-xl border border-cyan-200/80 bg-blue-50/60 p-3 shadow-[0_0_20px_-8px_var(--neon-glow-cyan)] dark:border-cyan-500/40 dark:bg-[#1a2d44] dark:shadow-[0_0_20px_-8px_var(--neon-glow-cyan)]">
               <Image
                 src="/fy-mascote.png"
                 alt="Fy, guia do Pontify"
@@ -204,7 +219,7 @@ export default function LoginPage() {
                 height={44}
                 className="shrink-0 object-contain"
               />
-              <p className="text-left text-sm leading-snug text-blue-950/85">
+              <p className="text-left text-sm leading-snug text-blue-950/85 dark:text-slate-100">
                 Depois do login, o <strong>Fy</strong> aparece no canto da tela com dicas em um balão, sem janelas extras.
               </p>
             </div>
