@@ -54,6 +54,8 @@ export async function createNotificacao(input: unknown): Promise<Notificacao> {
 
 export async function markNotificacaoAsRead(notificacaoId: string, userId: string) {
   parseInput(notificacaoReadSchema, { notificacaoId, userId })
+  const session = await requireAuth()
+  if (session.id !== userId) throw new Error('Sem permissão')
   const supabase = await createClient()
   const { error } = await supabase.from('notificacao_leituras').upsert({
     notificacao_id: notificacaoId,

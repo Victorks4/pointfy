@@ -12,7 +12,7 @@
     "analyze:visual": "cross-env ANALYZE=true next build",
     "db:seed": "node scripts/seed-demo-users.mjs",
     "db:check": "node scripts/check-supabase.mjs",
-    "test": "npx tsx --test tests/*.test.mjs"
+    "test": "npx tsx --test tests/**/*.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

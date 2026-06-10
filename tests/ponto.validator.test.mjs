@@ -84,6 +84,50 @@ describe('validatePontoBusinessRules', () => {
     assert.ok(!erros.some((e) => e.includes('justificativa')))
   })
 
+  it('rejeita data futura', () => {
+    const erros = validatePontoBusinessRules(
+      {
+        data: '2099-12-31',
+        entrada1: '09:15',
+        saida1: '12:15',
+        entrada2: '13:15',
+        saida2: '16:15',
+        totalMinutos: 360,
+        justificativaHoraExtra: null,
+      },
+      ctx,
+    )
+    assert.ok(erros.some((e) => e.includes('futura')))
+  })
+
+  it('rejeita registro em data bloqueada', () => {
+    const erros = validatePontoBusinessRules(
+      {
+        data: '2024-06-10',
+        entrada1: '09:15',
+        saida1: '12:15',
+        entrada2: '13:15',
+        saida2: '16:15',
+        totalMinutos: 360,
+        justificativaHoraExtra: null,
+      },
+      {
+        ...ctx,
+        bloqueios: [
+          {
+            id: 'b1',
+            userId: 'user-1',
+            dataInicio: '2024-06-10',
+            dataFim: '2024-06-10',
+            motivo: 'teste',
+            createdAt: '',
+          },
+        ],
+      },
+    )
+    assert.ok(erros.some((e) => e.includes('bloqueado')))
+  })
+
   it('aceita registro válido dentro do limite', () => {
     const erros = validatePontoBusinessRules(
       {

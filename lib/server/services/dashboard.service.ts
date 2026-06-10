@@ -8,7 +8,8 @@ import {
   mapDesafioProgresso,
 } from '@/lib/server/mappers'
 import { getSessionUser } from '@/lib/server/auth'
-import { calcularBancoHoras, calcularBancoHorasPorPeriodo } from '@/lib/server/banco-horas'
+import { assertTargetUserAccess } from '@/lib/server/access-control'
+import { calcularBancoHoras, calcularBancoHorasPorPeriodo } from '@/lib/banco-horas'
 import { listNotificacoesForUser } from '@/lib/server/services/notificacao.service'
 import {
   PROFILE_COLUMNS,
@@ -181,18 +182,7 @@ export async function listPontosScoped(
 
   const targetUserId = params.userId ?? (session.cargo === 'estagiario' ? session.id : undefined)
   if (targetUserId) {
-    if (session.cargo === 'gestor' && session.id !== targetUserId) {
-      const { data: est } = await supabase
-        .from('profiles')
-        .select('gestor_id')
-        .eq('id', targetUserId)
-        .single()
-      if ((est as { gestor_id: string | null } | null)?.gestor_id !== session.id) {
-        throw new Error('Sem permissão')
-      }
-    } else if (session.cargo === 'estagiario' && session.id !== targetUserId) {
-      throw new Error('Sem permissão')
-    }
+    await assertTargetUserAccess(session, targetUserId, supabase)
     query = query.eq('user_id', targetUserId)
   } else if (session.cargo === 'estagiario') {
     query = query.eq('user_id', session.id)
@@ -242,6 +232,7 @@ export async function listJustificativasScoped(
 
   const targetUserId = params.userId ?? (session.cargo === 'estagiario' ? session.id : undefined)
   if (targetUserId) {
+    await assertTargetUserAccess(session, targetUserId, supabase)
     query = query.eq('user_id', targetUserId)
   } else if (session.cargo === 'estagiario') {
     query = query.eq('user_id', session.id)
@@ -285,8 +276,11 @@ export async function getBancoHorasForUser(
     .eq('id', userId)
     .single()
 
-  if (!profileRow) return 0
-  const user = mapProfile(profileRow as ProfileRow)
+  if (!profileRow) throw new Error('Sem permissão')
+
+  const profile = profileRow as ProfileRow
+  await assertTargetUserAccess(session, userId, supabase)
+  const user = mapProfile(profile)
 
   const windowStart = dashboardWindowStartIso()
   const pontos = await listPontosScoped({ userId, from: windowStart }, supabase)

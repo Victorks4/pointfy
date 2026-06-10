@@ -23,7 +23,7 @@ import {
 import {
   calcularBancoHoras,
   calcularBancoHorasPorPeriodo,
-} from '@/lib/server/banco-horas'
+} from '@/lib/banco-horas'
 import { createPontoAction, updatePontoAction } from '@/app/actions/pontos'
 import {
   createJustificativaAction,
