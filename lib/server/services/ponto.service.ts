@@ -4,6 +4,7 @@ import { mapPonto, mapProfile, pontoToInsert } from '@/lib/server/mappers'
 import { mapBloqueio } from '@/lib/server/mappers'
 import { mapPontoConfig } from '@/lib/server/mappers'
 import { requireAuth } from '@/lib/server/auth'
+import { assertTargetUserAccess } from '@/lib/server/access-control'
 import { parseInput } from '@/lib/validations/parse'
 import { pontoInputSchema, pontoUpdateSchema } from '@/lib/validations/schemas'
 import {
@@ -93,6 +94,7 @@ export async function listPontos(userId?: string): Promise<PontoRegistro[]> {
   const session = await requireAuth()
   const supabase = await createClient()
   const targetId = userId ?? session.id
+  await assertTargetUserAccess(session, targetId, supabase)
 
   const { data, error } = await supabase
     .from('ponto_registros')
@@ -105,7 +107,10 @@ export async function listPontos(userId?: string): Promise<PontoRegistro[]> {
 }
 
 export async function getPontoByDate(userId: string, data: string) {
+  const session = await requireAuth()
   const supabase = await createClient()
+  await assertTargetUserAccess(session, userId, supabase)
+
   const { data: row, error } = await supabase
     .from('ponto_registros')
     .select(PONTO_COLUMNS)

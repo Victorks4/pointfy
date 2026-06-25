@@ -5,8 +5,9 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useServerUser } from '@/components/server-user-provider'
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
+import { DashboardDataStatus } from '@/components/dashboard-data-status'
 import { DashboardProviders } from '@/components/dashboard-providers'
-import { FyTourProvider } from '@/lib/fy-tour-context'
+import { FyTourProvider, useFyTour } from '@/lib/fy-tour-context'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,22 @@ const DashboardGsapRoot = dynamic(
   () => import('@/components/dashboard-gsap-root').then((m) => ({ default: m.DashboardGsapRoot })),
   { ssr: false },
 )
+
+function FyGuideLazy() {
+  const { isTourActive, showEntrance } = useFyTour()
+  const [afterPaint, setAfterPaint] = useState(false)
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setAfterPaint(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
+  if (!afterPaint && !isTourActive && !showEntrance) {
+    return null
+  }
+
+  return <FyGuide />
+}
 
 function DashboardLoadingShell() {
   return (
@@ -95,10 +112,11 @@ export function DashboardClientLayout({ children }: { children: React.ReactNode 
       <SidebarProvider>
         <DashboardSidebar />
         <SidebarInset className="min-h-0 overflow-hidden">
+          <DashboardDataStatus />
           <FyTourProvider>
             <DashboardGsapRoot>{children}</DashboardGsapRoot>
             <FyTourOverlay />
-            <FyGuide />
+            <FyGuideLazy />
           </FyTourProvider>
         </SidebarInset>
       </SidebarProvider>

@@ -18,7 +18,7 @@ export async function signInAction(email: string, password: string): Promise<Sig
   const profile = await getSessionUser()
   if (!profile) {
     await supabase.auth.signOut()
-    return { ok: false, error: 'Usuário sem perfil em profiles. Rode migrations e npm run db:seed.' }
+    return { ok: false, error: 'Conta sem perfil configurado. Entre em contato com o administrador.' }
   }
 
   return { ok: true, cargo: profile.cargo }

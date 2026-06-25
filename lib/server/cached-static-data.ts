@@ -16,7 +16,6 @@ export async function fetchPontoConfigs(supabase: SupabaseClient) {
   return (data as PontoConfigRow[]).map(mapPontoConfig)
 }
 
-/** Cache global (dados semi-estáticos) — invalidar via tag no admin. */
 const cachedDesafiosGlobal = unstable_cache(
   async () => {
     const { createClient } = await import('@/lib/supabase/server')
@@ -37,19 +36,11 @@ const cachedPontoConfigsGlobal = unstable_cache(
   { revalidate: 300, tags: ['ponto-configs'] },
 )
 
-/** Preferir client da request (RLS + cookies); fallback ao cache. */
-export async function getCachedDesafiosSemanais(supabase: SupabaseClient) {
-  try {
-    return await fetchDesafiosSemanais(supabase)
-  } catch {
-    return cachedDesafiosGlobal()
-  }
+/** Cache primário — invalidar via revalidateTag no admin. */
+export async function getCachedDesafiosSemanais(_supabase?: SupabaseClient) {
+  return cachedDesafiosGlobal()
 }
 
-export async function getCachedPontoConfigs(supabase: SupabaseClient) {
-  try {
-    return await fetchPontoConfigs(supabase)
-  } catch {
-    return cachedPontoConfigsGlobal()
-  }
+export async function getCachedPontoConfigs(_supabase?: SupabaseClient) {
+  return cachedPontoConfigsGlobal()
 }

@@ -5,7 +5,8 @@ import {
   mapDesafioProgresso,
   mapPontoConfig,
 } from '@/lib/server/mappers'
-import { requireRole } from '@/lib/server/auth'
+import { requireAuth, requireRole } from '@/lib/server/auth'
+import { assertTargetUserAccess } from '@/lib/server/access-control'
 import { getLimiteMinutosSemJustificativa } from '@/lib/ponto-config-utils'
 import { parseInput } from '@/lib/validations/parse'
 import {
@@ -144,7 +145,9 @@ export async function upsertDesafioProgresso(
   concluido: boolean,
 ): Promise<DesafioProgresso> {
   parseInput(desafioProgressoSchema, { userId, desafioId, progressoAtual, concluido })
+  const session = await requireAuth()
   const supabase = await createClient()
+  await assertTargetUserAccess(session, userId, supabase)
   const { data, error } = await supabase
     .from('desafio_progressos')
     .upsert(

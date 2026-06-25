@@ -1,10 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { useAuth } from '@/lib/auth-context'
-import { useData } from '@/lib/data-context'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useData } from '@/lib/data-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
@@ -38,9 +36,8 @@ const MESES = [
 ]
 
 export default function AdminPage() {
-  const { user } = useAuth()
-  const { usuarios, pontos, getBancoHorasPorPeriodo } = useData()
   const router = useRouter()
+  const { usuarios, pontos, getBancoHorasPorPeriodo } = useData()
 
   const currentYear = new Date().getFullYear()
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0')
@@ -50,20 +47,6 @@ export default function AdminPage() {
   const [departamentoFiltro, setDepartamentoFiltro] = useState('')
   const [busca, setBusca] = useState('')
 
-  // Verificar se é admin
-  useEffect(() => {
-    if (!user || user.cargo === 'admin') return
-    if (user.cargo === 'gestor') {
-      router.replace('/dashboard/gestor')
-      return
-    }
-    router.replace('/dashboard')
-  }, [user, router])
-
-  if (user?.cargo !== 'admin') {
-    return null
-  }
-
   // Estatísticas gerais
   const totalUsuarios = usuarios.filter(u => u.cargo === 'estagiario').length
   const pontosDoMes = pontos.filter(p => {
@@ -72,24 +55,29 @@ export default function AdminPage() {
   })
   const totalHorasMes = pontosDoMes.reduce((acc, p) => acc + p.totalMinutos, 0)
 
-  // Calcular estatísticas por usuário
-  const usuariosEstagiarios = usuarios.filter(u => u.cargo === 'estagiario')
-  const usuariosComDados: EstagiarioComMetricas[] = usuariosEstagiarios.map((usuario) => {
-    const pontosUsuario = pontos.filter(p => {
-      const [ano, mes] = p.data.split('-')
-      return p.userId === usuario.id && ano === selectedYear && mes === selectedMonth
-    })
-    const horasMes = pontosUsuario.reduce((acc, p) => acc + p.totalMinutos, 0)
-    const bancoHoras = getBancoHorasPorPeriodo(usuario.id, selectedYear, selectedMonth)
-    const diasTrabalhados = pontosUsuario.length
+  const usuariosEstagiarios = useMemo(
+    () => usuarios.filter((u) => u.cargo === 'estagiario'),
+    [usuarios],
+  )
 
-    return {
-      ...usuario,
-      horasMes,
-      bancoHoras,
-      diasTrabalhados,
-    }
-  })
+  const usuariosComDados: EstagiarioComMetricas[] = useMemo(() => {
+    return usuariosEstagiarios.map((usuario) => {
+      const pontosUsuario = pontos.filter((p) => {
+        const [ano, mes] = p.data.split('-')
+        return p.userId === usuario.id && ano === selectedYear && mes === selectedMonth
+      })
+      const horasMes = pontosUsuario.reduce((acc, p) => acc + p.totalMinutos, 0)
+      const bancoHoras = getBancoHorasPorPeriodo(usuario.id, selectedYear, selectedMonth)
+      const diasTrabalhados = pontosUsuario.length
+
+      return {
+        ...usuario,
+        horasMes,
+        bancoHoras,
+        diasTrabalhados,
+      }
+    })
+  }, [usuariosEstagiarios, pontos, selectedYear, selectedMonth, getBancoHorasPorPeriodo])
 
   const usuariosComDadosFiltradosOrdenados = usuariosComDados
     .filter((u) => {

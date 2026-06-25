@@ -23,7 +23,6 @@ const HEAVY_HINTS = [
   'main-app',
   'vendor',
   'three',
-  'recharts',
   'lucide',
 ]
 

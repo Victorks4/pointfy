@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { useSearchParams } from "next/navigation";
 import { signInAction } from "@/app/actions/auth";
 import { useAuth } from "@/lib/auth-context";
 import { navigateAfterLogin } from "@/lib/post-login-nav";
+import { prefetchDashboardData } from "@/lib/data-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
@@ -42,6 +44,21 @@ function useIsDesktopLoginPanel() {
 }
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-dvh items-center justify-center bg-background">
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [error, setError] = useState("");
@@ -49,6 +66,12 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const showLoginPanel = useIsDesktopLoginPanel();
   const { user, isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (searchParams.get("error") === "auth") {
+      setError("Não foi possível concluir o login. Tente novamente com email e senha.");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     setMounted(true);
@@ -67,19 +90,25 @@ export default function LoginPage() {
     try {
       const result = await signInAction(email, senha);
       if (result.ok) {
+        prefetchDashboardData();
         navigateAfterLogin(result.cargo);
         return;
       }
-      setError(
-        result.error ||
-          "Não foi possível entrar. Confira email/senha, se rodou as migrations e npm run db:seed no Supabase.",
-      );
+      setError(result.error || "Email ou senha incorretos. Tente novamente.");
     } catch {
       setError("Erro ao fazer login. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Verificando sessão...</p>
+      </div>
+    );
+  }
 
   return (
     <LoginAmbientProvider submitting={isLoading}>
@@ -123,7 +152,7 @@ export default function LoginPage() {
                     Email
                   </FieldLabel>
                   <div className="group relative">
-                    <User className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-black" />
+                    <User className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-black" aria-hidden />
                     <Input
                       id="email"
                       type="email"
@@ -141,7 +170,7 @@ export default function LoginPage() {
                     Senha
                   </FieldLabel>
                   <div className="group relative">
-                    <Lock className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-black" />
+                    <Lock className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-black" aria-hidden />
                     <Input
                       id="senha"
                       type="password"
@@ -156,7 +185,7 @@ export default function LoginPage() {
               </FieldGroup>
 
               {error && (
-                <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+                <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3" role="alert">
                   <p className="text-center text-sm text-destructive">
                     {error}
                   </p>
@@ -188,6 +217,7 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   disabled={isLoading}
+                  aria-busy={isLoading}
                   className="neon-login-submit h-12 w-full cursor-pointer border border-blue-500/34 bg-gradient-to-br from-[#2875f0] to-[#2061d9] text-base font-semibold text-white transition-[box-shadow,color] hover:from-[#2e7efb] hover:to-[#2567ea]"
                 >
                   {isLoading ? (

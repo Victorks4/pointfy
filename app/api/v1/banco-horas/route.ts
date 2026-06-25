@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ saldoMinutos: saldo })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Erro'
-    const status = message === 'Não autenticado' ? 401 : 500
+    const status = message === 'Não autenticado' ? 401 : message === 'Sem permissão' ? 403 : 500
     return NextResponse.json({ error: message }, { status })
   }
 }

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mapJustificativa } from '@/lib/server/mappers'
 import { requireAuth, requireRole } from '@/lib/server/auth'
+import { assertTargetUserAccess } from '@/lib/server/access-control'
 import { parseInput } from '@/lib/validations/parse'
 import { compensacaoDecisionSchema, justificativaInputSchema } from '@/lib/validations/schemas'
 import { JUSTIFICATIVA_COLUMNS } from '@/lib/server/query-columns'
@@ -35,6 +36,7 @@ export async function listJustificativas(
   const session = await requireAuth()
   const supabase = await createClient()
   const targetId = userId ?? session.id
+  await assertTargetUserAccess(session, targetId, supabase)
 
   const { data, error } = await supabase
     .from('justificativas')

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
 import { useRouter } from 'next/navigation'
@@ -12,6 +12,7 @@ import { Clock, TrendingUp, TrendingDown, Calendar, Bell, AlertCircle, ChevronRi
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { LiveClock } from '@/components/live-clock'
 import type { DesafioSemanal, PontoRegistro } from '@/lib/types'
 
 function desafioProgressoFromPontos(
@@ -131,7 +132,6 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const { getPontosByUser, getBancoHoras, getNotificacoesByUser, getPontoByDate, getActivePontoConfig } = useData()
   const router = useRouter()
-  const [currentTime, setCurrentTime] = useState(new Date())
   useEffect(() => {
     if (user?.cargo === 'admin') {
       router.replace('/dashboard/admin')
@@ -139,10 +139,7 @@ export default function DashboardPage() {
     }
     if (user?.cargo === 'gestor') {
       router.replace('/dashboard/gestor')
-      return
     }
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-    return () => clearInterval(timer)
   }, [router, user?.cargo])
 
   if (user?.cargo === 'admin' || user?.cargo === 'gestor') {
@@ -162,12 +159,8 @@ export default function DashboardPage() {
   const streakAtual = calcularSequenciaAtual(pontos.map(p => p.data))
   const productivity = computeProductivityScore(pontos, streakAtual, metaDiaria)
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  }
-
   const getGreeting = () => {
-    const hour = currentTime.getHours()
+    const hour = new Date().getHours()
     if (hour < 12) return 'Bom dia'
     if (hour < 18) return 'Boa tarde'
     return 'Boa noite'
@@ -189,12 +182,7 @@ export default function DashboardPage() {
             </p>
           }
           trailing={
-            <div className="neon-clock flex items-center gap-2 text-sm tabular-nums">
-              <Clock className="h-4 w-4 shrink-0" aria-hidden />
-              <time className="font-mono" dateTime={currentTime.toISOString()}>
-                {formatTime(currentTime)}
-              </time>
-            </div>
+            <LiveClock className="neon-clock flex items-center gap-2 text-sm tabular-nums" />
           }
         />
 

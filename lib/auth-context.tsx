@@ -112,13 +112,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (isLoggingOut.current || skipAuthListener.current) return
 
-      // Ignora SIGNED_OUT espúrio durante refresh de token (comum em produção)
+      // SIGNED_OUT espúrio ignorado; sessão real expirada confirmada via getUser
       if (event === 'SIGNED_OUT') {
-        if (!isLoggingOut.current) return
-        serverProfileRef.current = null
-        authUserIdRef.current = null
-        setUser(null)
-        setProfileError(null)
+        if (isLoggingOut.current) {
+          serverProfileRef.current = null
+          authUserIdRef.current = null
+          setUser(null)
+          setProfileError(null)
+          return
+        }
+        window.setTimeout(() => {
+          void supabase.auth.getUser().then(({ data: { user: authUser } }) => {
+            if (!authUser) {
+              serverProfileRef.current = null
+              authUserIdRef.current = null
+              setUser(null)
+              setProfileError(null)
+            }
+          })
+        }, 0)
         return
       }
 
@@ -156,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [supabase.auth, loadUser, scheduleProfileLoad])
 
-  const login = async (email: string, senha: string): Promise<User | null> => {
+  const login = useCallback(async (email: string, senha: string): Promise<User | null> => {
     if (!isSupabaseConfigured()) {
       console.error('Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env')
       return null
@@ -186,9 +198,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       skipAuthListener.current = false
     }
-  }
+  }, [supabase.auth, loadUser])
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     isLoggingOut.current = true
     serverProfileRef.current = null
     authUserIdRef.current = null
@@ -202,12 +214,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoggingOut.current = false
       window.location.assign('/')
     }
-  }
+  }, [supabase.auth])
+
+  const contextValue = useMemo(
+    () => ({
+      user,
+      login,
+      logout,
+      hydrateUser,
+      retryProfileLoad,
+      isLoading,
+      profileError,
+    }),
+    [user, login, logout, hydrateUser, retryProfileLoad, isLoading, profileError],
+  )
 
   return (
-    <AuthContext.Provider
-      value={{ user, login, logout, hydrateUser, retryProfileLoad, isLoading, profileError }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )

@@ -11,10 +11,11 @@ import {
 } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import {
-  fetchDashboardBootstrap,
+  fetchDashboardSnapshot,
   fetchPontos,
   fetchJustificativas,
 } from '@/lib/data-api'
+import { runVoidAction } from '@/lib/data-action-utils'
 import { isPresencaBloqueada as checkPresencaBloqueada } from '@/lib/presenca-bloqueio'
 import {
   compensacaoAfetaSaldo,
@@ -159,14 +160,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [pontoConfigs, setPontoConfigs] = useState<PontoConfig[]>([DEFAULT_PONTO_CONFIG])
   const [bloqueiosPresenca, setBloqueiosPresenca] = useState<BloqueioPresenca[]>([])
 
-  const applyBootstrap = useCallback(
-    (data: Awaited<ReturnType<typeof fetchDashboardBootstrap>>) => {
+  const applySnapshot = useCallback(
+    (data: Awaited<ReturnType<typeof fetchDashboardSnapshot>>) => {
       setNotificacoes(data.notificacoes)
       setUsuarios(data.usuarios)
       setDesafios(data.desafios)
       setDesafioProgressos(data.desafioProgressos)
       setPontoConfigs(data.pontoConfigs.length ? data.pontoConfigs : [DEFAULT_PONTO_CONFIG])
       setBloqueiosPresenca(data.bloqueiosPresenca)
+      setPontos(data.pontos)
+      setJustificativas(data.justificativas)
     },
     [],
   )
@@ -200,15 +203,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setIsDataLoading(true)
     setDataError(null)
     try {
-      const bootstrap = await fetchDashboardBootstrap()
-      applyBootstrap(bootstrap)
-      setIsDataLoading(false)
-      const [pontosData, justificativasData] = await Promise.all([
-        fetchPontos(),
-        fetchJustificativas(),
-      ])
-      setPontos(pontosData)
-      setJustificativas(justificativasData)
+      applySnapshot(await fetchDashboardSnapshot())
     } catch (e) {
       setDataError(e instanceof Error ? e.message : 'Erro ao carregar dados')
     } finally {
@@ -216,7 +211,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setIsPontosLoading(false)
       setIsJustificativasLoading(false)
     }
-  }, [authUser, applyBootstrap])
+  }, [authUser, applySnapshot])
 
   useEffect(() => {
     if (authLoading) return
@@ -246,10 +241,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         observacao: ponto.observacao,
         justificativaHoraExtra: ponto.justificativaHoraExtra,
       })
-      if (result.success) await refreshData()
+      if (result.success) await refreshPontos()
       return result
     },
-    [refreshData],
+    [refreshPontos],
   )
 
   const updatePonto = useCallback(
@@ -263,10 +258,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         observacao: pontoUpdate.observacao,
         justificativaHoraExtra: pontoUpdate.justificativaHoraExtra,
       })
-      if (result.success) await refreshData()
+      if (result.success) await refreshPontos()
       return result
     },
-    [refreshData],
+    [refreshPontos],
   )
 
   const getPontosByUser = useCallback(
@@ -289,19 +284,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addBloqueioPresenca = useCallback(
     (bloqueio: Omit<BloqueioPresenca, 'id' | 'createdAt'>) => {
-      void addBloqueioAction({
-        userId: bloqueio.userId,
-        dataInicio: bloqueio.dataInicio,
-        dataFim: bloqueio.dataFim,
-        motivo: bloqueio.motivo,
-      }).then(() => refreshData())
+      void runVoidAction(
+        addBloqueioAction({
+          userId: bloqueio.userId,
+          dataInicio: bloqueio.dataInicio,
+          dataFim: bloqueio.dataFim,
+          motivo: bloqueio.motivo,
+        }),
+        () => refreshData(),
+      )
     },
     [refreshData],
   )
 
   const removeBloqueioPresenca = useCallback(
     (id: string) => {
-      void removeBloqueioAction(id).then(() => refreshData())
+      void runVoidAction(removeBloqueioAction(id), () => refreshData())
     },
     [refreshData],
   )
@@ -314,19 +312,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
         descricao: justificativa.descricao,
         arquivoPath: justificativa.arquivoUrl,
       })
-      if (result.success) await refreshData()
+      if (result.success) await refreshJustificativas()
       return result
     },
-    [refreshData],
+    [refreshJustificativas],
   )
 
   const aprovarCompensacao = useCallback(
     async (_gestorId: string, justificativaId: string): Promise<ActionResult<void>> => {
       const result = await aprovarCompensacaoAction(justificativaId)
-      if (result.success) await refreshData()
+      if (result.success) await refreshJustificativas()
       return result.success ? { success: true, data: undefined } : { success: false, error: result.error }
     },
-    [refreshData],
+    [refreshJustificativas],
   )
 
   const rejeitarCompensacao = useCallback(
@@ -336,10 +334,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       motivoRejeicao?: string,
     ): Promise<ActionResult<void>> => {
       const result = await rejeitarCompensacaoAction(justificativaId, motivoRejeicao)
-      if (result.success) await refreshData()
+      if (result.success) await refreshJustificativas()
       return result.success ? { success: true, data: undefined } : { success: false, error: result.error }
     },
-    [refreshData],
+    [refreshJustificativas],
   )
 
   const getCompensacoesPendentesGestor = useCallback(
@@ -389,11 +387,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addNotificacao = useCallback(
     (notificacao: Omit<Notificacao, 'id' | 'createdAt'>) => {
-      void createNotificacaoAction({
-        userId: notificacao.userId,
-        titulo: notificacao.titulo,
-        mensagem: notificacao.mensagem,
-      }).then(() => refreshData())
+      void runVoidAction(
+        createNotificacaoAction({
+          userId: notificacao.userId,
+          titulo: notificacao.titulo,
+          mensagem: notificacao.mensagem,
+        }),
+        () => refreshData(),
+      )
     },
     [refreshData],
   )
@@ -402,9 +403,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       if (!authUser) return
       setNotificacoes((prev) => prev.map((n) => (n.id === id ? { ...n, lida: true } : n)))
-      void markNotificacaoReadAction(id, authUser.id).then(() => refreshData())
+      void markNotificacaoReadAction(id, authUser.id).catch(() => {
+        setNotificacoes((prev) => prev.map((n) => (n.id === id ? { ...n, lida: false } : n)))
+      })
     },
-    [authUser, refreshData],
+    [authUser],
   )
 
   const getNotificacoesByUser = useCallback(
@@ -414,32 +417,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addUsuario = useCallback(
     (usuario: Omit<User, 'id' | 'createdAt'> & { senha?: string }) => {
-      void createUsuarioAction({
-        email: usuario.email,
-        senha: usuario.senha ?? 'changeme123',
-        ra: usuario.ra,
-        nome: usuario.nome,
-        cargo: usuario.cargo,
-        departamento: usuario.departamento,
-        cargaHorariaSemanal: usuario.cargaHorariaSemanal,
-        dataInicioRecesso: usuario.dataInicioRecesso,
-        dataFimRecesso: usuario.dataFimRecesso,
-        gestorId: usuario.gestorId,
-      }).then(() => refreshData())
+      void runVoidAction(
+        createUsuarioAction({
+          email: usuario.email,
+          senha: usuario.senha ?? 'changeme123',
+          ra: usuario.ra,
+          nome: usuario.nome,
+          cargo: usuario.cargo,
+          departamento: usuario.departamento,
+          cargaHorariaSemanal: usuario.cargaHorariaSemanal,
+          dataInicioRecesso: usuario.dataInicioRecesso,
+          dataFimRecesso: usuario.dataFimRecesso,
+          gestorId: usuario.gestorId,
+        }),
+        () => refreshData(),
+        'Não foi possível criar o usuário.',
+      )
     },
     [refreshData],
   )
 
   const updateUsuario = useCallback(
     (id: string, usuarioUpdate: Partial<User>) => {
-      void updateUsuarioAction(id, usuarioUpdate).then(() => refreshData())
+      void runVoidAction(
+        updateUsuarioAction(id, usuarioUpdate),
+        () => refreshData(),
+        'Não foi possível atualizar o usuário.',
+      )
     },
     [refreshData],
   )
 
   const deleteUsuario = useCallback(
     (id: string) => {
-      void deleteUsuarioAction(id).then(() => refreshData())
+      void runVoidAction(
+        deleteUsuarioAction(id),
+        () => refreshData(),
+        'Não foi possível excluir o usuário.',
+      )
     },
     [refreshData],
   )
@@ -470,21 +485,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addDesafio = useCallback(
     (desafio: Omit<DesafioSemanal, 'id' | 'createdAt'>) => {
-      void addDesafioAction(desafio).then(() => refreshData())
+      void runVoidAction(addDesafioAction(desafio), () => refreshData())
     },
     [refreshData],
   )
 
   const updateDesafio = useCallback(
     (id: string, update: Partial<DesafioSemanal>) => {
-      void updateDesafioAction(id, update).then(() => refreshData())
+      void runVoidAction(updateDesafioAction(id, update), () => refreshData())
     },
     [refreshData],
   )
 
   const deleteDesafio = useCallback(
     (id: string) => {
-      void deleteDesafioAction(id).then(() => refreshData())
+      void runVoidAction(deleteDesafioAction(id), () => refreshData())
     },
     [refreshData],
   )
@@ -508,8 +523,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const atualizarProgressoDesafio = useCallback(
     (userId: string, desafioId: string, progressoAtual: number, concluido: boolean) => {
-      void upsertDesafioProgressoAction(userId, desafioId, progressoAtual, concluido).then(() =>
-        refreshData(),
+      void runVoidAction(
+        upsertDesafioProgressoAction(userId, desafioId, progressoAtual, concluido),
+        () => refreshData(),
       )
     },
     [refreshData],
@@ -517,21 +533,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addPontoConfig = useCallback(
     (config: Omit<PontoConfig, 'id' | 'createdAt'>) => {
-      void addPontoConfigAction(config).then(() => refreshData())
+      void runVoidAction(addPontoConfigAction(config), () => refreshData())
     },
     [refreshData],
   )
 
   const updatePontoConfig = useCallback(
     (id: string, update: Partial<PontoConfig>) => {
-      void updatePontoConfigAction(id, update).then(() => refreshData())
+      void runVoidAction(updatePontoConfigAction(id, update), () => refreshData())
     },
     [refreshData],
   )
 
   const deletePontoConfig = useCallback(
     (id: string) => {
-      void deletePontoConfigAction(id).then(() => refreshData())
+      void runVoidAction(deletePontoConfigAction(id), () => refreshData())
     },
     [refreshData],
   )

@@ -111,24 +111,38 @@ async function loadProgressosScoped(
   return (data ?? []).map(mapDesafioProgresso)
 }
 
-/** Bootstrap leve: sem pontos/justificativas (carregados via APIs dedicadas). */
 export async function loadDashboardBootstrap(
   existingSupabase?: SupabaseClient,
 ): Promise<DashboardBootstrap> {
+  const { pontos: _p, justificativas: _j, ...bootstrap } = await loadDashboardSnapshot(
+    existingSupabase,
+  )
+  return bootstrap
+}
+
+export async function loadDashboardSnapshot(
+  existingSupabase?: SupabaseClient,
+): Promise<DashboardSnapshot> {
+  const supabase = existingSupabase ?? (await createClient())
   const session = await getSessionUser()
   if (!session) throw new Error('Não autenticado')
 
-  const supabase = existingSupabase ?? (await createClient())
   const usuarios = await loadUsuariosForSession(session, supabase)
   const userIds = usuarios.map((u) => u.id)
+  const gestorTeamIds =
+    session.cargo === 'gestor'
+      ? usuarios.filter((u) => u.cargo === 'estagiario').map((u) => u.id)
+      : undefined
 
-  const [bloqueiosPresenca, desafios, desafioProgressos, pontoConfigs, notificacoes] =
+  const [bloqueiosPresenca, desafios, desafioProgressos, pontoConfigs, notificacoes, pontos, justificativas] =
     await Promise.all([
       loadBloqueiosScoped(session, userIds, supabase),
       getCachedDesafiosSemanais(supabase),
       loadProgressosScoped(session, userIds, supabase),
       getCachedPontoConfigs(supabase),
       listNotificacoesForUser(session.id, supabase),
+      listPontosScoped({}, supabase, session, gestorTeamIds),
+      listJustificativasScoped({ signFiles: false }, supabase, session, gestorTeamIds),
     ])
 
   return {
@@ -138,19 +152,9 @@ export async function loadDashboardBootstrap(
     desafioProgressos,
     pontoConfigs,
     bloqueiosPresenca,
+    pontos,
+    justificativas,
   }
-}
-
-export async function loadDashboardSnapshot(
-  existingSupabase?: SupabaseClient,
-): Promise<DashboardSnapshot> {
-  const supabase = existingSupabase ?? (await createClient())
-  const [bootstrap, pontos, justificativas] = await Promise.all([
-    loadDashboardBootstrap(supabase),
-    listPontosScoped({}, supabase),
-    listJustificativasScoped({ signFiles: false }, supabase),
-  ])
-  return { ...bootstrap, pontos, justificativas }
 }
 
 export type PontosQueryParams = {
@@ -163,8 +167,10 @@ export type PontosQueryParams = {
 export async function listPontosScoped(
   params: PontosQueryParams = {},
   existingSupabase?: SupabaseClient,
+  existingSession?: User,
+  gestorTeamIds?: string[],
 ): Promise<ReturnType<typeof mapPonto>[]> {
-  const session = await getSessionUser()
+  const session = existingSession ?? (await getSessionUser())
   if (!session) throw new Error('Não autenticado')
 
   const supabase = existingSupabase ?? (await createClient())
@@ -187,8 +193,12 @@ export async function listPontosScoped(
   } else if (session.cargo === 'estagiario') {
     query = query.eq('user_id', session.id)
   } else if (session.cargo === 'gestor') {
-    const { data: team } = await supabase.from('profiles').select('id').eq('gestor_id', session.id)
-    const ids = (team ?? []).map((t: { id: string }) => t.id)
+    const ids =
+      gestorTeamIds ??
+      (
+        await supabase.from('profiles').select('id').eq('gestor_id', session.id)
+      ).data?.map((t: { id: string }) => t.id) ??
+      []
     if (ids.length === 0) return []
     query = query.in('user_id', ids)
   }
@@ -208,8 +218,10 @@ export type JustificativasQueryParams = {
 export async function listJustificativasScoped(
   params: JustificativasQueryParams = {},
   existingSupabase?: SupabaseClient,
+  existingSession?: User,
+  gestorTeamIds?: string[],
 ): Promise<ReturnType<typeof mapJustificativa>[]> {
-  const session = await getSessionUser()
+  const session = existingSession ?? (await getSessionUser())
   if (!session) throw new Error('Não autenticado')
 
   const supabase = existingSupabase ?? (await createClient())
@@ -237,8 +249,12 @@ export async function listJustificativasScoped(
   } else if (session.cargo === 'estagiario') {
     query = query.eq('user_id', session.id)
   } else if (session.cargo === 'gestor') {
-    const { data: team } = await supabase.from('profiles').select('id').eq('gestor_id', session.id)
-    const ids = (team ?? []).map((t: { id: string }) => t.id)
+    const ids =
+      gestorTeamIds ??
+      (
+        await supabase.from('profiles').select('id').eq('gestor_id', session.id)
+      ).data?.map((t: { id: string }) => t.id) ??
+      []
     if (ids.length === 0) return []
     query = query.in('user_id', ids)
   }

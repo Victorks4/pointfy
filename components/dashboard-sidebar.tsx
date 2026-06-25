@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
 import {
@@ -58,16 +59,16 @@ export function DashboardSidebar() {
   const { user, logout } = useAuth()
   const { getNotificacoesByUser, getCompensacoesPendentesGestor } = useData()
   const pathname = usePathname()
-  const router = useRouter()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const notificacoesNaoLidas = user ? getNotificacoesByUser(user.id).filter((n) => !n.lida).length : 0
   const compensacoesPendentes =
     user?.cargo === 'gestor' ? getCompensacoesPendentesGestor(user.id).length : 0
 
   const handleLogout = async () => {
+    if (isLoggingOut) return
+    setIsLoggingOut(true)
     await logout()
-    router.replace('/')
-    router.refresh()
   }
 
   const userMenuItems = [
@@ -212,6 +213,25 @@ export function DashboardSidebar() {
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                {[
+                  { title: 'Registrar Presença', href: '/dashboard/ponto', icon: Clock },
+                  { title: 'Histórico', href: '/dashboard/historico', icon: CalendarDays },
+                  { title: 'Relatórios', href: '/dashboard/relatorios', icon: FileBarChart2 },
+                ].map((item) => {
+                  const isActive = pathname === item.href
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={isActive} className={menuButtonClass(isActive)}>
+                        <Link href={item.href} className="flex items-center gap-3">
+                          <div className={menuIconClass(isActive)}>
+                            <item.icon className="h-4 w-4" />
+                          </div>
+                          <span className="flex-1">{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
@@ -280,6 +300,7 @@ export function DashboardSidebar() {
             variant="ghost"
             size="icon"
             onClick={handleLogout}
+            disabled={isLoggingOut}
             className="shrink-0 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             aria-label="Sair"
           >
