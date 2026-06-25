@@ -1,14 +1,15 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
+import { useServerUser } from '@/components/server-user-provider'
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
 import { DashboardProviders } from '@/components/dashboard-providers'
 import { FyTourProvider } from '@/lib/fy-tour-context'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import type { User } from '@/lib/types'
 
 const FyGuide = dynamic(
   () => import('@/components/fy-guide').then((m) => ({ default: m.FyGuide })),
@@ -36,54 +37,57 @@ function DashboardLoadingShell() {
   )
 }
 
-function DashboardProfileError({
-  message,
-  onRetry,
-  onLogout,
-}: {
-  message: string
-  onRetry: () => void
-  onLogout: () => void
-}) {
+function DashboardSessionRecover() {
+  const [timedOut, setTimedOut] = useState(false)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setTimedOut(true), 6000)
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (!timedOut) {
+    return <DashboardLoadingShell />
+  }
+
   return (
     <div className="flex h-screen items-center justify-center p-6">
       <div className="max-w-md space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">{message}</p>
-        <div className="flex justify-center gap-3">
-          <Button type="button" onClick={onRetry}>
-            Tentar novamente
-          </Button>
-          <Button type="button" variant="outline" onClick={onLogout}>
-            Sair
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          A sessão demorou para carregar. Tente recarregar a página.
+        </p>
+        <Button type="button" onClick={() => window.location.reload()}>
+          Recarregar
+        </Button>
       </div>
     </div>
   )
 }
 
-export function DashboardClientLayout({
-  initialUser,
-  children,
-}: {
-  initialUser: User
-  children: React.ReactNode
-}) {
+export function DashboardClientLayout({ children }: { children: React.ReactNode }) {
+  const serverUser = useServerUser()
   const { user: authUser, profileError, retryProfileLoad, logout } = useAuth()
-  const user = authUser ?? initialUser
+  const user = authUser ?? serverUser
 
   if (profileError && !user) {
     return (
-      <DashboardProfileError
-        message={profileError}
-        onRetry={() => void retryProfileLoad()}
-        onLogout={() => void logout()}
-      />
+      <div className="flex h-screen items-center justify-center p-6">
+        <div className="max-w-md space-y-4 text-center">
+          <p className="text-sm text-muted-foreground">{profileError}</p>
+          <div className="flex justify-center gap-3">
+            <Button type="button" onClick={() => void retryProfileLoad()}>
+              Tentar novamente
+            </Button>
+            <Button type="button" variant="outline" onClick={() => void logout()}>
+              Sair
+            </Button>
+          </div>
+        </div>
+      </div>
     )
   }
 
   if (!user) {
-    return <DashboardLoadingShell />
+    return <DashboardSessionRecover />
   }
 
   return (

@@ -1,14 +1,14 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useLayoutEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import type { User } from '@/lib/types'
 
-/** Sincroniza perfil validado no servidor com o AuthProvider (produção / F5). */
+/** Sincroniza perfil do servidor com o AuthProvider antes da pintura. */
 export function DashboardAuthHydrate({ user }: { user: User }) {
   const { hydrateUser } = useAuth()
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     hydrateUser(user)
   }, [user, hydrateUser])
 

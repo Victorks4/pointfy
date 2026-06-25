@@ -52,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const skipAuthListener = useRef(false)
   const profileInflight = useRef<Map<string, Promise<User | null>>>(new Map())
   const authUserIdRef = useRef<string | null>(null)
+  const serverProfileRef = useRef<User | null>(null)
 
   const loadUser = useCallback(async (userId: string): Promise<User | null> => {
     authUserIdRef.current = userId
@@ -63,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profile) {
           setProfileError(null)
           setUser(profile)
-        } else {
+        } else if (!serverProfileRef.current) {
           setProfileError('Não foi possível carregar seu perfil.')
           setUser(null)
         }
@@ -79,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const scheduleProfileLoad = useCallback(
     (userId: string) => {
+      if (serverProfileRef.current?.id === userId) return
       window.setTimeout(() => {
         void loadUser(userId)
       }, 0)
@@ -87,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const retryProfileLoad = useCallback(async () => {
-    const userId = authUserIdRef.current
+    const userId = authUserIdRef.current ?? serverProfileRef.current?.id
     if (!userId) return
     profileInflight.current.delete(userId)
     setProfileError(null)
@@ -95,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUser])
 
   const hydrateUser = useCallback((profile: User) => {
+    serverProfileRef.current = profile
     authUserIdRef.current = profile.id
     setUser(profile)
     setProfileError(null)
@@ -109,7 +112,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (isLoggingOut.current || skipAuthListener.current) return
 
+      // Ignora SIGNED_OUT espúrio durante refresh de token (comum em produção)
       if (event === 'SIGNED_OUT') {
+        if (!isLoggingOut.current) return
+        serverProfileRef.current = null
         authUserIdRef.current = null
         setUser(null)
         setProfileError(null)
@@ -122,7 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     window.setTimeout(() => {
-      if (cancelled) return
+      if (cancelled || serverProfileRef.current) {
+        if (!cancelled) setIsLoading(false)
+        return
+      }
 
       void (async () => {
         try {
@@ -130,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             data: { user: authUser },
           } = await supabase.auth.getUser()
 
-          if (cancelled) return
+          if (cancelled || serverProfileRef.current) return
 
           if (authUser) {
             await loadUser(authUser.id)
@@ -170,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null
       }
 
+      serverProfileRef.current = profile
       clearDashboardDataPrefetch()
       prefetchDashboardData()
       return profile
@@ -180,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     isLoggingOut.current = true
+    serverProfileRef.current = null
     authUserIdRef.current = null
     setUser(null)
     setProfileError(null)
@@ -189,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut({ scope: 'global' })
     } finally {
       isLoggingOut.current = false
+      window.location.assign('/')
     }
   }
 

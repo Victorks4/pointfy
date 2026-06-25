@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/server/auth'
 import { DashboardAuthHydrate } from '@/components/dashboard-auth-hydrate'
 import { DashboardClientLayout } from '@/components/dashboard-client-layout'
+import { ServerUserProvider } from '@/components/server-user-provider'
 
 export default async function DashboardLayout({
   children,
@@ -12,9 +13,9 @@ export default async function DashboardLayout({
   if (!user) redirect('/')
 
   return (
-    <>
+    <ServerUserProvider user={user}>
       <DashboardAuthHydrate user={user} />
-      <DashboardClientLayout initialUser={user}>{children}</DashboardClientLayout>
-    </>
+      <DashboardClientLayout>{children}</DashboardClientLayout>
+    </ServerUserProvider>
   )
 }

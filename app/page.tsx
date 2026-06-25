@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { signInAction } from "@/app/actions/auth";
 import { useAuth } from "@/lib/auth-context";
 import { navigateAfterLogin } from "@/lib/post-login-nav";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const showLoginPanel = useIsDesktopLoginPanel();
-  const { login, user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
     setMounted(true);
@@ -64,13 +65,14 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const profile = await login(email, senha);
-      if (profile) {
-        navigateAfterLogin(profile.cargo);
+      const result = await signInAction(email, senha);
+      if (result.ok) {
+        navigateAfterLogin(result.cargo);
         return;
       }
       setError(
-        "Não foi possível entrar. Confira email/senha, se rodou as migrations e npm run db:seed no Supabase.",
+        result.error ||
+          "Não foi possível entrar. Confira email/senha, se rodou as migrations e npm run db:seed no Supabase.",
       );
     } catch {
       setError("Erro ao fazer login. Tente novamente.");
