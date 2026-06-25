@@ -1,19 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
 import { mapProfile } from '@/lib/server/mappers'
+import { PROFILE_COLUMNS } from '@/lib/server/query-columns'
 import type { User, UserRole } from '@/lib/types'
 import type { ProfileRow } from '@/lib/server/db-types'
 
 export async function getSessionUser(): Promise<User | null> {
   const supabase = await createClient()
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  if (!session?.user) return null
+    data: { user: authUser },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !authUser) return null
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
-    .eq('id', session.user.id)
+    .select(PROFILE_COLUMNS)
+    .eq('id', authUser.id)
     .single()
 
   if (error || !data) return null

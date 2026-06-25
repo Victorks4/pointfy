@@ -21,6 +21,7 @@ interface AuthContextType {
   user: User | null
   login: (email: string, senha: string) => Promise<User | null>
   logout: () => Promise<void>
+  hydrateUser: (profile: User) => void
   retryProfileLoad: () => Promise<void>
   isLoading: boolean
   profileError: string | null
@@ -93,37 +94,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadUser(userId)
   }, [loadUser])
 
+  const hydrateUser = useCallback((profile: User) => {
+    authUserIdRef.current = profile.id
+    setUser(profile)
+    setProfileError(null)
+    setIsLoading(false)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
-
-    const bootstrap = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-
-        if (cancelled) return
-
-        if (session?.user) {
-          await loadUser(session.user.id)
-          return
-        }
-
-        const {
-          data: { user: authUser },
-        } = await supabase.auth.getUser()
-
-        if (cancelled) return
-
-        if (authUser) {
-          await loadUser(authUser.id)
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false)
-      }
-    }
-
-    void bootstrap()
 
     const {
       data: { subscription },
@@ -141,6 +120,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         scheduleProfileLoad(session.user.id)
       }
     })
+
+    window.setTimeout(() => {
+      if (cancelled) return
+
+      void (async () => {
+        try {
+          const {
+            data: { user: authUser },
+          } = await supabase.auth.getUser()
+
+          if (cancelled) return
+
+          if (authUser) {
+            await loadUser(authUser.id)
+          }
+        } finally {
+          if (!cancelled) setIsLoading(false)
+        }
+      })()
+    }, 0)
 
     return () => {
       cancelled = true
@@ -195,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, retryProfileLoad, isLoading, profileError }}
+      value={{ user, login, logout, hydrateUser, retryProfileLoad, isLoading, profileError }}
     >
       {children}
     </AuthContext.Provider>
