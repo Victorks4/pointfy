@@ -21,7 +21,9 @@ interface AuthContextType {
   user: User | null
   login: (email: string, senha: string) => Promise<User | null>
   logout: () => Promise<void>
+  retryProfileLoad: () => Promise<void>
   isLoading: boolean
+  profileError: string | null
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -43,18 +45,27 @@ async function fetchProfile(userId: string): Promise<User | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [profileError, setProfileError] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
   const isLoggingOut = useRef(false)
   const skipAuthListener = useRef(false)
   const profileInflight = useRef<Map<string, Promise<User | null>>>(new Map())
+  const authUserIdRef = useRef<string | null>(null)
 
   const loadUser = useCallback(async (userId: string): Promise<User | null> => {
+    authUserIdRef.current = userId
     const existing = profileInflight.current.get(userId)
     if (existing) return existing
 
     const promise = fetchProfile(userId)
       .then((profile) => {
-        setUser(profile)
+        if (profile) {
+          setProfileError(null)
+          setUser(profile)
+        } else {
+          setProfileError('Não foi possível carregar seu perfil.')
+          setUser(null)
+        }
         return profile
       })
       .finally(() => {
@@ -65,44 +76,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return promise
   }, [])
 
+  const scheduleProfileLoad = useCallback(
+    (userId: string) => {
+      window.setTimeout(() => {
+        void loadUser(userId)
+      }, 0)
+    },
+    [loadUser],
+  )
+
+  const retryProfileLoad = useCallback(async () => {
+    const userId = authUserIdRef.current
+    if (!userId) return
+    profileInflight.current.delete(userId)
+    setProfileError(null)
+    await loadUser(userId)
+  }, [loadUser])
+
   useEffect(() => {
-    const init = async () => {
+    let cancelled = false
+
+    const bootstrap = async () => {
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession()
+
+        if (cancelled) return
+
         if (session?.user) {
           await loadUser(session.user.id)
+          return
+        }
+
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser()
+
+        if (cancelled) return
+
+        if (authUser) {
+          await loadUser(authUser.id)
         }
       } finally {
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
       }
     }
-    void init()
+
+    void bootstrap()
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (isLoggingOut.current || skipAuthListener.current) return
 
       if (event === 'SIGNED_OUT') {
+        authUserIdRef.current = null
         setUser(null)
+        setProfileError(null)
         return
       }
 
-      if (
-        session?.user &&
-        (event === 'SIGNED_IN' ||
-          event === 'INITIAL_SESSION' ||
-          event === 'TOKEN_REFRESHED' ||
-          event === 'USER_UPDATED')
-      ) {
-        await loadUser(session.user.id)
+      if (session?.user) {
+        scheduleProfileLoad(session.user.id)
       }
     })
 
-    return () => subscription.unsubscribe()
-  }, [supabase.auth, loadUser])
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
+  }, [supabase.auth, loadUser, scheduleProfileLoad])
 
   const login = async (email: string, senha: string): Promise<User | null> => {
     if (!isSupabaseConfigured()) {
@@ -118,14 +162,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null
       }
       if (!data.user) return null
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) {
-        console.error('Sessão não persistida após login')
-        return null
-      }
 
       const profile = await loadUser(data.user.id)
       if (!profile) {
@@ -145,7 +181,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     isLoggingOut.current = true
+    authUserIdRef.current = null
     setUser(null)
+    setProfileError(null)
     clearDashboardDataPrefetch()
     try {
       await signOutAction()
@@ -156,7 +194,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{ user, login, logout, retryProfileLoad, isLoading, profileError }}
+    >
       {children}
     </AuthContext.Provider>
   )
