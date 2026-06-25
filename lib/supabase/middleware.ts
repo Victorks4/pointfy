@@ -29,16 +29,24 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
+  // getUser valida o JWT e renova cookies — necessário para SSR + middleware
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
   const isDashboard = pathname.startsWith('/dashboard')
+  const isLogin = pathname === '/'
 
-  if (isDashboard && !session) {
+  if (isDashboard && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
+    return NextResponse.redirect(url)
+  }
+
+  if (isLogin && user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 

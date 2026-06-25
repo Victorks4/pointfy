@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getDashboardPathForRole } from "@/lib/auth-routes";
+import { navigateAfterLogin } from "@/lib/post-login-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
@@ -49,22 +48,15 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const showLoginPanel = useIsDesktopLoginPanel();
   const { login, user, isLoading: authLoading } = useAuth();
-  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (authLoading || !user) return;
-    if (user.cargo === "admin") {
-      router.replace("/dashboard/admin");
-    } else if (user.cargo === "gestor") {
-      router.replace("/dashboard/gestor");
-    } else {
-      router.replace("/dashboard");
-    }
-  }, [user, authLoading, router]);
+    if (authLoading || isLoading || !user) return;
+    navigateAfterLogin(user.cargo);
+  }, [user, authLoading, isLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +66,7 @@ export default function LoginPage() {
     try {
       const profile = await login(email, senha);
       if (profile) {
-        router.replace(getDashboardPathForRole(profile.cargo));
+        navigateAfterLogin(profile.cargo);
         return;
       }
       setError(

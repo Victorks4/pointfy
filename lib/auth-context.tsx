@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { signOutAction } from '@/app/actions/auth'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
-import { prefetchDashboardData } from '@/lib/data-api'
+import { clearDashboardDataPrefetch, prefetchDashboardData } from '@/lib/data-api'
 import type { User } from './types'
 import type { ProfileRow } from '@/lib/server/db-types'
 import { mapProfile } from '@/lib/server/mappers'
@@ -52,12 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const existing = profileInflight.current.get(userId)
     if (existing) return existing
 
-    const promise = fetchProfile(userId).then((profile) => {
-      setUser(profile)
-      return profile
-    }).finally(() => {
-      profileInflight.current.delete(userId)
-    })
+    const promise = fetchProfile(userId)
+      .then((profile) => {
+        setUser(profile)
+        return profile
+      })
+      .finally(() => {
+        profileInflight.current.delete(userId)
+      })
 
     profileInflight.current.set(userId, promise)
     return promise
@@ -65,13 +67,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const init = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (session?.user) {
-        await loadUser(session.user.id)
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        if (session?.user) {
+          await loadUser(session.user.id)
+        }
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }
     void init()
 
@@ -79,12 +84,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (isLoggingOut.current || skipAuthListener.current) return
-      if (session?.user) {
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
-          await loadUser(session.user.id)
-        }
-      } else {
+
+      if (event === 'SIGNED_OUT') {
         setUser(null)
+        return
+      }
+
+      if (
+        session?.user &&
+        (event === 'SIGNED_IN' ||
+          event === 'INITIAL_SESSION' ||
+          event === 'TOKEN_REFRESHED' ||
+          event === 'USER_UPDATED')
+      ) {
+        await loadUser(session.user.id)
       }
     })
 
@@ -106,6 +119,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (!data.user) return null
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session) {
+        console.error('Sessão não persistida após login')
+        return null
+      }
+
       const profile = await loadUser(data.user.id)
       if (!profile) {
         console.error(
@@ -114,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null
       }
 
+      clearDashboardDataPrefetch()
       prefetchDashboardData()
       return profile
     } finally {
@@ -124,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     isLoggingOut.current = true
     setUser(null)
+    clearDashboardDataPrefetch()
     try {
       await signOutAction()
       await supabase.auth.signOut({ scope: 'global' })

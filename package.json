@@ -12,6 +12,8 @@
     "analyze:visual": "cross-env ANALYZE=true next build",
     "db:seed": "node scripts/seed-demo-users.mjs",
     "db:check": "node scripts/check-supabase.mjs",
+    "vercel:preflight": "node scripts/vercel-preflight.mjs",
+    "vercel:env": "node scripts/sync-vercel-env.mjs",
     "test": "npx tsx --test tests/**/*.test.mjs"
   },
   "dependencies": {

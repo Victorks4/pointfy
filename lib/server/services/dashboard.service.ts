@@ -125,9 +125,9 @@ export async function loadDashboardBootstrap(
   const [bloqueiosPresenca, desafios, desafioProgressos, pontoConfigs, notificacoes] =
     await Promise.all([
       loadBloqueiosScoped(session, userIds, supabase),
-      getCachedDesafiosSemanais(),
+      getCachedDesafiosSemanais(supabase),
       loadProgressosScoped(session, userIds, supabase),
-      getCachedPontoConfigs(),
+      getCachedPontoConfigs(supabase),
       listNotificacoesForUser(session.id, supabase),
     ])
 

@@ -39,7 +39,7 @@ async function loadPontoValidationContext(userId: string, dataRef: string) {
       .eq('user_id', userId)
       .lte('data_inicio', dataRef)
       .gte('data_fim', dataRef),
-    getCachedPontoConfigs(),
+    getCachedPontoConfigs(supabase),
   ])
 
   if (profileRes.error || !profileRes.data) {

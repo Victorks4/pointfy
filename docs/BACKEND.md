@@ -157,4 +157,11 @@ Bucket `justificativas`: upload via `uploadJustificativaArquivoAction` em `app/a
 
 ## Deploy (Vercel)
 
-Configure as mesmas variáveis de ambiente no painel da Vercel. Rode migrations no Supabase de produção e `npm run db:seed` uma vez (ou crie usuários manualmente).
+Guia completo: [docs/DEPLOY-VERCEL.md](DEPLOY-VERCEL.md).
+
+Resumo: configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` na Vercel; cadastre `https://SEU-DOMINIO.vercel.app/auth/callback` no Supabase; rode migrations e `npm run db:seed` uma vez se necessário.
+
+```bash
+npm run vercel:preflight
+npx vercel --prod
+```

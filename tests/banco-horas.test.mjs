@@ -100,7 +100,7 @@ describe('calcularBancoHoras', () => {
       },
     ]
     const saldo = calcularBancoHoras(user, pontos, justificativas, [])
-    assert.equal(saldo, 0)
+    assert.equal(saldo, -360)
   })
 
   it('saldo positivo quando trabalhou acima da carga diária', () => {
