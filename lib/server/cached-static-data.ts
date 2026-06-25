@@ -18,8 +18,8 @@ export async function fetchPontoConfigs(supabase: SupabaseClient) {
 
 const cachedDesafiosGlobal = unstable_cache(
   async () => {
-    const { createClient } = await import('@/lib/supabase/server')
-    const supabase = await createClient()
+    const { createAdminClient } = await import('@/lib/supabase/admin')
+    const supabase = createAdminClient()
     return fetchDesafiosSemanais(supabase)
   },
   ['pontify-desafios-semanais'],
@@ -28,19 +28,19 @@ const cachedDesafiosGlobal = unstable_cache(
 
 const cachedPontoConfigsGlobal = unstable_cache(
   async () => {
-    const { createClient } = await import('@/lib/supabase/server')
-    const supabase = await createClient()
+    const { createAdminClient } = await import('@/lib/supabase/admin')
+    const supabase = createAdminClient()
     return fetchPontoConfigs(supabase)
   },
   ['pontify-ponto-configs'],
   { revalidate: 300, tags: ['ponto-configs'] },
 )
 
-/** Cache primário — invalidar via revalidateTag no admin. */
-export async function getCachedDesafiosSemanais(_supabase?: SupabaseClient) {
+/** Cache primário (service role, sem cookies) — invalidar via revalidateTag no admin. */
+export async function getCachedDesafiosSemanais() {
   return cachedDesafiosGlobal()
 }
 
-export async function getCachedPontoConfigs(_supabase?: SupabaseClient) {
+export async function getCachedPontoConfigs() {
   return cachedPontoConfigsGlobal()
 }

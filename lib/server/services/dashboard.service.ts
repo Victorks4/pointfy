@@ -137,9 +137,9 @@ export async function loadDashboardSnapshot(
   const [bloqueiosPresenca, desafios, desafioProgressos, pontoConfigs, notificacoes, pontos, justificativas] =
     await Promise.all([
       loadBloqueiosScoped(session, userIds, supabase),
-      getCachedDesafiosSemanais(supabase),
+      getCachedDesafiosSemanais(),
       loadProgressosScoped(session, userIds, supabase),
-      getCachedPontoConfigs(supabase),
+      getCachedPontoConfigs(),
       listNotificacoesForUser(session.id, supabase),
       listPontosScoped({}, supabase, session, gestorTeamIds),
       listJustificativasScoped({ signFiles: false }, supabase, session, gestorTeamIds),
