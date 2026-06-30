@@ -68,10 +68,11 @@ type CalendarPanelProps = {
   value: string
   onChange: (dateKey: string) => void
   maxDate?: string
+  feriadoDates?: string[]
   onSelect?: () => void
 }
 
-function CalendarPanel({ value, onChange, maxDate, onSelect }: CalendarPanelProps) {
+function CalendarPanel({ value, onChange, maxDate, feriadoDates, onSelect }: CalendarPanelProps) {
   const parsed = value
     ? parseDateKey(value)
     : parseDateKey(toDateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()))
@@ -84,6 +85,7 @@ function CalendarPanel({ value, onChange, maxDate, onSelect }: CalendarPanelProp
   }, [])
 
   const cells = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth])
+  const feriadoSet = useMemo(() => new Set(feriadoDates ?? []), [feriadoDates])
 
   const goMonth = (delta: number) => {
     let m = viewMonth + delta
@@ -148,6 +150,7 @@ function CalendarPanel({ value, onChange, maxDate, onSelect }: CalendarPanelProp
         {cells.map((cell) => {
           const isSelected = value === cell.dateKey
           const isToday = cell.dateKey === todayKey
+          const isFeriado = feriadoSet.has(cell.dateKey)
           const isFuture = maxDate ? cell.dateKey > maxDate : false
           const disabled = !cell.inMonth || isFuture
 
@@ -169,6 +172,7 @@ function CalendarPanel({ value, onChange, maxDate, onSelect }: CalendarPanelProp
                 !disabled && !isSelected && 'hover:bg-white/10',
                 isSelected && 'bg-[#2f73e0] text-white shadow-sm shadow-[#2f73e0]/50',
                 isToday && !isSelected && 'ring-1 ring-[#ec4899]/80',
+                isFeriado && !isSelected && 'bg-amber-500/25 text-amber-100',
               )}
             >
               {cell.day}
@@ -201,6 +205,7 @@ export type PontifyDatePickerProps = {
   value: string
   onChange: (dateKey: string) => void
   maxDate?: string
+  feriadoDates?: string[]
   id?: string
   className?: string
   placeholder?: string
@@ -211,6 +216,7 @@ export function PontifyDatePicker({
   value,
   onChange,
   maxDate,
+  feriadoDates,
   id,
   className,
   placeholder = 'Selecione a data',
@@ -247,6 +253,7 @@ export function PontifyDatePicker({
           value={value}
           onChange={onChange}
           maxDate={maxDate}
+          feriadoDates={feriadoDates}
           onSelect={() => setOpen(false)}
         />
       </PopoverContent>

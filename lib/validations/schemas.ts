@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/
 
 const timeField = z
   .union([z.literal(''), z.string().regex(timeRegex, 'Horário inválido (use HH:mm)')])
@@ -9,7 +10,7 @@ const timeField = z
   .optional()
 
 export const pontoInputSchema = z.object({
-  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida'),
+  data: z.string().regex(dateRegex, 'Data inválida'),
   entrada1: timeField,
   saida1: timeField,
   entrada2: timeField,
@@ -21,30 +22,139 @@ export const pontoInputSchema = z.object({
 
 export const pontoUpdateSchema = pontoInputSchema.partial()
 
-export const justificativaInputSchema = z.object({
-  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  tipo: z.enum(['atestado', 'compensacao']),
-  descricao: z.string().min(1),
-  arquivoPath: z.string().nullable().optional(),
-})
+export const justificativaInputSchema = z
+  .object({
+    data: z.string().regex(dateRegex),
+    tipo: z.enum(['atestado', 'compensacao', 'compensacao_parcial']),
+    descricao: z.string().min(1),
+    arquivoPath: z.string().nullable().optional(),
+    dataCompensacao: z.string().regex(dateRegex).nullable().optional(),
+    minutosSolicitados: z.number().int().positive().nullable().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.tipo === 'compensacao_parcial') {
+      if (!val.dataCompensacao) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Data da compensação é obrigatória' })
+      }
+      if (!val.minutosSolicitados || val.minutosSolicitados <= 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Horas da compensação são obrigatórias' })
+      }
+    }
+  })
 
-export const usuarioInputSchema = z.object({
+const recessoPeriodSchema = z
+  .object({
+    inicio: z.string().regex(dateRegex).nullable(),
+    fim: z.string().regex(dateRegex).nullable(),
+  })
+  .refine(
+    (p) => !p.inicio || !p.fim || p.fim >= p.inicio,
+    { message: 'Fim do recesso deve ser após o início' },
+  )
+
+const usuarioFieldsSchema = z.object({
   email: z.string().email(),
   senha: z.string().min(6).optional(),
-  ra: z.string().min(1),
+  matricula: z.string().min(1),
   nome: z.string().min(1),
   cargo: z.enum(['estagiario', 'admin', 'gestor']),
   departamento: z.string(),
   cargaHorariaSemanal: z.number().int().positive(),
-  dataInicioRecesso: z.string().nullable().optional(),
-  dataFimRecesso: z.string().nullable().optional(),
+  dataInicioContrato: z.string().regex(dateRegex).nullable().optional(),
+  dataFimContrato: z.string().regex(dateRegex).nullable().optional(),
+  dataInicioRecesso1: z.string().regex(dateRegex).nullable().optional(),
+  dataFimRecesso1: z.string().regex(dateRegex).nullable().optional(),
+  dataInicioRecesso2: z.string().regex(dateRegex).nullable().optional(),
+  dataFimRecesso2: z.string().regex(dateRegex).nullable().optional(),
   gestorId: z.string().uuid().nullable().optional(),
+  gestorIds: z.array(z.string().uuid()).optional(),
+  mustChangePassword: z.boolean().optional(),
+})
+
+function validateUsuarioRecessos(
+  u: {
+    dataInicioRecesso1?: string | null
+    dataFimRecesso1?: string | null
+    dataInicioRecesso2?: string | null
+    dataFimRecesso2?: string | null
+  },
+  ctx: z.RefinementCtx,
+) {
+  for (const [key, period] of [
+    ['recesso1', { inicio: u.dataInicioRecesso1, fim: u.dataFimRecesso1 }],
+    ['recesso2', { inicio: u.dataInicioRecesso2, fim: u.dataFimRecesso2 }],
+  ] as const) {
+    const parsed = recessoPeriodSchema.safeParse(period)
+    if (!parsed.success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Período de ${key} inválido`,
+      })
+    }
+  }
+}
+
+function validateEstagiarioGestor(
+  u: { cargo?: string; gestorId?: string | null },
+  ctx: z.RefinementCtx,
+) {
+  if (u.cargo === 'estagiario' && !u.gestorId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Gestor principal é obrigatório para estagiário',
+      path: ['gestorId'],
+    })
+  }
+}
+
+export const usuarioInputSchema = usuarioFieldsSchema
+  .refine(
+    (u) => !u.dataInicioContrato || !u.dataFimContrato || u.dataFimContrato >= u.dataInicioContrato,
+    { message: 'Fim do contrato deve ser após o início' },
+  )
+  .superRefine((u, ctx) => {
+    validateUsuarioRecessos(u, ctx)
+    validateEstagiarioGestor(u, ctx)
+  })
+
+export const usuarioUpdateSchema = usuarioFieldsSchema
+  .partial()
+  .refine(
+    (u) => !u.dataInicioContrato || !u.dataFimContrato || u.dataFimContrato >= u.dataInicioContrato,
+    { message: 'Fim do contrato deve ser após o início' },
+  )
+  .superRefine((u, ctx) => {
+    validateUsuarioRecessos(u, ctx)
+    if (u.cargo === 'estagiario' && u.gestorId === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Gestor principal é obrigatório para estagiário',
+        path: ['gestorId'],
+      })
+    }
+  })
+
+export const changePasswordSchema = z
+  .object({
+    senha: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+    confirmacao: z.string().min(6),
+  })
+  .refine((d) => d.senha === d.confirmacao, {
+    message: 'As senhas não coincidem',
+    path: ['confirmacao'],
+  })
+
+export const feriadoInputSchema = z.object({
+  data: z.string().regex(dateRegex),
+  nome: z.string().min(1),
+  tipo: z.enum(['nacional', 'municipal', 'empresa']),
+  recorrente: z.boolean().optional(),
 })
 
 export const bloqueioInputSchema = z.object({
   userId: z.string().uuid().nullable(),
-  dataInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  dataFim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  dataInicio: z.string().regex(dateRegex),
+  dataFim: z.string().regex(dateRegex).nullable().optional(),
   motivo: z.string().nullable().optional(),
 })
 
@@ -60,8 +170,8 @@ export const desafioInputSchema = z.object({
   tipo: z.enum(['meta_horas', 'streak', 'pontualidade', 'custom']),
   meta: z.number().int(),
   recompensa: z.string(),
-  dataInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  dataFim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  dataInicio: z.string().regex(dateRegex),
+  dataFim: z.string().regex(dateRegex),
   ativo: z.boolean(),
 })
 
@@ -79,6 +189,7 @@ export const pontoConfigInputSchema = z.object({
 export const compensacaoDecisionSchema = z.object({
   justificativaId: z.string().uuid('ID da justificativa inválido'),
   motivoRejeicao: z.string().optional(),
+  minutosAprovados: z.number().int().positive().optional(),
 })
 
 export const desafioProgressoSchema = z.object({

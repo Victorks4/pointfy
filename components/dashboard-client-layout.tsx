@@ -7,6 +7,8 @@ import { useServerUser } from '@/components/server-user-provider'
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
 import { DashboardDataStatus } from '@/components/dashboard-data-status'
 import { DashboardProviders } from '@/components/dashboard-providers'
+import { PasswordChangeGuard } from '@/components/password-change-guard'
+import { EstagiarioHrScheduler } from '@/components/estagiario-hr-scheduler'
 import { FyTourProvider, useFyTour } from '@/lib/fy-tour-context'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -109,7 +111,9 @@ export function DashboardClientLayout({ children }: { children: React.ReactNode 
 
   return (
     <DashboardProviders>
-      <SidebarProvider>
+      {user.cargo === 'estagiario' ? <EstagiarioHrScheduler /> : null}
+      <PasswordChangeGuard>
+        <SidebarProvider>
         <DashboardSidebar />
         <SidebarInset className="min-h-0 overflow-hidden">
           <DashboardDataStatus />
@@ -119,7 +123,8 @@ export function DashboardClientLayout({ children }: { children: React.ReactNode 
             <FyGuideLazy />
           </FyTourProvider>
         </SidebarInset>
-      </SidebarProvider>
+        </SidebarProvider>
+      </PasswordChangeGuard>
     </DashboardProviders>
   )
 }

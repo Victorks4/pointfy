@@ -57,7 +57,7 @@ const DEMO_USERS = [
     email: 'admin@empresa.com',
     password: 'admin123',
     profile: {
-      ra: 'ADM001',
+      matricula: 'ADM001',
       nome: 'Administrador',
       cargo: 'admin',
       departamento: 'RH',
@@ -68,7 +68,7 @@ const DEMO_USERS = [
     email: 'gestor@empresa.com',
     password: 'gestor123',
     profile: {
-      ra: 'GES001',
+      matricula: 'GES001',
       nome: 'Maria Gestora',
       cargo: 'gestor',
       departamento: 'TI',
@@ -79,7 +79,7 @@ const DEMO_USERS = [
     email: 'estagiario@empresa.com',
     password: 'est123',
     profile: {
-      ra: 'EST001',
+      matricula: 'EST001',
       nome: 'João Silva',
       cargo: 'estagiario',
       departamento: 'TI',

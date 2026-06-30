@@ -66,4 +66,27 @@ describe('minutosCompensacaoEfetivos', () => {
       -MINUTOS_COMPENSACAO,
     )
   })
+
+  it('compensação parcial aprovada usa minutos solicitados', () => {
+    assert.equal(
+      compensacaoAfetaSaldo({
+        ...base,
+        tipo: 'compensacao_parcial',
+        statusCompensacao: 'aprovada_gestor',
+        minutosAbatidos: -90,
+        minutosSolicitados: 90,
+      }),
+      true,
+    )
+    assert.equal(
+      minutosCompensacaoEfetivos({
+        ...base,
+        tipo: 'compensacao_parcial',
+        statusCompensacao: 'aprovada_gestor',
+        minutosAbatidos: -90,
+        minutosSolicitados: 90,
+      }),
+      -90,
+    )
+  })
 })

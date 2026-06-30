@@ -11,6 +11,52 @@ import { signedUrlsForPaths, signedUrlForPath } from '@/lib/server/storage-signe
 import { MINUTOS_COMPENSACAO } from '@/lib/types'
 import type { Justificativa } from '@/lib/types'
 import type { JustificativaRow, ProfileRow } from '@/lib/server/db-types'
+import { isGestorOfEstagiario } from '@/lib/server/access-control'
+import { isCompensacaoTipo } from '@/lib/compensacao-utils'
+import { formatMinutesToDisplay } from '@/lib/time-utils'
+
+async function getEstagiarioTeamIds(
+  supabase: SupabaseClient,
+  gestorId: string,
+): Promise<string[]> {
+  const { data: links } = await supabase
+    .from('estagiario_gestores')
+    .select('estagiario_id')
+    .eq('gestor_id', gestorId)
+  const linkedIds = (links ?? []).map((l: { estagiario_id: string }) => l.estagiario_id)
+
+  const { data: team } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('gestor_id', gestorId)
+    .eq('cargo', 'estagiario')
+
+  const ids = new Set<string>([
+    ...(team ?? []).map((t: { id: string }) => t.id),
+    ...linkedIds,
+  ])
+  return [...ids]
+}
+
+async function notifyGestorCompensacao(
+  supabase: SupabaseClient,
+  gestorId: string | null,
+  estagiarioNome: string,
+  parsed: { data: string; tipo: string; dataCompensacao?: string | null; minutosSolicitados?: number | null },
+) {
+  if (!gestorId) return
+  const admin = createAdminClient()
+  const parcial = parsed.tipo === 'compensacao_parcial'
+  const msg = parcial
+    ? `${estagiarioNome} solicitou compensação parcial (${formatMinutesToDisplay(parsed.minutosSolicitados ?? 0)} em ${parsed.dataCompensacao}) para falta em ${parsed.data}.`
+    : `${estagiarioNome} solicitou compensação para a data ${parsed.data}. Abra "Meus estagiários" para aprovar ou rejeitar.`
+  const { error: notifError } = await admin.from('notificacoes').insert({
+    user_id: gestorId,
+    titulo: parcial ? 'Compensação parcial pendente' : 'Compensação pendente de aprovação',
+    mensagem: msg,
+  })
+  if (notifError) console.error('notificacao gestor:', notifError.message)
+}
 
 async function mapJustificativasWithSignedUrls(
   supabase: SupabaseClient,
@@ -70,15 +116,14 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
   const parsed = parseInput(justificativaInputSchema, input)
   const supabase = await createClient()
 
-  let gestorId: string | null = null
-  if (parsed.tipo === 'compensacao') {
+  if (isCompensacaoTipo(parsed.tipo)) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('gestor_id, nome')
       .eq('id', session.id)
       .single()
     const profileRow = profile as Pick<ProfileRow, 'gestor_id' | 'nome'> | null
-    gestorId = profileRow?.gestor_id ?? null
+    const gestorId = profileRow?.gestor_id ?? null
     const estagiarioNome = profileRow?.nome ?? session.nome
 
     const { data, error } = await supabase
@@ -90,6 +135,8 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
         descricao: parsed.descricao,
         arquivo_path: parsed.arquivoPath ?? null,
         minutos_abatidos: 0,
+        data_compensacao: parsed.dataCompensacao ?? null,
+        minutos_solicitados: parsed.minutosSolicitados ?? null,
         status_compensacao: 'pendente_gestor',
         gestor_id: gestorId,
       })
@@ -97,16 +144,7 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
       .single()
 
     if (error) throw error
-
-    if (gestorId) {
-      const admin = createAdminClient()
-      const { error: notifError } = await admin.from('notificacoes').insert({
-        user_id: gestorId,
-        titulo: 'Compensação pendente de aprovação',
-        mensagem: `${estagiarioNome} solicitou compensação para a data ${parsed.data}. Abra "Meus estagiários" para aprovar ou rejeitar.`,
-      })
-      if (notifError) console.error('notificacao gestor:', notifError.message)
-    }
+    await notifyGestorCompensacao(supabase, gestorId, estagiarioNome, parsed)
 
     const row = data as JustificativaRow
     const arquivoUrl = await signedUrlForPath(supabase, row.arquivo_path)
@@ -134,37 +172,38 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
 
 export async function aprovarCompensacao(
   justificativaId: string,
+  minutosAprovados?: number,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  parseInput(compensacaoDecisionSchema, { justificativaId })
+  parseInput(compensacaoDecisionSchema, { justificativaId, minutosAprovados })
   const gestor = await requireRole('gestor', 'admin')
   const supabase = await createClient()
 
   const { data: j, error } = await supabase
     .from('justificativas')
-    .select('*, profiles!justificativas_user_id_fkey(gestor_id)')
+    .select('*')
     .eq('id', justificativaId)
     .single()
 
   if (error || !j) return { ok: false, reason: 'nao_encontrada' }
-  const row = j as JustificativaRow & { profiles?: { gestor_id: string | null } }
+  const row = j as JustificativaRow
 
-  if (row.tipo !== 'compensacao') return { ok: false, reason: 'nao_encontrada' }
+  if (!isCompensacaoTipo(row.tipo)) return { ok: false, reason: 'nao_encontrada' }
   if (gestor.cargo === 'gestor') {
-    const { data: est } = await supabase
-      .from('profiles')
-      .select('gestor_id')
-      .eq('id', row.user_id)
-      .single()
-    if ((est as ProfileRow | null)?.gestor_id !== gestor.id)
-      return { ok: false, reason: 'nao_autorizado' }
+    const allowed = await isGestorOfEstagiario(supabase, gestor.id, row.user_id)
+    if (!allowed) return { ok: false, reason: 'nao_autorizado' }
   }
   if (row.status_compensacao !== 'pendente_gestor') return { ok: false, reason: 'ja_decidida' }
+
+  const minutos =
+    row.tipo === 'compensacao_parcial'
+      ? -(minutosAprovados ?? row.minutos_solicitados ?? 0)
+      : -MINUTOS_COMPENSACAO
 
   const { error: upErr } = await supabase
     .from('justificativas')
     .update({
       status_compensacao: 'aprovada_gestor',
-      minutos_abatidos: -MINUTOS_COMPENSACAO,
+      minutos_abatidos: minutos,
       decidida_em: new Date().toISOString(),
     })
     .eq('id', justificativaId)
@@ -197,15 +236,10 @@ export async function rejeitarCompensacao(
   if (error || !j) return { ok: false, reason: 'nao_encontrada' }
   const row = j as JustificativaRow
 
-  if (row.tipo !== 'compensacao') return { ok: false, reason: 'nao_encontrada' }
+  if (!isCompensacaoTipo(row.tipo)) return { ok: false, reason: 'nao_encontrada' }
   if (gestor.cargo === 'gestor') {
-    const { data: est } = await supabase
-      .from('profiles')
-      .select('gestor_id')
-      .eq('id', row.user_id)
-      .single()
-    if ((est as ProfileRow | null)?.gestor_id !== gestor.id)
-      return { ok: false, reason: 'nao_autorizado' }
+    const allowed = await isGestorOfEstagiario(supabase, gestor.id, row.user_id)
+    if (!allowed) return { ok: false, reason: 'nao_autorizado' }
   }
   if (row.status_compensacao !== 'pendente_gestor') return { ok: false, reason: 'ja_decidida' }
 
@@ -235,19 +269,13 @@ export async function rejeitarCompensacao(
 
 export async function listCompensacoesPendentesGestor(gestorId: string) {
   const supabase = await createClient()
-  const { data: team } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('gestor_id', gestorId)
-    .eq('cargo', 'estagiario')
-
-  const ids = (team ?? []).map((t: { id: string }) => t.id)
+  const ids = await getEstagiarioTeamIds(supabase, gestorId)
   if (ids.length === 0) return []
 
   const { data, error } = await supabase
     .from('justificativas')
     .select(JUSTIFICATIVA_COLUMNS)
-    .eq('tipo', 'compensacao')
+    .in('tipo', ['compensacao', 'compensacao_parcial'])
     .eq('status_compensacao', 'pendente_gestor')
     .in('user_id', ids)
 
@@ -257,18 +285,13 @@ export async function listCompensacoesPendentesGestor(gestorId: string) {
 
 export async function listCompensacoesHistoricoGestor(gestorId: string) {
   const supabase = await createClient()
-  const { data: team } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('gestor_id', gestorId)
-
-  const ids = (team ?? []).map((t: { id: string }) => t.id)
+  const ids = await getEstagiarioTeamIds(supabase, gestorId)
   if (ids.length === 0) return []
 
   const { data, error } = await supabase
     .from('justificativas')
     .select(JUSTIFICATIVA_COLUMNS)
-    .eq('tipo', 'compensacao')
+    .in('tipo', ['compensacao', 'compensacao_parcial'])
     .in('user_id', ids)
     .order('created_at', { ascending: false })
 

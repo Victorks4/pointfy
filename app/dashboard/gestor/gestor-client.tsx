@@ -26,6 +26,7 @@ import { precisaJustificativaHoraExtra } from '@/lib/ponto-config-utils'
 import {
   STATUS_COMPENSACAO_LABELS,
   effectiveStatusCompensacao,
+  compensacaoTipoLabel,
 } from '@/lib/compensacao-utils'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
@@ -503,7 +504,7 @@ export default function GestorDashboardPage() {
                     <CardHeader>
                       <CardTitle className="text-base">Compensações pendentes de aprovação</CardTitle>
                       <CardDescription>
-                        Aprove para enviar ao RH e debitar 6h do saldo do estagiário
+                        Aprove compensações integrais (6h) ou parciais (horas informadas)
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -517,11 +518,19 @@ export default function GestorDashboardPage() {
                           return (
                             <div key={j.id} className="rounded-lg border p-4 space-y-3">
                               <div className="flex flex-wrap gap-2 items-center">
-                                <Badge variant="outline">Compensação solicitada</Badge>
+                                <Badge variant="outline">{compensacaoTipoLabel(j.tipo)}</Badge>
                                 <span className="text-sm font-medium">{est?.nome}</span>
                                 <span className="text-xs text-muted-foreground">
                                   {LABELS.DATA_AUSENCIA}: {formatDate(j.data)}
                                 </span>
+                                {j.tipo === 'compensacao_parcial' && j.dataCompensacao ? (
+                                  <span className="text-xs text-muted-foreground">
+                                    Compensar em: {formatDate(j.dataCompensacao)}
+                                    {j.minutosSolicitados
+                                      ? ` (${formatMinutesToDisplay(j.minutosSolicitados)})`
+                                      : ''}
+                                  </span>
+                                ) : null}
                               </div>
                               <p className="text-sm">{j.descricao}</p>
                               {rejeitarId === j.id ? (
@@ -539,7 +548,11 @@ export default function GestorDashboardPage() {
                                   size="sm"
                                   onClick={async () => {
                                     if (!user) return
-                                    const r = await aprovarCompensacao(user.id, j.id)
+                                    const minutos =
+                                      j.tipo === 'compensacao_parcial'
+                                        ? j.minutosSolicitados ?? undefined
+                                        : undefined
+                                    const r = await aprovarCompensacao(user.id, j.id, minutos)
                                     if (r.success) toast.success('Compensação aprovada')
                                     else toast.error(r.error)
                                   }}

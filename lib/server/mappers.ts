@@ -7,6 +7,7 @@ import type {
   DesafioSemanal,
   DesafioProgresso,
   PontoConfig,
+  Feriado,
 } from '@/lib/types'
 import type {
   ProfileRow,
@@ -17,20 +18,27 @@ import type {
   DesafioSemanalRow,
   DesafioProgressoRow,
   PontoConfigRow,
+  FeriadoRow,
 } from './db-types'
 
-export function mapProfile(row: ProfileRow): User {
+export function mapProfile(row: ProfileRow, gestorIds?: string[]): User {
   return {
     id: row.id,
     email: row.email,
-    ra: row.ra,
+    matricula: row.matricula,
     nome: row.nome,
     cargo: row.cargo,
     departamento: row.departamento,
     cargaHorariaSemanal: row.carga_horaria_semanal,
-    dataInicioRecesso: row.data_inicio_recesso,
-    dataFimRecesso: row.data_fim_recesso,
+    dataInicioContrato: row.data_inicio_contrato,
+    dataFimContrato: row.data_fim_contrato,
+    dataInicioRecesso1: row.data_inicio_recesso_1,
+    dataFimRecesso1: row.data_fim_recesso_1,
+    dataInicioRecesso2: row.data_inicio_recesso_2,
+    dataFimRecesso2: row.data_fim_recesso_2,
+    mustChangePassword: row.must_change_password,
     gestorId: row.gestor_id,
+    gestorIds,
     createdAt: row.created_at,
   }
 }
@@ -61,6 +69,8 @@ export function mapJustificativa(row: JustificativaRow, arquivoUrl?: string | nu
     descricao: row.descricao,
     arquivoUrl: arquivoUrl ?? row.arquivo_path,
     minutosAbatidos: row.minutos_abatidos,
+    dataCompensacao: row.data_compensacao,
+    minutosSolicitados: row.minutos_solicitados,
     createdAt: row.created_at,
     statusCompensacao: row.status_compensacao ?? undefined,
     gestorId: row.gestor_id,
@@ -90,6 +100,17 @@ export function mapNotificacao(
     titulo: row.titulo,
     mensagem: row.mensagem,
     lida,
+    createdAt: row.created_at,
+  }
+}
+
+export function mapFeriado(row: FeriadoRow): Feriado {
+  return {
+    id: row.id,
+    data: row.data,
+    nome: row.nome,
+    tipo: row.tipo,
+    recorrente: row.recorrente,
     createdAt: row.created_at,
   }
 }
@@ -135,16 +156,21 @@ export function mapPontoConfig(row: PontoConfigRow): PontoConfig {
   }
 }
 
-export function profileToInsert(user: Omit<User, 'id' | 'createdAt'>) {
+export function profileToInsert(user: Omit<User, 'id' | 'createdAt' | 'gestorIds'>) {
   return {
     email: user.email,
-    ra: user.ra,
+    matricula: user.matricula,
     nome: user.nome,
     cargo: user.cargo,
     departamento: user.departamento,
     carga_horaria_semanal: user.cargaHorariaSemanal,
-    data_inicio_recesso: user.dataInicioRecesso,
-    data_fim_recesso: user.dataFimRecesso,
+    data_inicio_contrato: user.dataInicioContrato,
+    data_fim_contrato: user.dataFimContrato,
+    data_inicio_recesso_1: user.dataInicioRecesso1,
+    data_fim_recesso_1: user.dataFimRecesso1,
+    data_inicio_recesso_2: user.dataInicioRecesso2,
+    data_fim_recesso_2: user.dataFimRecesso2,
+    must_change_password: user.mustChangePassword,
     gestor_id: user.gestorId ?? null,
   }
 }

@@ -46,6 +46,33 @@ export type DashboardSnapshot = DashboardBootstrap & {
   justificativas: ReturnType<typeof mapJustificativa>[]
 }
 
+async function attachGestorIds(
+  supabase: SupabaseClient,
+  users: User[],
+): Promise<User[]> {
+  const estIds = users.filter((u) => u.cargo === 'estagiario').map((u) => u.id)
+  if (estIds.length === 0) return users
+
+  const { data, error } = await supabase
+    .from('estagiario_gestores')
+    .select('estagiario_id, gestor_id')
+    .in('estagiario_id', estIds)
+  if (error) throw error
+
+  const byEst = new Map<string, string[]>()
+  for (const row of data ?? []) {
+    const r = row as { estagiario_id: string; gestor_id: string }
+    const list = byEst.get(r.estagiario_id) ?? []
+    list.push(r.gestor_id)
+    byEst.set(r.estagiario_id, list)
+  }
+
+  return users.map((u) => {
+    const extra = byEst.get(u.id)
+    return extra?.length ? { ...u, gestorIds: extra } : u
+  })
+}
+
 async function loadUsuariosForSession(
   session: User,
   supabase: SupabaseClient,
@@ -55,12 +82,27 @@ async function loadUsuariosForSession(
   }
 
   if (session.cargo === 'gestor') {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(PROFILE_COLUMNS)
-      .or(`id.eq.${session.id},gestor_id.eq.${session.id}`)
+    const { data: links } = await supabase
+      .from('estagiario_gestores')
+      .select('estagiario_id')
+      .eq('gestor_id', session.id)
+    const linkedIds = (links ?? []).map((l: { estagiario_id: string }) => l.estagiario_id)
+
+    let query = supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', session.id)
+    if (linkedIds.length > 0) {
+      query = supabase
+        .from('profiles')
+        .select(PROFILE_COLUMNS)
+        .or(`id.eq.${session.id},gestor_id.eq.${session.id},id.in.(${linkedIds.join(',')})`)
+    } else {
+      query = supabase
+        .from('profiles')
+        .select(PROFILE_COLUMNS)
+        .or(`id.eq.${session.id},gestor_id.eq.${session.id}`)
+    }
+    const { data, error } = await query
     if (error) throw error
-    return (data as ProfileRow[]).map(mapProfile)
+    return attachGestorIds(supabase, (data as ProfileRow[]).map((row) => mapProfile(row)))
   }
 
   const { data, error } = await supabase
@@ -68,7 +110,7 @@ async function loadUsuariosForSession(
     .select(PROFILE_COLUMNS)
     .order('nome')
   if (error) throw error
-  return (data as ProfileRow[]).map(mapProfile)
+  return attachGestorIds(supabase, (data as ProfileRow[]).map((row) => mapProfile(row)))
 }
 
 async function loadBloqueiosScoped(
@@ -195,10 +237,18 @@ export async function listPontosScoped(
   } else if (session.cargo === 'gestor') {
     const ids =
       gestorTeamIds ??
-      (
-        await supabase.from('profiles').select('id').eq('gestor_id', session.id)
-      ).data?.map((t: { id: string }) => t.id) ??
-      []
+      (await (async () => {
+        const { data: links } = await supabase
+          .from('estagiario_gestores')
+          .select('estagiario_id')
+          .eq('gestor_id', session.id)
+        const linked = (links ?? []).map((l: { estagiario_id: string }) => l.estagiario_id)
+        const { data: team } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('gestor_id', session.id)
+        return [...new Set([...(team ?? []).map((t: { id: string }) => t.id), ...linked])]
+      })())
     if (ids.length === 0) return []
     query = query.in('user_id', ids)
   }
@@ -251,10 +301,18 @@ export async function listJustificativasScoped(
   } else if (session.cargo === 'gestor') {
     const ids =
       gestorTeamIds ??
-      (
-        await supabase.from('profiles').select('id').eq('gestor_id', session.id)
-      ).data?.map((t: { id: string }) => t.id) ??
-      []
+      (await (async () => {
+        const { data: links } = await supabase
+          .from('estagiario_gestores')
+          .select('estagiario_id')
+          .eq('gestor_id', session.id)
+        const linked = (links ?? []).map((l: { estagiario_id: string }) => l.estagiario_id)
+        const { data: team } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('gestor_id', session.id)
+        return [...new Set([...(team ?? []).map((t: { id: string }) => t.id), ...linked])]
+      })())
     if (ids.length === 0) return []
     query = query.in('user_id', ids)
   }

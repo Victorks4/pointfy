@@ -16,7 +16,7 @@ import {
 
 export type RelatorioEstagiarioRow = {
   nome: string
-  ra: string
+  matricula: string
   departamento: string
   registros: number
   bancoHorasMinutos: number
@@ -56,7 +56,7 @@ export async function downloadRelatorioEstagiariosPdf(params: {
 
   const body = linhas.map((l) => [
     l.nome,
-    l.ra,
+    l.matricula,
     l.departamento,
     String(l.registros),
     formatMinutesToDisplay(l.bancoHorasMinutos),
@@ -64,7 +64,7 @@ export async function downloadRelatorioEstagiariosPdf(params: {
 
   autoTable(doc, {
     startY: y,
-    head: [['Nome', 'RA', 'Departamento', 'Registros', LABELS.SALDO]],
+    head: [['Nome', 'Matrícula', 'Departamento', 'Registros', LABELS.SALDO]],
     body,
     ...senaiAutoTableCommon(),
     columnStyles: {
@@ -84,7 +84,7 @@ export async function downloadRelatorioUsuarioPdf(params: {
   periodoLabel: string
   usuario: {
     nome: string
-    ra: string
+    matricula: string
     departamento: string
   }
   gestorNome?: string | null
@@ -117,7 +117,7 @@ export async function downloadRelatorioUsuarioPdf(params: {
 
   let y = drawInfoBox(doc, contentStartY, [
     `Estagiário(a): ${usuario.nome}`,
-    `RA: ${usuario.ra}`,
+    `Matrícula: ${usuario.matricula}`,
     `Departamento: ${usuario.departamento}`,
     `Gestor(a) / responsável: ${gestorNome?.trim() || '—'}`,
     `Período: ${periodoLabel}`,

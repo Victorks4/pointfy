@@ -89,7 +89,7 @@ export default function RelatoriosEstagiarioPage() {
         periodoLabel,
         usuario: {
           nome: user.nome,
-          ra: user.ra,
+          matricula: user.matricula,
           departamento: user.departamento,
         },
         gestorNome,
@@ -105,7 +105,7 @@ export default function RelatoriosEstagiarioPage() {
           totalMinutos: p.totalMinutos,
           observacao: p.observacao,
         })),
-        filename: `relatorio-presenca-${user.ra}-${periodoKey}.pdf`,
+        filename: `relatorio-presenca-${user.matricula}-${periodoKey}.pdf`,
       })
       toast.success('PDF gerado. Acesse o portal de assinatura da empresa para assinar o documento.')
     } catch {

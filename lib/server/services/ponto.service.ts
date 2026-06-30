@@ -61,7 +61,7 @@ function defaultPontoConfig(): PontoConfig {
     nome: 'Padrão (6h/dia)',
     metaDiariaMinutos: 360,
     limiteMinutosSemJustificativa: 370,
-    rejeitarMinutosZero: true,
+    rejeitarMinutosZero: false,
     formatoDecimal: 'americano',
     horarioEntradaEsperado: '09:00',
     ativo: true,

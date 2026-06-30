@@ -19,10 +19,10 @@ export async function createJustificativaAction(input: unknown) {
   })
 }
 
-export async function aprovarCompensacaoAction(justificativaId: string) {
+export async function aprovarCompensacaoAction(justificativaId: string, minutosAprovados?: number) {
   return runAction<CompensacaoActionResult>(async () => {
-    parseInput(compensacaoDecisionSchema, { justificativaId })
-    const result = await justificativaService.aprovarCompensacao(justificativaId)
+    parseInput(compensacaoDecisionSchema, { justificativaId, minutosAprovados })
+    const result = await justificativaService.aprovarCompensacao(justificativaId, minutosAprovados)
     revalidatePath('/dashboard')
     const mapped = compensacaoToAction(result)
     if (!mapped.success) throw new Error(mapped.error)

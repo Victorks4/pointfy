@@ -5,16 +5,23 @@ export type UserRole = 'estagiario' | 'admin' | 'gestor'
 export interface User {
   id: string
   email: string
-  ra: string
+  matricula: string
   nome: string
   cargo: UserRole
   departamento: string
   cargaHorariaSemanal: number // em minutos
-  dataInicioRecesso: string | null
-  dataFimRecesso: string | null
+  dataInicioContrato: string | null
+  dataFimContrato: string | null
+  dataInicioRecesso1: string | null
+  dataFimRecesso1: string | null
+  dataInicioRecesso2: string | null
+  dataFimRecesso2: string | null
+  mustChangePassword: boolean
   createdAt: string
-  /** Estagiário vinculado a um gestor (cadastro pelo admin). */
+  /** Gestor principal (legado + primário). */
   gestorId?: string | null
+  /** Gestores adicionais (junction estagiario_gestores). */
+  gestorIds?: string[]
 }
 
 export interface PontoRegistro {
@@ -37,7 +44,7 @@ export type StatusCompensacao =
   | 'aprovada_gestor'
   | 'rejeitada_gestor'
 
-export type JustificativaTipo = 'atestado' | 'compensacao'
+export type JustificativaTipo = 'atestado' | 'compensacao' | 'compensacao_parcial'
 
 export interface Justificativa {
   id: string
@@ -46,8 +53,12 @@ export interface Justificativa {
   tipo: JustificativaTipo
   descricao: string
   arquivoUrl: string | null
-  minutosAbatidos: number // Para compensação aprovada: -360 (6h)
+  minutosAbatidos: number
   createdAt: string
+  /** Data em que o estagiário compensará (parcial). */
+  dataCompensacao?: string | null
+  /** Minutos solicitados na compensação parcial. */
+  minutosSolicitados?: number | null
   /** Fluxo de compensação — atestado ignora estes campos */
   statusCompensacao?: StatusCompensacao
   gestorId?: string | null
@@ -71,6 +82,17 @@ export interface Notificacao {
   titulo: string
   mensagem: string
   lida: boolean
+  createdAt: string
+}
+
+export type FeriadoTipo = 'nacional' | 'municipal' | 'empresa'
+
+export interface Feriado {
+  id: string
+  data: string
+  nome: string
+  tipo: FeriadoTipo
+  recorrente: boolean
   createdAt: string
 }
 
@@ -139,4 +161,3 @@ export type JustificativaHoraExtra = typeof JUSTIFICATIVAS_HORA_EXTRA[number]
 // Constantes do sistema
 export const LIMITE_MINUTOS_SEM_JUSTIFICATIVA = 370 // 6h10min = 370 minutos
 export const MINUTOS_COMPENSACAO = 360 // 6h = 360 minutos
-export const DIAS_RECESSO = 15

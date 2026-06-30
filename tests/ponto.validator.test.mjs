@@ -5,13 +5,18 @@ import { validatePontoBusinessRules } from '../lib/server/validators/ponto.valid
 const baseUser = {
   id: 'user-1',
   email: 'e@test.com',
-  ra: 'RA1',
+  matricula: 'MAT001',
   nome: 'Teste',
   cargo: 'estagiario',
   departamento: 'TI',
   cargaHorariaSemanal: 1800,
-  dataInicioRecesso: null,
-  dataFimRecesso: null,
+  dataInicioContrato: null,
+  dataFimContrato: null,
+  dataInicioRecesso1: null,
+  dataFimRecesso1: null,
+  dataInicioRecesso2: null,
+  dataFimRecesso2: null,
+  mustChangePassword: false,
   gestorId: 'gestor-1',
   createdAt: '2024-01-01T00:00:00Z',
 }
@@ -126,6 +131,22 @@ describe('validatePontoBusinessRules', () => {
       },
     )
     assert.ok(erros.some((e) => e.includes('bloqueado')))
+  })
+
+  it('aceita apenas um período completo', () => {
+    const erros = validatePontoBusinessRules(
+      {
+        data: '2024-06-10',
+        entrada1: '09:00',
+        saida1: '15:00',
+        entrada2: null,
+        saida2: null,
+        totalMinutos: 360,
+        justificativaHoraExtra: null,
+      },
+      ctx,
+    )
+    assert.equal(erros.length, 0)
   })
 
   it('aceita registro válido dentro do limite', () => {

@@ -16,6 +16,7 @@ import { clearDashboardDataPrefetch, prefetchDashboardData } from '@/lib/data-ap
 import type { User } from './types'
 import type { ProfileRow } from '@/lib/server/db-types'
 import { mapProfile } from '@/lib/server/mappers'
+import { PROFILE_COLUMNS } from '@/lib/server/query-columns'
 
 interface AuthContextType {
   user: User | null
@@ -28,9 +29,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
-
-const PROFILE_COLUMNS =
-  'id,email,ra,nome,cargo,departamento,carga_horaria_semanal,data_inicio_recesso,data_fim_recesso,gestor_id,created_at'
 
 async function fetchProfile(userId: string): Promise<User | null> {
   const supabase = createClient()

@@ -79,7 +79,7 @@ function LoginPageContent() {
 
   useEffect(() => {
     if (authLoading || isLoading || !user) return;
-    navigateAfterLogin(user.cargo);
+    navigateAfterLogin(user.cargo, user.mustChangePassword);
   }, [user, authLoading, isLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,7 +91,7 @@ function LoginPageContent() {
       const result = await signInAction(email, senha);
       if (result.ok) {
         prefetchDashboardData();
-        navigateAfterLogin(result.cargo);
+        navigateAfterLogin(result.cargo, result.mustChangePassword);
         return;
       }
       setError(result.error || "Email ou senha incorretos. Tente novamente.");

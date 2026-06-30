@@ -15,16 +15,7 @@ import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import {
-  getTodayString,
-  formatDate,
-  calculateDayTotal,
-  isValidTimeFormat,
-  isValidTimeSequence,
-  formatMinutesToDisplay,
-  isInRecessPeriod,
-  hasClosedMinutes,
-} from '@/lib/time-utils'
+import { formatDate, isUserInRecessPeriod, isInRecessPeriod, getTodayString, calculateDayTotal, isValidTimeFormat, isValidTimeSequence, formatMinutesToDisplay } from '@/lib/time-utils'
 import { JUSTIFICATIVAS_HORA_EXTRA } from '@/lib/types'
 import type { PontoConfig } from '@/lib/types'
 import { fyEmit } from '@/lib/fy-event-bus'
@@ -35,6 +26,7 @@ import {
   precisaJustificativaHoraExtra,
 } from '@/lib/ponto-config-utils'
 import { PontifyDatePicker } from '@/components/pontify-date-calendar'
+import { listFeriadosAction } from '@/app/actions/feriados'
 import { TimeField } from '@/components/time-field'
 import { Clock, AlertCircle, Save, Info, CheckCircle, Coffee } from 'lucide-react'
  
@@ -125,8 +117,6 @@ function useValidatePonto(
       if (!value) continue
       if (!isValidTimeFormat(value))
         erros.push(`${label}: formato inválido (use HH:mm)`)
-      if (rejeitarMinutosZero && hasClosedMinutes(value))
-        erros.push(`${label}: minutos devem ser diferentes de :00`)
     }
 
     const sequencias = [
@@ -140,8 +130,11 @@ function useValidatePonto(
         erros.push(msg)
     }
 
-    if (!entrada1 || !saida1 || !entrada2 || !saida2)
-      erros.push('Os campos dos dois períodos são obrigatórios')
+    const par1 = !!(entrada1 && saida1)
+    const par2 = !!(entrada2 && saida2)
+    if ((entrada1 || saida1) && !par1) erros.push('Preencha entrada e saída do período 1')
+    if ((entrada2 || saida2) && !par2) erros.push('Preencha entrada e saída do período 2')
+    if (!par1 && !par2) erros.push('Informe ao menos um período completo (entrada e saída)')
 
     if (precisaJustificativa && !justificativa)
       erros.push(`Acima de ${formatMinutesToDisplay(limiteMinutos)} é necessário uma justificativa`)
@@ -622,6 +615,7 @@ export default function PontoPage() {
   const [selectedDate, setSelectedDate] = useState(getTodayString())
   const [errors, setErrors] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [feriadoDates, setFeriadoDates] = useState<string[]>([])
  
   const pontoHoje = user ? getPontoByDate(user.id, selectedDate) : null
  
@@ -642,6 +636,9 @@ export default function PontoPage() {
   // Efeitos
   useEffect(() => {
     setMounted(true)
+    void listFeriadosAction().then((result) => {
+      if (result.success) setFeriadoDates(result.data.map((f) => f.data))
+    })
   }, [])
  
   useEffect(() => {
@@ -678,7 +675,7 @@ export default function PontoPage() {
  
   // Derivados
   const emRecesso = useMemo(
-    () => !!user && isInRecessPeriod(selectedDate, user.dataInicioRecesso, user.dataFimRecesso),
+    () => !!user && isUserInRecessPeriod(selectedDate, user),
     [user, selectedDate],
   )
 
@@ -769,7 +766,12 @@ export default function PontoPage() {
     setErrors([])
   }
  
-  if (emRecesso) return <RecessoCard dataFimRecesso={user!.dataFimRecesso ?? undefined} />
+  if (emRecesso && user) {
+    const fim = isInRecessPeriod(selectedDate, user.dataInicioRecesso1, user.dataFimRecesso1)
+      ? user.dataFimRecesso1
+      : user.dataFimRecesso2
+    return <RecessoCard dataFimRecesso={fim ?? undefined} />
+  }
 
   if (presencaBloqueada) {
     return (
@@ -822,6 +824,7 @@ export default function PontoPage() {
                       value={selectedDate}
                       onChange={setSelectedDate}
                       maxDate={getTodayString()}
+                      feriadoDates={feriadoDates}
                     />
                   </Field>
                 </FieldGroup>

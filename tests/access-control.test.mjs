@@ -29,6 +29,10 @@ describe('canAccessUserData', () => {
   it('admin acessa qualquer usuário', () => {
     assert.equal(canAccessUserData(admin, 'est-2', 'gestor-2'), true)
   })
+
+  it('gestor acessa estagiário vinculado na junction', () => {
+    assert.equal(canAccessUserData(gestor, 'est-2', 'gestor-2', ['gestor-1']), true)
+  })
 })
 
 describe('assertCanAccessUserData', () => {
@@ -60,26 +64,66 @@ describe('assertTargetUserAccess', () => {
 
   it('gestor acessa estagiário da equipe', async () => {
     const supabase = {
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            single: async () => ({ data: { gestor_id: 'gestor-1' } }),
+      from: (table) => {
+        if (table === 'estagiario_gestores') {
+          return {
+            select: () => ({
+              eq: async () => ({ data: [], error: null }),
+            }),
+          }
+        }
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: { gestor_id: 'gestor-1' } }),
+            }),
           }),
-        }),
-      }),
+        }
+      },
     }
     await assertTargetUserAccess(gestor, 'est-1', supabase)
   })
 
+  it('gestor acessa estagiário via junction', async () => {
+    const supabase = {
+      from: (table) => {
+        if (table === 'estagiario_gestores') {
+          return {
+            select: () => ({
+              eq: async () => ({ data: [{ gestor_id: 'gestor-1' }], error: null }),
+            }),
+          }
+        }
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: { gestor_id: 'gestor-2' } }),
+            }),
+          }),
+        }
+      },
+    }
+    await assertTargetUserAccess(gestor, 'est-2', supabase)
+  })
+
   it('gestor negado fora da equipe', async () => {
     const supabase = {
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            single: async () => ({ data: { gestor_id: 'gestor-2' } }),
+      from: (table) => {
+        if (table === 'estagiario_gestores') {
+          return {
+            select: () => ({
+              eq: async () => ({ data: [], error: null }),
+            }),
+          }
+        }
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: { gestor_id: 'gestor-2' } }),
+            }),
           }),
-        }),
-      }),
+        }
+      },
     }
     await assert.rejects(
       () => assertTargetUserAccess(gestor, 'est-2', supabase),

@@ -3,18 +3,24 @@ import type {
   JustificativaTipo,
   StatusCompensacao,
   TipoDesafio,
+  FeriadoTipo,
 } from '@/lib/types'
 
 export type ProfileRow = {
   id: string
   email: string
-  ra: string
+  matricula: string
   nome: string
   cargo: UserRole
   departamento: string
   carga_horaria_semanal: number
-  data_inicio_recesso: string | null
-  data_fim_recesso: string | null
+  data_inicio_contrato: string | null
+  data_fim_contrato: string | null
+  data_inicio_recesso_1: string | null
+  data_fim_recesso_1: string | null
+  data_inicio_recesso_2: string | null
+  data_fim_recesso_2: string | null
+  must_change_password: boolean
   gestor_id: string | null
   created_at: string
 }
@@ -42,6 +48,8 @@ export type JustificativaRow = {
   descricao: string
   arquivo_path: string | null
   minutos_abatidos: number
+  data_compensacao: string | null
+  minutos_solicitados: number | null
   status_compensacao: StatusCompensacao | null
   gestor_id: string | null
   decidida_em: string | null
@@ -63,6 +71,21 @@ export type NotificacaoRow = {
   user_id: string | null
   titulo: string
   mensagem: string
+  created_at: string
+}
+
+export type FeriadoRow = {
+  id: string
+  data: string
+  nome: string
+  tipo: FeriadoTipo
+  recorrente: boolean
+  created_at: string
+}
+
+export type EstagiarioGestorRow = {
+  estagiario_id: string
+  gestor_id: string
   created_at: string
 }
 

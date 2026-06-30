@@ -15,9 +15,17 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { formatDate, formatMinutesToDisplay, calculateRecessEnd, isRecessApproaching } from '@/lib/time-utils'
-import { DIAS_RECESSO } from '@/lib/types'
-import { UserPlus, Users, Calendar, Info, AlertCircle, Search, Shield } from 'lucide-react'
+import {
+  formatDate,
+  formatMinutesToDisplay,
+  getTodayString,
+  isInRecessPeriod,
+  isUserInRecessPeriod,
+  isAnyRecessApproaching,
+  isRecessApproaching,
+} from '@/lib/time-utils'
+import type { User } from '@/lib/types'
+import { UserPlus, Users, Calendar, Info, AlertCircle, Search, Shield, Plus, X } from 'lucide-react'
 
 const DEPARTAMENTOS = [
   'TI',
@@ -37,9 +45,32 @@ const CARGAS_HORARIAS = [
   { value: '2400', label: '40h semanais' },
 ]
 
+function getGestorNomes(usuario: User, usuarios: User[]): string {
+  const ids = new Set<string>()
+  if (usuario.gestorId) ids.add(usuario.gestorId)
+  for (const id of usuario.gestorIds ?? []) ids.add(id)
+  const nomes = [...ids]
+    .map((id) => usuarios.find((x) => x.id === id)?.nome)
+    .filter(Boolean)
+  return nomes.length > 0 ? nomes.join(', ') : '—'
+}
+
+function getGestoresDisponiveis(gestoresLista: User[], selectedIds: string[], currentValue: string): User[] {
+  const others = new Set(selectedIds.filter((id) => id !== '_none' && id !== currentValue))
+  return gestoresLista.filter((g) => !others.has(g.id))
+}
+
+function validateDateRange(inicio: string, fim: string, label: string): boolean {
+  if (inicio && fim && fim < inicio) {
+    toast.error(`${label}: a data fim deve ser após o início`)
+    return false
+  }
+  return true
+}
+
 export default function UsuariosAdminPage() {
   const router = useRouter()
-  const { usuarios, addUsuario, updateUsuario, deleteUsuario, getBancoHoras, addNotificacao } = useData()
+  const { usuarios, addUsuario, updateUsuario, deleteUsuario, getBancoHoras } = useData()
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false)
@@ -47,108 +78,160 @@ export default function UsuariosAdminPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [departamentoFiltro, setDepartamentoFiltro] = useState('')
   const [busca, setBusca] = useState('')
-  
-  // Estados do formulário
+
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
-  const [ra, setRa] = useState('')
+  const [matricula, setMatricula] = useState('')
   const [departamento, setDepartamento] = useState('')
   const [cargaHoraria, setCargaHoraria] = useState('')
-  const [dataRecesso, setDataRecesso] = useState('')
+  const [dataInicioContrato, setDataInicioContrato] = useState('')
+  const [dataFimContrato, setDataFimContrato] = useState('')
+  const [dataInicioRecesso1, setDataInicioRecesso1] = useState('')
+  const [dataFimRecesso1, setDataFimRecesso1] = useState('')
+  const [dataInicioRecesso2, setDataInicioRecesso2] = useState('')
+  const [dataFimRecesso2, setDataFimRecesso2] = useState('')
   const [novoCargoCadastro, setNovoCargoCadastro] = useState<'estagiario' | 'gestor'>('estagiario')
   const [novoGestorId, setNovoGestorId] = useState<string>('_none')
+  const [extraGestorIds, setExtraGestorIds] = useState<string[]>([])
   const [gestorVinculoId, setGestorVinculoId] = useState<string>('_none')
+  const [editExtraGestorIds, setEditExtraGestorIds] = useState<string[]>([])
+  const [senha, setSenha] = useState('')
+  const [confirmSenha, setConfirmSenha] = useState('')
 
   const selectedUser = selectedUserId ? usuarios.find((u) => u.id === selectedUserId) ?? null : null
+  const today = getTodayString()
 
   const resetNovoUsuarioForm = () => {
     setNome('')
     setEmail('')
-    setRa('')
+    setMatricula('')
     setDepartamento('')
     setCargaHoraria('')
-    setDataRecesso('')
+    setDataInicioContrato('')
+    setDataFimContrato('')
+    setDataInicioRecesso1('')
+    setDataFimRecesso1('')
+    setDataInicioRecesso2('')
+    setDataFimRecesso2('')
     setNovoCargoCadastro('estagiario')
     setNovoGestorId('_none')
+    setExtraGestorIds([])
+    setSenha('')
+    setConfirmSenha('')
   }
 
   const estagiarios = usuarios.filter((u) => u.cargo === 'estagiario')
   const gestoresLista = usuarios.filter((u) => u.cargo === 'gestor')
   const estagiariosFiltrados = estagiarios.filter((u) => {
-    const departamentoOk = !departamentoFiltro || u.departamento.toLowerCase().includes(departamentoFiltro.toLowerCase())
+    const departamentoOk =
+      !departamentoFiltro || u.departamento.toLowerCase().includes(departamentoFiltro.toLowerCase())
     const buscaOk =
       !busca ||
       u.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      u.ra.toLowerCase().includes(busca.toLowerCase())
+      u.matricula.toLowerCase().includes(busca.toLowerCase())
     return departamentoOk && buscaOk
   })
+
+  const createSelectedGestorIds = () => [novoGestorId, ...extraGestorIds]
+  const editSelectedGestorIds = () => [gestorVinculoId, ...editExtraGestorIds]
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!nome || !email || !ra || !departamento || !cargaHoraria) {
+    if (!nome || !email || !matricula || !departamento || !cargaHoraria) {
       toast.error('Preencha todos os campos obrigatórios')
       return
     }
 
-    // Verificar se email ou RA já existem
-    if (usuarios.some(u => u.email === email)) {
+    if (!senha || senha.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres')
+      return
+    }
+
+    if (senha !== confirmSenha) {
+      toast.error('As senhas não coincidem')
+      return
+    }
+
+    if (usuarios.some((u) => u.email === email)) {
       toast.error('Este email já está cadastrado')
       return
     }
 
-    if (usuarios.some(u => u.ra === ra)) {
-      toast.error('Este RA já está cadastrado')
+    if (usuarios.some((u) => u.matricula === matricula)) {
+      toast.error('Esta matrícula já está cadastrada')
       return
+    }
+
+    if (!validateDateRange(dataInicioContrato, dataFimContrato, 'Contrato')) return
+    if (!validateDateRange(dataInicioRecesso1, dataFimRecesso1, 'Recesso 1')) return
+    if (!validateDateRange(dataInicioRecesso2, dataFimRecesso2, 'Recesso 2')) return
+
+    if (novoCargoCadastro === 'estagiario' && novoGestorId === '_none') {
+      toast.error('Selecione o gestor principal do estagiário')
+      return
+    }
+
+    if (novoCargoCadastro === 'estagiario' && gestoresLista.length === 0) {
+      toast.error('Cadastre um gestor antes de vincular o estagiário')
+      return
+    }
+
+    const base = {
+      nome,
+      email,
+      matricula,
+      departamento,
+      cargaHorariaSemanal: parseInt(cargaHoraria, 10),
+      senha,
+      dataInicioContrato: dataInicioContrato || null,
+      dataFimContrato: dataFimContrato || null,
+      mustChangePassword: true,
     }
 
     if (novoCargoCadastro === 'gestor') {
       addUsuario({
-        nome,
-        email,
-        ra,
+        ...base,
         cargo: 'gestor',
-        departamento,
-        cargaHorariaSemanal: parseInt(cargaHoraria, 10),
-        dataInicioRecesso: null,
-        dataFimRecesso: null,
+        dataInicioRecesso1: null,
+        dataFimRecesso1: null,
+        dataInicioRecesso2: null,
+        dataFimRecesso2: null,
       })
-      toast.success(`Gestor ${nome} cadastrado! Senha inicial: changeme123`)
+      toast.success(`Gestor ${nome} cadastrado com sucesso!`)
     } else {
-      const dataFimRecesso = dataRecesso ? calculateRecessEnd(dataRecesso) : null
+      const gestorIdsExtra = extraGestorIds.filter((id) => id !== '_none')
       addUsuario({
-        nome,
-        email,
-        ra,
+        ...base,
         cargo: 'estagiario',
-        departamento,
-        cargaHorariaSemanal: parseInt(cargaHoraria, 10),
-        dataInicioRecesso: dataRecesso || null,
-        dataFimRecesso,
+        dataInicioRecesso1: dataInicioRecesso1 || null,
+        dataFimRecesso1: dataFimRecesso1 || null,
+        dataInicioRecesso2: dataInicioRecesso2 || null,
+        dataFimRecesso2: dataFimRecesso2 || null,
         gestorId: novoGestorId === '_none' ? null : novoGestorId,
+        gestorIds: gestorIdsExtra.length > 0 ? gestorIdsExtra : undefined,
       })
-      toast.success(`Estagiário ${nome} cadastrado! Senha inicial: changeme123`)
+      toast.success(`Estagiário ${nome} cadastrado com sucesso!`)
     }
 
     resetNovoUsuarioForm()
     setIsDialogOpen(false)
   }
 
-  const handleSetRecesso = (userId: string, dataInicio: string) => {
-    const dataFim = calculateRecessEnd(dataInicio)
-    updateUsuario(userId, {
-      dataInicioRecesso: dataInicio,
-      dataFimRecesso: dataFim,
-    })
+  const handleSetRecesso = (
+    userId: string,
+    inicio: string,
+    fim: string,
+    numero: 1 | 2,
+  ) => {
+    if (!validateDateRange(inicio, fim, `Recesso ${numero}`)) return
 
-    // Criar notificação para o usuário
-    addNotificacao({
-      userId,
-      titulo: 'Recesso Remunerado Agendado',
-      mensagem: `Seu recesso remunerado foi agendado para ${formatDate(dataInicio)} até ${formatDate(dataFim)}. Durante este período, você não precisará registrar presença.`,
-      lida: false,
-    })
+    const patch: Parameters<typeof updateUsuario>[1] =
+      numero === 1
+        ? { dataInicioRecesso1: inicio, dataFimRecesso1: fim }
+        : { dataInicioRecesso2: inicio, dataFimRecesso2: fim }
 
+    updateUsuario(userId, patch)
     toast.success('Recesso agendado com sucesso!')
   }
 
@@ -159,13 +242,19 @@ export default function UsuariosAdminPage() {
     setSelectedUserId(usuario.id)
     setNome(usuario.nome)
     setEmail(usuario.email)
-    setRa(usuario.ra)
+    setMatricula(usuario.matricula)
     setDepartamento(usuario.departamento)
     setCargaHoraria(String(usuario.cargaHorariaSemanal))
-    setDataRecesso(usuario.dataInicioRecesso || '')
-    setGestorVinculoId(
-      usuario.cargo === 'estagiario' ? (usuario.gestorId ?? '_none') : '_none',
-    )
+    setDataInicioContrato(usuario.dataInicioContrato || '')
+    setDataFimContrato(usuario.dataFimContrato || '')
+    setDataInicioRecesso1(usuario.dataInicioRecesso1 || '')
+    setDataFimRecesso1(usuario.dataFimRecesso1 || '')
+    setDataInicioRecesso2(usuario.dataInicioRecesso2 || '')
+    setDataFimRecesso2(usuario.dataFimRecesso2 || '')
+    setGestorVinculoId(usuario.cargo === 'estagiario' ? (usuario.gestorId ?? '_none') : '_none')
+    const principal = usuario.gestorId
+    const extras = (usuario.gestorIds ?? []).filter((id) => id !== principal)
+    setEditExtraGestorIds(extras.length > 0 ? extras : [])
     setIsEditMode(false)
     setIsActionDialogOpen(true)
   }
@@ -174,44 +263,60 @@ export default function UsuariosAdminPage() {
     e.preventDefault()
     if (!selectedUser) return
 
-    if (!nome || !email || !ra || !departamento || !cargaHoraria) {
+    if (!nome || !email || !matricula || !departamento || !cargaHoraria) {
       toast.error('Preencha todos os campos obrigatórios')
       return
     }
 
     const emailDuplicado = usuarios.some(
-      (u) => u.id !== selectedUser.id && u.email.toLowerCase() === email.toLowerCase()
+      (u) => u.id !== selectedUser.id && u.email.toLowerCase() === email.toLowerCase(),
     )
     if (emailDuplicado) {
       toast.error('Este email já está cadastrado')
       return
     }
 
-    const raDuplicado = usuarios.some((u) => u.id !== selectedUser.id && u.ra.toLowerCase() === ra.toLowerCase())
-    if (raDuplicado) {
-      toast.error('Este RA já está cadastrado')
+    const matriculaDuplicada = usuarios.some(
+      (u) => u.id !== selectedUser.id && u.matricula.toLowerCase() === matricula.toLowerCase(),
+    )
+    if (matriculaDuplicada) {
+      toast.error('Esta matrícula já está cadastrada')
       return
     }
 
-    const dataFimRecesso = dataRecesso ? calculateRecessEnd(dataRecesso) : null
+    if (!validateDateRange(dataInicioContrato, dataFimContrato, 'Contrato')) return
+    if (!validateDateRange(dataInicioRecesso1, dataFimRecesso1, 'Recesso 1')) return
+    if (!validateDateRange(dataInicioRecesso2, dataFimRecesso2, 'Recesso 2')) return
+
+    if (selectedUser.cargo === 'estagiario' && gestorVinculoId === '_none') {
+      toast.error('Selecione o gestor principal do estagiário')
+      return
+    }
 
     const patch: Parameters<typeof updateUsuario>[1] = {
       nome,
-      email,
-      ra,
+      matricula,
       departamento,
       cargaHorariaSemanal: parseInt(cargaHoraria, 10),
+      dataInicioContrato: dataInicioContrato || null,
+      dataFimContrato: dataFimContrato || null,
     }
 
     if (selectedUser.cargo === 'estagiario') {
-      patch.dataInicioRecesso = dataRecesso || null
-      patch.dataFimRecesso = dataFimRecesso
+      patch.dataInicioRecesso1 = dataInicioRecesso1 || null
+      patch.dataFimRecesso1 = dataFimRecesso1 || null
+      patch.dataInicioRecesso2 = dataInicioRecesso2 || null
+      patch.dataFimRecesso2 = dataFimRecesso2 || null
       patch.gestorId = gestorVinculoId === '_none' ? null : gestorVinculoId
+      const gestorIdsExtra = editExtraGestorIds.filter((id) => id !== '_none')
+      patch.gestorIds = gestorIdsExtra
     }
 
     if (selectedUser.cargo === 'gestor') {
-      patch.dataInicioRecesso = null
-      patch.dataFimRecesso = null
+      patch.dataInicioRecesso1 = null
+      patch.dataFimRecesso1 = null
+      patch.dataInicioRecesso2 = null
+      patch.dataFimRecesso2 = null
     }
 
     updateUsuario(selectedUser.id, patch)
@@ -229,6 +334,244 @@ export default function UsuariosAdminPage() {
     setIsEditMode(false)
   }
 
+  const renderRecessoCell = (u: User) => {
+    const emRecesso = isUserInRecessPeriod(today, u)
+    const recessoProximo = !emRecesso && isAnyRecessApproaching(u)
+
+    if (emRecesso) {
+      const emR1 = isInRecessPeriod(today, u.dataInicioRecesso1, u.dataFimRecesso1)
+      const fim = emR1 ? u.dataFimRecesso1 : u.dataFimRecesso2
+      const num = emR1 ? 1 : 2
+      return (
+        <Badge className="bg-blue-100 text-blue-800">
+          Recesso {num} até {fim && formatDate(fim)}
+        </Badge>
+      )
+    }
+
+    if (recessoProximo) {
+      const proxR1 = isRecessApproaching(u.dataInicioRecesso1)
+      const inicio = proxR1 ? u.dataInicioRecesso1 : u.dataInicioRecesso2
+      const num = proxR1 ? 1 : 2
+      return (
+        <Badge variant="outline" className="border-amber-500 text-amber-600">
+          Recesso {num} inicia em {inicio && formatDate(inicio)}
+        </Badge>
+      )
+    }
+
+    const temRecesso =
+      u.dataInicioRecesso1 || u.dataInicioRecesso2
+
+    if (temRecesso) {
+      const partes: string[] = []
+      if (u.dataInicioRecesso1) {
+        partes.push(
+          `R1: ${formatDate(u.dataInicioRecesso1)}${u.dataFimRecesso1 ? ` – ${formatDate(u.dataFimRecesso1)}` : ''}`,
+        )
+      }
+      if (u.dataInicioRecesso2) {
+        partes.push(
+          `R2: ${formatDate(u.dataInicioRecesso2)}${u.dataFimRecesso2 ? ` – ${formatDate(u.dataFimRecesso2)}` : ''}`,
+        )
+      }
+      return <span className="text-sm text-muted-foreground">{partes.join(' · ')}</span>
+    }
+
+    const recessoAlvo: 1 | 2 = 1
+
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="sm">
+            Agendar
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agendar Recesso</DialogTitle>
+            <DialogDescription>Defina o período de recesso de {u.nome}</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const formData = new FormData(e.currentTarget)
+              const inicio = formData.get('inicio') as string
+              const fim = formData.get('fim') as string
+              if (inicio && fim) {
+                handleSetRecesso(u.id, inicio, fim, recessoAlvo)
+              }
+            }}
+            className="space-y-4"
+          >
+            <Field>
+              <FieldLabel htmlFor={`recesso-inicio-${u.id}`}>Data de Início</FieldLabel>
+              <Input id={`recesso-inicio-${u.id}`} name="inicio" type="date" required />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor={`recesso-fim-${u.id}`}>Data de Fim</FieldLabel>
+              <Input id={`recesso-fim-${u.id}`} name="fim" type="date" required />
+            </Field>
+            <Button type="submit" className="w-full">
+              Confirmar
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  const renderGestorSelectors = (
+    primary: string,
+    setPrimary: (v: string) => void,
+    extras: string[],
+    setExtras: (v: string[]) => void,
+    selectedIds: string[],
+    idPrefix: string,
+  ) => (
+    <div className="space-y-3 sm:col-span-2">
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-gestor-principal`}>Gestor principal</FieldLabel>
+        <Select value={primary} onValueChange={setPrimary} required>
+          <SelectTrigger id={`${idPrefix}-gestor-principal`}>
+            <SelectValue placeholder="Selecione o gestor" />
+          </SelectTrigger>
+          <SelectContent>
+            {getGestoresDisponiveis(gestoresLista, selectedIds, primary).map((g) => (
+              <SelectItem key={g.id} value={g.id}>
+                {g.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      {extras.map((extraId, idx) => (
+        <Field key={`${idPrefix}-extra-${idx}`}>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <FieldLabel htmlFor={`${idPrefix}-gestor-extra-${idx}`}>Gestor adicional</FieldLabel>
+              <Select
+                value={extraId}
+                onValueChange={(v) => {
+                  const next = [...extras]
+                  next[idx] = v
+                  setExtras(next)
+                }}
+              >
+                <SelectTrigger id={`${idPrefix}-gestor-extra-${idx}`}>
+                  <SelectValue placeholder="Selecione o gestor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Nenhum</SelectItem>
+                  {getGestoresDisponiveis(gestoresLista, selectedIds, extraId).map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setExtras(extras.filter((_, i) => i !== idx))}
+              aria-label="Remover gestor adicional"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </Field>
+      ))}
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setExtras([...extras, '_none'])}
+        disabled={getGestoresDisponiveis(gestoresLista, selectedIds, '_none').length === 0}
+      >
+        <Plus className="mr-2 h-4 w-4" />
+        Adicionar gestor
+      </Button>
+    </div>
+  )
+
+  const renderContratoFields = (idPrefix: string) => (
+    <>
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-contrato-inicio`}>Início do contrato</FieldLabel>
+        <Input
+          id={`${idPrefix}-contrato-inicio`}
+          type="date"
+          value={dataInicioContrato}
+          onChange={(e) => setDataInicioContrato(e.target.value)}
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-contrato-fim`}>Fim do contrato</FieldLabel>
+        <Input
+          id={`${idPrefix}-contrato-fim`}
+          type="date"
+          value={dataFimContrato}
+          onChange={(e) => setDataFimContrato(e.target.value)}
+        />
+      </Field>
+    </>
+  )
+
+  const renderRecessoFields = (idPrefix: string) => (
+    <>
+      <Field className="sm:col-span-2">
+        <p className="text-sm font-medium mb-2">Recesso 1</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor={`${idPrefix}-recesso1-inicio`}>Início</FieldLabel>
+            <Input
+              id={`${idPrefix}-recesso1-inicio`}
+              type="date"
+              value={dataInicioRecesso1}
+              onChange={(e) => setDataInicioRecesso1(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={`${idPrefix}-recesso1-fim`}>Fim</FieldLabel>
+            <Input
+              id={`${idPrefix}-recesso1-fim`}
+              type="date"
+              value={dataFimRecesso1}
+              onChange={(e) => setDataFimRecesso1(e.target.value)}
+            />
+          </Field>
+        </div>
+      </Field>
+      <Field className="sm:col-span-2">
+        <p className="text-sm font-medium mb-2">Recesso 2</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor={`${idPrefix}-recesso2-inicio`}>Início</FieldLabel>
+            <Input
+              id={`${idPrefix}-recesso2-inicio`}
+              type="date"
+              value={dataInicioRecesso2}
+              onChange={(e) => setDataInicioRecesso2(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={`${idPrefix}-recesso2-fim`}>Fim</FieldLabel>
+            <Input
+              id={`${idPrefix}-recesso2-fim`}
+              type="date"
+              value={dataFimRecesso2}
+              onChange={(e) => setDataFimRecesso2(e.target.value)}
+            />
+          </Field>
+        </div>
+      </Field>
+    </>
+  )
+
   return (
     <>
       <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
@@ -240,9 +583,7 @@ export default function UsuariosAdminPage() {
       <main data-fy-anchor="fy-admin-usuarios-main" className="flex-1 p-4 md:p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">
-              Usuários
-            </h2>
+            <h2 className="text-2xl font-bold text-foreground">Usuários</h2>
             <p className="text-muted-foreground">Estagiários, gestores e vínculos entre eles</p>
           </div>
 
@@ -259,10 +600,10 @@ export default function UsuariosAdminPage() {
                 Novo Usuário
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Cadastrar usuário</DialogTitle>
-                <DialogDescription>Estagiário (com vínculo opcional ao gestor) ou gestor</DialogDescription>
+                <DialogDescription>Estagiário (com gestor obrigatório) ou gestor</DialogDescription>
               </DialogHeader>
 
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -274,8 +615,12 @@ export default function UsuariosAdminPage() {
                       onValueChange={(v) => {
                         setNovoCargoCadastro(v as 'estagiario' | 'gestor')
                         if (v === 'gestor') {
-                          setDataRecesso('')
+                          setDataInicioRecesso1('')
+                          setDataFimRecesso1('')
+                          setDataInicioRecesso2('')
+                          setDataFimRecesso2('')
                           setNovoGestorId('_none')
+                          setExtraGestorIds([])
                         }
                       }}
                     >
@@ -288,6 +633,7 @@ export default function UsuariosAdminPage() {
                       </SelectContent>
                     </Select>
                   </Field>
+
                   <Field>
                     <FieldLabel htmlFor="nome">Nome Completo</FieldLabel>
                     <Input
@@ -312,12 +658,12 @@ export default function UsuariosAdminPage() {
                   </Field>
 
                   <Field>
-                    <FieldLabel htmlFor="ra">RA (Registro Acadêmico)</FieldLabel>
+                    <FieldLabel htmlFor="matricula">Matrícula</FieldLabel>
                     <Input
-                      id="ra"
+                      id="matricula"
                       placeholder="EST001"
-                      value={ra}
-                      onChange={(e) => setRa(e.target.value)}
+                      value={matricula}
+                      onChange={(e) => setMatricula(e.target.value)}
                       required
                     />
                   </Field>
@@ -354,36 +700,42 @@ export default function UsuariosAdminPage() {
                     </Select>
                   </Field>
 
+                  {renderContratoFields('novo')}
+
+                  <Field>
+                    <FieldLabel htmlFor="senha">Senha</FieldLabel>
+                    <Input
+                      id="senha"
+                      type="password"
+                      value={senha}
+                      onChange={(e) => setSenha(e.target.value)}
+                      minLength={6}
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="confirmSenha">Confirmar senha</FieldLabel>
+                    <Input
+                      id="confirmSenha"
+                      type="password"
+                      value={confirmSenha}
+                      onChange={(e) => setConfirmSenha(e.target.value)}
+                      minLength={6}
+                      required
+                    />
+                  </Field>
+
                   {novoCargoCadastro === 'estagiario' ? (
                     <>
-                      <Field>
-                        <FieldLabel htmlFor="gestor-responsavel">Gestor responsável (opcional)</FieldLabel>
-                        <Select value={novoGestorId} onValueChange={setNovoGestorId}>
-                          <SelectTrigger id="gestor-responsavel">
-                            <SelectValue placeholder="Selecione o gestor" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="_none">Sem gestor</SelectItem>
-                            {gestoresLista.map((g) => (
-                              <SelectItem key={g.id} value={g.id}>
-                                {g.nome}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                      <Field>
-                        <FieldLabel htmlFor="dataRecesso">Data do Recesso Remunerado (Opcional)</FieldLabel>
-                        <Input
-                          id="dataRecesso"
-                          type="date"
-                          value={dataRecesso}
-                          onChange={(e) => setDataRecesso(e.target.value)}
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          O recesso terá duração de {DIAS_RECESSO} dias a partir desta data
-                        </p>
-                      </Field>
+                      {renderGestorSelectors(
+                        novoGestorId,
+                        setNovoGestorId,
+                        extraGestorIds,
+                        setExtraGestorIds,
+                        createSelectedGestorIds(),
+                        'novo',
+                      )}
+                      {renderRecessoFields('novo')}
                     </>
                   ) : null}
                 </div>
@@ -393,7 +745,7 @@ export default function UsuariosAdminPage() {
                   <AlertDescription>
                     {novoCargoCadastro === 'gestor'
                       ? 'Gestores acompanham estagiários vinculados no painel Meus estagiários.'
-                      : 'Vincule um gestor para o estagiário aparecer na lista dele.'}
+                      : 'O gestor principal é obrigatório. Você pode adicionar gestores extras se necessário.'}
                   </AlertDescription>
                 </Alert>
 
@@ -406,7 +758,6 @@ export default function UsuariosAdminPage() {
           </Dialog>
         </div>
 
-        {/* Estatísticas */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -435,7 +786,7 @@ export default function UsuariosAdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {estagiarios.filter(u => u.dataInicioRecesso && new Date(u.dataInicioRecesso) <= new Date() && new Date(u.dataFimRecesso || '') >= new Date()).length}
+                {estagiarios.filter((u) => isUserInRecessPeriod(today, u)).length}
               </div>
             </CardContent>
           </Card>
@@ -447,19 +798,16 @@ export default function UsuariosAdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {estagiarios.filter(u => isRecessApproaching(u.dataInicioRecesso)).length}
+                {estagiarios.filter((u) => isAnyRecessApproaching(u)).length}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Tabela de Usuários */}
         <Card>
           <CardHeader>
             <CardTitle>Lista de Estagiários</CardTitle>
-            <CardDescription>
-              Todos os estagiários cadastrados no sistema
-            </CardDescription>
+            <CardDescription>Todos os estagiários cadastrados no sistema</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-3 items-center mb-4 flex-wrap">
@@ -473,7 +821,7 @@ export default function UsuariosAdminPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nome ou RA"
+                  placeholder="Buscar por nome ou matrícula"
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   className="pl-9 w-80"
@@ -488,22 +836,18 @@ export default function UsuariosAdminPage() {
                     <TableRow>
                       <TableHead>Nome</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>RA</TableHead>
+                      <TableHead>Matrícula</TableHead>
                       <TableHead>Departamento</TableHead>
                       <TableHead>Carga Horária</TableHead>
                       <TableHead>Saldo</TableHead>
-                      <TableHead>Gestor</TableHead>
+                      <TableHead>Gestor(es)</TableHead>
                       <TableHead>Recesso</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {estagiariosFiltrados.map((u) => {
                       const bancoHoras = getBancoHoras(u.id)
-                      const gestorNome = u.gestorId
-                        ? usuarios.find((x) => x.id === u.gestorId)?.nome ?? '—'
-                        : '—'
-                      const emRecesso = u.dataInicioRecesso && new Date(u.dataInicioRecesso) <= new Date() && new Date(u.dataFimRecesso || '') >= new Date()
-                      const recessoProximo = isRecessApproaching(u.dataInicioRecesso)
+                      const gestorNome = getGestorNomes(u, usuarios)
 
                       return (
                         <TableRow key={u.id}>
@@ -517,81 +861,25 @@ export default function UsuariosAdminPage() {
                             </button>
                           </TableCell>
                           <TableCell>{u.email}</TableCell>
-                          <TableCell>{u.ra}</TableCell>
+                          <TableCell>{u.matricula}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{u.departamento}</Badge>
                           </TableCell>
+                          <TableCell>{formatMinutesToDisplay(u.cargaHorariaSemanal)}/sem</TableCell>
                           <TableCell>
-                            {formatMinutesToDisplay(u.cargaHorariaSemanal)}/sem
-                          </TableCell>
-                          <TableCell>
-                            <span className={`font-semibold ${bancoHoras >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                            <span
+                              className={`font-semibold ${bancoHoras >= 0 ? 'text-green-600' : 'text-destructive'}`}
+                            >
                               {formatMinutesToDisplay(bancoHoras)}
                             </span>
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground max-w-[140px] truncate" title={gestorNome}>
+                          <TableCell
+                            className="text-sm text-muted-foreground max-w-[160px] truncate"
+                            title={gestorNome}
+                          >
                             {gestorNome}
                           </TableCell>
-                          <TableCell>
-                            {emRecesso ? (
-                              <Badge className="bg-blue-100 text-blue-800">
-                                Em recesso até {u.dataFimRecesso && formatDate(u.dataFimRecesso)}
-                              </Badge>
-                            ) : recessoProximo ? (
-                              <Badge variant="outline" className="border-amber-500 text-amber-600">
-                                Inicia em {u.dataInicioRecesso && formatDate(u.dataInicioRecesso)}
-                              </Badge>
-                            ) : u.dataInicioRecesso ? (
-                              <span className="text-sm text-muted-foreground">
-                                {formatDate(u.dataInicioRecesso)}
-                              </span>
-                            ) : (
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    Agendar
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Agendar Recesso</DialogTitle>
-                                    <DialogDescription>
-                                      Defina a data de início do recesso de {u.nome}
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <form
-                                    onSubmit={(e) => {
-                                      e.preventDefault()
-                                      const formData = new FormData(e.currentTarget)
-                                      const data = formData.get('dataRecesso') as string
-                                      if (data) {
-                                        handleSetRecesso(u.id, data)
-                                      }
-                                    }}
-                                    className="space-y-4"
-                                  >
-                                    <Field>
-                                      <FieldLabel htmlFor={`recesso-${u.id}`}>
-                                        Data de Início
-                                      </FieldLabel>
-                                      <Input
-                                        id={`recesso-${u.id}`}
-                                        name="dataRecesso"
-                                        type="date"
-                                        required
-                                      />
-                                    </Field>
-                                    <p className="text-sm text-muted-foreground">
-                                      O recesso terá duração de {DIAS_RECESSO} dias
-                                    </p>
-                                    <Button type="submit" className="w-full">
-                                      Confirmar
-                                    </Button>
-                                  </form>
-                                </DialogContent>
-                              </Dialog>
-                            )}
-                          </TableCell>
+                          <TableCell>{renderRecessoCell(u)}</TableCell>
                         </TableRow>
                       )
                     })}
@@ -623,7 +911,7 @@ export default function UsuariosAdminPage() {
                     <TableRow>
                       <TableHead>Nome</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>RA</TableHead>
+                      <TableHead>Matrícula</TableHead>
                       <TableHead>Departamento</TableHead>
                       <TableHead>Carga</TableHead>
                     </TableRow>
@@ -641,7 +929,7 @@ export default function UsuariosAdminPage() {
                           </button>
                         </TableCell>
                         <TableCell>{g.email}</TableCell>
-                        <TableCell>{g.ra}</TableCell>
+                        <TableCell>{g.matricula}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{g.departamento}</Badge>
                         </TableCell>
@@ -656,7 +944,7 @@ export default function UsuariosAdminPage() {
         </Card>
 
         <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {selectedUser ? `Ações de ${selectedUser.nome}` : 'Ações do usuário'}
@@ -702,8 +990,13 @@ export default function UsuariosAdminPage() {
                     <Input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="edit-ra">RA</FieldLabel>
-                    <Input id="edit-ra" value={ra} onChange={(e) => setRa(e.target.value)} required />
+                    <FieldLabel htmlFor="edit-matricula">Matrícula</FieldLabel>
+                    <Input
+                      id="edit-matricula"
+                      value={matricula}
+                      onChange={(e) => setMatricula(e.target.value)}
+                      required
+                    />
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="edit-departamento">Departamento</FieldLabel>
@@ -735,35 +1028,39 @@ export default function UsuariosAdminPage() {
                       </SelectContent>
                     </Select>
                   </Field>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel htmlFor="edit-contrato-inicio">Início do contrato</FieldLabel>
+                      <Input
+                        id="edit-contrato-inicio"
+                        type="date"
+                        value={dataInicioContrato}
+                        onChange={(e) => setDataInicioContrato(e.target.value)}
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="edit-contrato-fim">Fim do contrato</FieldLabel>
+                      <Input
+                        id="edit-contrato-fim"
+                        type="date"
+                        value={dataFimContrato}
+                        onChange={(e) => setDataFimContrato(e.target.value)}
+                      />
+                    </Field>
+                  </div>
+
                   {selectedUser != null && selectedUser.cargo === 'estagiario' ? (
                     <>
-                      <Field>
-                        <FieldLabel htmlFor="edit-gestor">Gestor responsável</FieldLabel>
-                        <Select value={gestorVinculoId} onValueChange={setGestorVinculoId}>
-                          <SelectTrigger id="edit-gestor">
-                            <SelectValue placeholder="Gestor" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="_none">Sem gestor</SelectItem>
-                            {gestoresLista
-                              .filter((g) => g.id !== selectedUser.id)
-                              .map((g) => (
-                                <SelectItem key={g.id} value={g.id}>
-                                  {g.nome}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                      <Field>
-                        <FieldLabel htmlFor="edit-recesso">Data do Recesso</FieldLabel>
-                        <Input
-                          id="edit-recesso"
-                          type="date"
-                          value={dataRecesso}
-                          onChange={(e) => setDataRecesso(e.target.value)}
-                        />
-                      </Field>
+                      {renderGestorSelectors(
+                        gestorVinculoId,
+                        setGestorVinculoId,
+                        editExtraGestorIds,
+                        setEditExtraGestorIds,
+                        editSelectedGestorIds(),
+                        'edit',
+                      )}
+                      {renderRecessoFields('edit')}
                     </>
                   ) : null}
                 </FieldGroup>

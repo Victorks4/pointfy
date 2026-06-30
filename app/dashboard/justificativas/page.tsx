@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { formatDate, formatMinutesToDisplay, getTodayString } from '@/lib/time-utils'
+import { formatDate, formatMinutesToDisplay, getTodayString, parseHorasToMinutos } from '@/lib/time-utils'
 import { LABELS } from '@/lib/labels'
 import {
   STATUS_COMPENSACAO_LABELS,
@@ -39,6 +39,10 @@ export default function JustificativasPage() {
   // Estados para formulário de compensação
   const [compDataFalta, setCompDataFalta] = useState('')
   const [compDescricao, setCompDescricao] = useState('')
+  const [parcialDataFalta, setParcialDataFalta] = useState('')
+  const [parcialDataComp, setParcialDataComp] = useState('')
+  const [parcialHoras, setParcialHoras] = useState('')
+  const [parcialDescricao, setParcialDescricao] = useState('')
 
   const handleAtestadoSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -123,6 +127,43 @@ export default function JustificativasPage() {
     setCompDescricao('')
   }
 
+  const handleCompensacaoParcialSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user) return
+    const minutos = parseHorasToMinutos(parcialHoras)
+    if (!parcialDataFalta || !parcialDataComp) {
+      toast.error('Informe a data da falta e da compensação')
+      return
+    }
+    if (minutos === null) {
+      toast.error('Informe as horas a compensar (ex.: 2 ou 1,5)')
+      return
+    }
+    if (!parcialDescricao.trim()) {
+      toast.error('Descreva o motivo')
+      return
+    }
+    const result = await addJustificativa({
+      userId: user.id,
+      data: parcialDataFalta,
+      tipo: 'compensacao_parcial',
+      descricao: parcialDescricao.trim(),
+      arquivoUrl: null,
+      minutosAbatidos: 0,
+      dataCompensacao: parcialDataComp,
+      minutosSolicitados: minutos,
+    })
+    if (!result.success) {
+      toast.error(result.error)
+      return
+    }
+    toast.success('Compensação parcial enviada ao gestor.')
+    setParcialDataFalta('')
+    setParcialDataComp('')
+    setParcialHoras('')
+    setParcialDescricao('')
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -168,8 +209,8 @@ export default function JustificativasPage() {
         </Card>
 
         <div data-fy-anchor="fy-justificativas-panel" className="space-y-6">
-        <Tabs defaultValue="atestado" className="max-w-2xl">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs defaultValue="atestado" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="atestado">
               <FileText className="mr-2 h-4 w-4" />
               Atestado
@@ -181,7 +222,7 @@ export default function JustificativasPage() {
           </TabsList>
 
           {/* Tab Atestado */}
-          <TabsContent value="atestado">
+          <TabsContent value="atestado" className="mt-4 max-w-2xl">
             <Card>
               <CardHeader>
                 <CardTitle>Enviar Atestado</CardTitle>
@@ -253,25 +294,26 @@ export default function JustificativasPage() {
           </TabsContent>
 
           {/* Tab Compensação */}
-          <TabsContent value="compensacao">
-            <Card>
+          <TabsContent value="compensacao" className="mt-4 w-full space-y-4">
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Após aprovação do gestor, a compensação impacta o saldo e fica visível para o RH.
+                A compensação integral debita <strong>6h</strong>; a parcial debita as horas informadas.
+              </AlertDescription>
+            </Alert>
+
+            <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
+            <Card className="flex h-full flex-col">
               <CardHeader>
-                <CardTitle>Registrar Compensação</CardTitle>
+                <CardTitle>Compensação integral</CardTitle>
                 <CardDescription>
                   A compensação precisa ser aprovada pelo gestor antes de impactar o saldo
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Alert className="mb-4">
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Após aprovação do gestor, <strong>6h</strong> serão debitadas do saldo e a solicitação
-                    ficará visível para o RH (administrador).
-                  </AlertDescription>
-                </Alert>
-
-                <form onSubmit={handleCompensacaoSubmit} className="space-y-4">
-                  <FieldGroup>
+              <CardContent className="flex flex-1 flex-col">
+                <form onSubmit={handleCompensacaoSubmit} className="flex flex-1 flex-col gap-4">
+                  <FieldGroup className="flex-1">
                     <Field>
                       <FieldLabel htmlFor="comp-data-falta">{LABELS.DATA_AUSENCIA}</FieldLabel>
                       <Input
@@ -290,19 +332,65 @@ export default function JustificativasPage() {
                         placeholder="Descreva a situação da falta para compensação..."
                         value={compDescricao}
                         onChange={(e) => setCompDescricao(e.target.value)}
-                        rows={3}
+                        rows={4}
                         required
                       />
                     </Field>
                   </FieldGroup>
 
-                  <Button type="submit" className="w-full">
+                  <Button type="submit" className="mt-auto w-full">
                     <Clock className="mr-2 h-4 w-4" />
                     Solicitar compensação ao gestor
                   </Button>
                 </form>
               </CardContent>
             </Card>
+
+            <Card className="flex h-full flex-col">
+              <CardHeader>
+                <CardTitle>Compensação parcial</CardTitle>
+                <CardDescription>
+                  Compense horas em um dia específico (após aprovação do gestor)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col">
+                <form onSubmit={handleCompensacaoParcialSubmit} className="flex flex-1 flex-col gap-4">
+                  <FieldGroup className="flex-1">
+                    <Field>
+                      <FieldLabel htmlFor="parcial-data-falta">{LABELS.DATA_AUSENCIA}</FieldLabel>
+                      <Input id="parcial-data-falta" type="date" value={parcialDataFalta} onChange={(e) => setParcialDataFalta(e.target.value)} max={getTodayString()} required />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="parcial-data-comp">Data da compensação</FieldLabel>
+                      <Input id="parcial-data-comp" type="date" value={parcialDataComp} onChange={(e) => setParcialDataComp(e.target.value)} required />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="parcial-horas">Horas a compensar</FieldLabel>
+                      <Input
+                        id="parcial-horas"
+                        type="number"
+                        min={0.5}
+                        step={0.5}
+                        inputMode="decimal"
+                        placeholder="Ex.: 2 ou 1,5"
+                        value={parcialHoras}
+                        onChange={(e) => setParcialHoras(e.target.value)}
+                        required
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="parcial-descricao">Descrição</FieldLabel>
+                      <Textarea id="parcial-descricao" value={parcialDescricao} onChange={(e) => setParcialDescricao(e.target.value)} rows={4} required />
+                    </Field>
+                  </FieldGroup>
+                  <Button type="submit" className="mt-auto w-full" variant="secondary">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Solicitar compensação parcial
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+            </div>
           </TabsContent>
         </Tabs>
 

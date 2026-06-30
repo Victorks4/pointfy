@@ -35,6 +35,7 @@ import {
   FileBarChart2,
   SlidersHorizontal,
   Target,
+  CalendarRange,
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
@@ -75,6 +76,7 @@ export function DashboardSidebar() {
     { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { title: 'Registrar Presença', href: '/dashboard/ponto', icon: Clock },
     { title: 'Histórico', href: '/dashboard/historico', icon: CalendarDays },
+    { title: 'Feriados', href: '/dashboard/feriados', icon: CalendarRange },
     { title: 'Justificativas', href: '/dashboard/justificativas', icon: FileText },
     { title: 'Relatórios', href: '/dashboard/relatorios', icon: FileBarChart2 },
     {
@@ -88,6 +90,7 @@ export function DashboardSidebar() {
   const adminMenuItems = [
     { title: 'Painel Admin', href: '/dashboard/admin', icon: ShieldCheck },
     { title: 'Usuários', href: '/dashboard/admin/usuarios', icon: Users },
+    { title: 'Feriados', href: '/dashboard/admin/feriados', icon: CalendarDays },
     { title: 'Notificações', href: '/dashboard/admin/notificacoes', icon: Megaphone },
     { title: 'Desafios', href: '/dashboard/admin/desafios', icon: Target },
     { title: 'Configurações', href: '/dashboard/admin/configuracoes-ponto', icon: SlidersHorizontal },

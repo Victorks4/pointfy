@@ -19,6 +19,7 @@ import { runVoidAction } from '@/lib/data-action-utils'
 import { isPresencaBloqueada as checkPresencaBloqueada } from '@/lib/presenca-bloqueio'
 import {
   compensacaoAfetaSaldo,
+  isCompensacaoTipo,
   minutosCompensacaoEfetivos,
 } from '@/lib/compensacao-utils'
 import {
@@ -82,7 +83,11 @@ interface DataContextType {
   ) => Promise<ActionResult<Justificativa>>
   getJustificativasByUser: (userId: string) => Justificativa[]
   getJustificativasVisiveisRh: () => Justificativa[]
-  aprovarCompensacao: (gestorId: string, justificativaId: string) => Promise<ActionResult<void>>
+  aprovarCompensacao: (
+    gestorId: string,
+    justificativaId: string,
+    minutosAprovados?: number,
+  ) => Promise<ActionResult<void>>
   rejeitarCompensacao: (
     gestorId: string,
     justificativaId: string,
@@ -311,6 +316,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         tipo: justificativa.tipo,
         descricao: justificativa.descricao,
         arquivoPath: justificativa.arquivoUrl,
+        dataCompensacao: justificativa.dataCompensacao,
+        minutosSolicitados: justificativa.minutosSolicitados,
       })
       if (result.success) await refreshJustificativas()
       return result
@@ -319,8 +326,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   )
 
   const aprovarCompensacao = useCallback(
-    async (_gestorId: string, justificativaId: string): Promise<ActionResult<void>> => {
-      const result = await aprovarCompensacaoAction(justificativaId)
+    async (
+      _gestorId: string,
+      justificativaId: string,
+      minutosAprovados?: number,
+    ): Promise<ActionResult<void>> => {
+      const result = await aprovarCompensacaoAction(justificativaId, minutosAprovados)
       if (result.success) await refreshJustificativas()
       return result.success ? { success: true, data: undefined } : { success: false, error: result.error }
     },
@@ -340,31 +351,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [refreshJustificativas],
   )
 
+  const estagiarioIdsDoGestor = useCallback(
+    (gestorId: string) =>
+      usuarios
+        .filter(
+          (u) =>
+            u.cargo === 'estagiario' &&
+            (u.gestorId === gestorId || u.gestorIds?.includes(gestorId)),
+        )
+        .map((u) => u.id),
+    [usuarios],
+  )
+
   const getCompensacoesPendentesGestor = useCallback(
     (gestorId: string) => {
-      const ids = usuarios
-        .filter((u) => u.cargo === 'estagiario' && u.gestorId === gestorId)
-        .map((u) => u.id)
+      const ids = estagiarioIdsDoGestor(gestorId)
       return justificativas.filter(
         (j) =>
-          j.tipo === 'compensacao' &&
+          isCompensacaoTipo(j.tipo) &&
           j.statusCompensacao === 'pendente_gestor' &&
           ids.includes(j.userId),
       )
     },
-    [justificativas, usuarios],
+    [justificativas, estagiarioIdsDoGestor],
   )
 
   const getCompensacoesHistoricoGestor = useCallback(
     (gestorId: string) => {
-      const ids = usuarios
-        .filter((u) => u.cargo === 'estagiario' && u.gestorId === gestorId)
-        .map((u) => u.id)
+      const ids = estagiarioIdsDoGestor(gestorId)
       return justificativas
-        .filter((j) => j.tipo === 'compensacao' && ids.includes(j.userId))
+        .filter((j) => isCompensacaoTipo(j.tipo) && ids.includes(j.userId))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     },
-    [justificativas, usuarios],
+    [justificativas, estagiarioIdsDoGestor],
   )
 
   const getJustificativasVisiveisRh = useCallback(
@@ -372,7 +391,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       justificativas.filter(
         (j) =>
           j.tipo === 'atestado' ||
-          (j.tipo === 'compensacao' && compensacaoAfetaSaldo(j)),
+          (isCompensacaoTipo(j.tipo) && compensacaoAfetaSaldo(j)),
       ),
     [justificativas],
   )
@@ -420,15 +439,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       void runVoidAction(
         createUsuarioAction({
           email: usuario.email,
-          senha: usuario.senha ?? 'changeme123',
-          ra: usuario.ra,
+          senha: usuario.senha,
+          matricula: usuario.matricula,
           nome: usuario.nome,
           cargo: usuario.cargo,
           departamento: usuario.departamento,
           cargaHorariaSemanal: usuario.cargaHorariaSemanal,
-          dataInicioRecesso: usuario.dataInicioRecesso,
-          dataFimRecesso: usuario.dataFimRecesso,
+          dataInicioContrato: usuario.dataInicioContrato,
+          dataFimContrato: usuario.dataFimContrato,
+          dataInicioRecesso1: usuario.dataInicioRecesso1,
+          dataFimRecesso1: usuario.dataFimRecesso1,
+          dataInicioRecesso2: usuario.dataInicioRecesso2,
+          dataFimRecesso2: usuario.dataFimRecesso2,
           gestorId: usuario.gestorId,
+          gestorIds: usuario.gestorIds,
+          mustChangePassword: usuario.mustChangePassword ?? true,
         }),
         () => refreshData(),
         'Não foi possível criar o usuário.',
@@ -461,7 +486,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const getEstagiariosDoGestor = useCallback(
     (gestorId: string) =>
-      usuarios.filter((u) => u.cargo === 'estagiario' && u.gestorId === gestorId),
+      usuarios.filter(
+        (u) =>
+          u.cargo === 'estagiario' &&
+          (u.gestorId === gestorId || u.gestorIds?.includes(gestorId)),
+      ),
     [usuarios],
   )
 

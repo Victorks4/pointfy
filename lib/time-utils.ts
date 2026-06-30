@@ -35,6 +35,15 @@ export function formatMinutesToDisplay(minutes: number): string {
   return `${sign}${hours}h ${mins}min`
 }
 
+/** Converte horas informadas pelo usuário (aceita vírgula) em minutos. */
+export function parseHorasToMinutos(horasInput: string): number | null {
+  const normalized = horasInput.trim().replace(',', '.')
+  if (!normalized) return null
+  const horas = Number(normalized)
+  if (!Number.isFinite(horas) || horas <= 0) return null
+  return Math.round(horas * 60)
+}
+
 /**
  * Valida se o horário não é "fechado" (minutos != 00)
  */
@@ -142,13 +151,20 @@ export function isInRecessPeriod(
   return check >= start && check <= end
 }
 
-/**
- * Calcula a data de fim do recesso (15 dias após o início)
- */
-export function calculateRecessEnd(startDate: string): string {
-  const start = new Date(startDate)
-  start.setDate(start.getDate() + 15)
-  return start.toISOString().split('T')[0]
+/** Verifica recesso 1 ou 2 do usuário. */
+export function isUserInRecessPeriod(
+  checkDate: string,
+  user: {
+    dataInicioRecesso1: string | null
+    dataFimRecesso1: string | null
+    dataInicioRecesso2: string | null
+    dataFimRecesso2: string | null
+  },
+): boolean {
+  return (
+    isInRecessPeriod(checkDate, user.dataInicioRecesso1, user.dataFimRecesso1) ||
+    isInRecessPeriod(checkDate, user.dataInicioRecesso2, user.dataFimRecesso2)
+  )
 }
 
 export function isRecessApproaching(
@@ -162,6 +178,20 @@ export function isRecessApproaching(
   const diffDays = Math.ceil((start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
   
   return diffDays > 0 && diffDays <= daysAhead
+}
+
+/** Algum recesso do usuário começa em até N dias. */
+export function isAnyRecessApproaching(
+  user: {
+    dataInicioRecesso1: string | null
+    dataInicioRecesso2: string | null
+  },
+  daysAhead: number = 7,
+): boolean {
+  return (
+    isRecessApproaching(user.dataInicioRecesso1, daysAhead) ||
+    isRecessApproaching(user.dataInicioRecesso2, daysAhead)
+  )
 }
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24

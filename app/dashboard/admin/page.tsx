@@ -85,7 +85,7 @@ export default function AdminPage() {
       const buscaOk =
         !busca ||
         u.nome.toLowerCase().includes(busca.toLowerCase()) ||
-        u.ra.toLowerCase().includes(busca.toLowerCase())
+        u.matricula.toLowerCase().includes(busca.toLowerCase())
       return departamentoOk && buscaOk
     })
     .sort((a, b) => {
@@ -216,7 +216,7 @@ export default function AdminPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar estagiário (nome ou RA)"
+                  placeholder="Buscar estagiário (nome ou matrícula)"
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   className="pl-9 w-80"
@@ -230,7 +230,7 @@ export default function AdminPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nome</TableHead>
-                      <TableHead>RA</TableHead>
+                      <TableHead>Matrícula</TableHead>
                       <TableHead>Departamento</TableHead>
                       <TableHead className="text-center">Dias Trabalhados</TableHead>
                       <TableHead className="text-right">Horas no Mês</TableHead>
@@ -248,7 +248,7 @@ export default function AdminPage() {
                             {u.nome}
                           </button>
                         </TableCell>
-                        <TableCell>{u.ra}</TableCell>
+                        <TableCell>{u.matricula}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{u.departamento}</Badge>
                         </TableCell>
@@ -284,7 +284,7 @@ export default function AdminPage() {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
               <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
                 <h3 className="text-lg font-bold mb-2">Opções para {selectedUser.nome}</h3>
-                <p className="text-sm text-muted-foreground mb-4">RA: {selectedUser.ra} | Departamento: {selectedUser.departamento}</p>
+                <p className="text-sm text-muted-foreground mb-4">Matrícula: {selectedUser.matricula} | Departamento: {selectedUser.departamento}</p>
                 <div className="flex flex-col gap-3">
                   <button
                     className="w-full py-2 px-4 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"

@@ -3,9 +3,9 @@ import {
   calculateDayTotal,
   formatMinutesToDisplay,
   getTodayString,
-  isInRecessPeriod,
+  isUserInRecessPeriod,
   isValidNonOverlapping,
-  isValidTimeFormatStrict,
+  isValidTimeFormat,
   isValidTimeSequence,
 } from '@/lib/time-utils'
 import { getLimiteMinutosSemJustificativa } from '@/lib/ponto-config-utils'
@@ -40,7 +40,7 @@ export function validatePontoBusinessRules(
     erros.push('Não é permitido registrar presença em data futura')
   }
 
-  if (isInRecessPeriod(fields.data, user.dataInicioRecesso, user.dataFimRecesso)) {
+  if (isUserInRecessPeriod(fields.data, user)) {
     erros.push('Você está em período de recesso remunerado')
   }
 
@@ -57,16 +57,25 @@ export function validatePontoBusinessRules(
 
   for (const { label, value } of periodos) {
     if (!value) continue
-    if (!isValidTimeFormatStrict(value, rejeitarMinutosZero)) {
-      erros.push(
-        rejeitarMinutosZero
-          ? `${label}: formato inválido ou minutos não podem ser :00`
-          : `${label}: formato inválido (use HH:mm)`,
-      )
+    if (!isValidTimeFormat(value)) {
+      erros.push(`${label}: formato inválido (use HH:mm)`)
     }
   }
 
   const { entrada1, saida1, entrada2, saida2 } = fields
+
+  const par1Completo = !!(entrada1 && saida1)
+  const par2Completo = !!(entrada2 && saida2)
+  const par1Parcial = !!(entrada1 || saida1) && !par1Completo
+  const par2Parcial = !!(entrada2 || saida2) && !par2Completo
+
+  if (par1Parcial || par2Parcial) {
+    erros.push('Preencha entrada e saída de cada período informado')
+  }
+
+  if (!par1Completo && !par2Completo) {
+    erros.push('Informe ao menos um período completo (entrada e saída)')
+  }
 
   if (entrada1 && saida1 && !isValidTimeSequence(entrada1, saida1)) {
     erros.push('A Saída 1 deve ser após a Entrada 1')
@@ -76,10 +85,6 @@ export function validatePontoBusinessRules(
   }
   if (saida1 && entrada2 && !isValidNonOverlapping(saida1, entrada2)) {
     erros.push('A Entrada 2 deve ser após a Saída 1')
-  }
-
-  if (!entrada1 || !saida1 || !entrada2 || !saida2) {
-    erros.push('Os campos dos dois períodos são obrigatórios')
   }
 
   const totalCalculado = calculateDayTotal(entrada1, saida1, entrada2, saida2)

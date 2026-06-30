@@ -8,7 +8,9 @@ import { parseInput } from '@/lib/validations/parse'
 import { desafioProgressoSchema, notificacaoReadSchema } from '@/lib/validations/schemas'
 import { uuidSchema } from '@/lib/validations/parse'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import type { User, Notificacao, BloqueioPresenca, DesafioSemanal, DesafioProgresso, PontoConfig } from '@/lib/types'
+import type { User, Notificacao, BloqueioPresenca, DesafioSemanal, DesafioProgresso, PontoConfig, Feriado } from '@/lib/types'
+import * as feriadoService from '@/lib/server/services/feriado.service'
+import { checkUpcomingFeriados, checkUpcomingRecessos } from '@/lib/server/services/hr-scheduler.service'
 
 export async function createUsuarioAction(input: unknown) {
   return runAction<User>(async () => {
@@ -134,5 +136,27 @@ export async function deletePontoConfigAction(id: string) {
     await adminService.deletePontoConfig(id)
     revalidateTag('ponto-configs', 'max')
     revalidatePath('/dashboard')
+  })
+}
+
+export async function createFeriadoAction(input: unknown) {
+  return runAction<Feriado>(async () => {
+    const r = await feriadoService.createFeriado(input)
+    revalidatePath('/dashboard/admin/feriados')
+    return r
+  })
+}
+
+export async function deleteFeriadoAction(id: string) {
+  return runAction<void>(async () => {
+    parseInput(uuidSchema, id)
+    await feriadoService.deleteFeriado(id)
+    revalidatePath('/dashboard/admin/feriados')
+  })
+}
+
+export async function runHrSchedulerAction() {
+  return runAction<void>(async () => {
+    await Promise.all([checkUpcomingRecessos(), checkUpcomingFeriados()])
   })
 }
