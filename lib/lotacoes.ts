@@ -1,0 +1,49 @@
+/** Lotações FIEB — opções do cadastro de usuário */
+
+export const LOTACOES = [
+  'CENTRAL DE MATRICULA',
+  'CONSTRUCAO CIVIL',
+  'COURO E CALÇADO',
+  'EDUCACAO PROFISSIONAL',
+  'ELETRICA E AUTOMACAO',
+  'ELETRICA E AUTOMACAO CHP',
+  'ELETRICA E AUTOMACAO CQPBAS',
+  'EQUIP. MOVEIS INDUSTRIAIS CQPBAS',
+  'GERÊNCIA IPIRÁ',
+  'GERÊNCIA SERRINHA',
+  'GERENCIA UNIDADE FEIRA DE SANTANA',
+  'NUCLEO GESTAO DE PESSOAS',
+  'GESTAO DA PRODUCAO',
+  'INFORMATICA',
+  'INFORMATICA CQPBAS',
+  'LOGISTICA',
+  'NUCLEO NEGOCIO / RNM',
+  'MANUTENCAO INDUSTRIAL',
+  'SECRETARIA ACADÊMICA',
+  'MANUTENCAO INDUSTRIAL CAIB',
+  'SEGURANÇA DO TRABALHO',
+  'MANUTENCAO INDUSTRIAL CHP',
+  'SEGURANÇA DO TRABALHO CQPBAS',
+  'NUCLEO ADMINISTRATIVO FINANCEIRO',
+  'MANUTENCAO INDUSTRIAL CQPBAS',
+  'NÚCLEO DE CARREIRA PROFISSIONAL',
+  'NUCLEO DE DOC E INFORMACAO',
+  'NÚCLEO DE GESTÃO E ORÇAMENTO',
+  'NÚCLEO DE ORGANIZAÇÃO ACADÊMICA',
+  'NUCLEO MANUTENCAO',
+  'QUÍMICA',
+  'REDES',
+  'SUPORTE AO NEGÓCIO PJ',
+  'SUPORTE NEGOCIOS',
+  'NÚCLEO DE GESTÃO DA QUALIDADE',
+] as const
+
+export type Lotacao = (typeof LOTACOES)[number]
+
+/** Inclui valor legado no select de edição quando ainda não está na lista oficial */
+export function lotacoesParaSelect(valorAtual?: string): readonly string[] {
+  if (!valorAtual || (LOTACOES as readonly string[]).includes(valorAtual)) {
+    return LOTACOES
+  }
+  return [valorAtual, ...LOTACOES]
+}

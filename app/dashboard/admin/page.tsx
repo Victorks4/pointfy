@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { formatMinutesToDisplay, formatDate } from '@/lib/time-utils'
 import type { User } from '@/lib/types'
+import { LABELS } from '@/lib/labels'
 import { Users, Clock, TrendingUp, TrendingDown, Calendar, Search } from 'lucide-react'
 
 type EstagiarioComMetricas = User & {
@@ -44,7 +45,7 @@ export default function AdminPage() {
 
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const [selectedYear, setSelectedYear] = useState(String(currentYear))
-  const [departamentoFiltro, setDepartamentoFiltro] = useState('')
+  const [lotacaoFiltro, setLotacaoFiltro] = useState('')
   const [busca, setBusca] = useState('')
 
   // Estatísticas gerais
@@ -81,12 +82,12 @@ export default function AdminPage() {
 
   const usuariosComDadosFiltradosOrdenados = usuariosComDados
     .filter((u) => {
-      const departamentoOk = !departamentoFiltro || u.departamento.toLowerCase().includes(departamentoFiltro.toLowerCase())
+      const lotacaoOk = !lotacaoFiltro || u.departamento.toLowerCase().includes(lotacaoFiltro.toLowerCase())
       const buscaOk =
         !busca ||
         u.nome.toLowerCase().includes(busca.toLowerCase()) ||
         u.matricula.toLowerCase().includes(busca.toLowerCase())
-      return departamentoOk && buscaOk
+      return lotacaoOk && buscaOk
     })
     .sort((a, b) => {
       // Ordem fixa: mais horas a cumprir (bancoHoras mais negativo) -> mais horas feitas
@@ -207,9 +208,9 @@ export default function AdminPage() {
           <CardContent>
             <div className="flex gap-3 items-center mb-4 flex-wrap">
               <Input
-                placeholder="Filtrar por departamento"
-                value={departamentoFiltro}
-                onChange={(e) => setDepartamentoFiltro(e.target.value)}
+                placeholder="Filtrar por lotação"
+                value={lotacaoFiltro}
+                onChange={(e) => setLotacaoFiltro(e.target.value)}
                 className="w-64"
               />
 
@@ -231,7 +232,7 @@ export default function AdminPage() {
                     <TableRow>
                       <TableHead>Nome</TableHead>
                       <TableHead>Matrícula</TableHead>
-                      <TableHead>Departamento</TableHead>
+                      <TableHead>{LABELS.LOTACAO}</TableHead>
                       <TableHead className="text-center">Dias Trabalhados</TableHead>
                       <TableHead className="text-right">Horas no Mês</TableHead>
                       <TableHead className="text-right">Saldo</TableHead>
@@ -284,7 +285,7 @@ export default function AdminPage() {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
               <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
                 <h3 className="text-lg font-bold mb-2">Opções para {selectedUser.nome}</h3>
-                <p className="text-sm text-muted-foreground mb-4">Matrícula: {selectedUser.matricula} | Departamento: {selectedUser.departamento}</p>
+                <p className="text-sm text-muted-foreground mb-4">Matrícula: {selectedUser.matricula} | {LABELS.LOTACAO}: {selectedUser.departamento}</p>
                 <div className="flex flex-col gap-3">
                   <button
                     className="w-full py-2 px-4 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"

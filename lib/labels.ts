@@ -12,6 +12,7 @@ export const LABELS = {
   CONFIGURACOES_PRESENCA: 'Configurações de presença',
   SISTEMA_PONTO: 'Sistema de Gestão de Presença',
   SISTEMA_PONTO_DESC: 'Sistema de Gestão de Presença Digital para Estagiários',
+  LOTACAO: 'Lotação',
 } as const
 
 export const ANOTACAO_DATA_POSTERIOR =

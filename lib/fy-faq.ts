@@ -89,7 +89,7 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
     id: 'admin-usuarios',
     question: 'Como cadastro estagiários e gestores?',
     answer:
-      'Em Administração → Usuários você cria perfis como Estagiário ou Gestor, define departamento e carga horária. Para estagiário, pode vincular um gestor responsável para ele aparecer no painel “Meus estagiários” do coordenador.',
+      'Em Administração → Usuários você cria perfis como Estagiário ou Gestor, define lotação e carga horária. Para estagiário, pode vincular um gestor responsável para ele aparecer no painel “Meus estagiários” do coordenador.',
     roles: ['admin'],
   },
   {

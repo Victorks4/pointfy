@@ -8,7 +8,7 @@ const baseUser = {
   matricula: 'MAT001',
   nome: 'Teste',
   cargo: 'estagiario',
-  departamento: 'TI',
+  departamento: 'INFORMATICA',
   cargaHorariaSemanal: 1800,
   dataInicioContrato: null,
   dataFimContrato: null,

@@ -50,7 +50,7 @@ export async function downloadRelatorioEstagiariosPdf(params: {
   })
 
   let y = drawInfoBox(doc, contentStartY, [
-    `Departamento: ${filtroDepartamento || 'Todos'}`,
+    `${LABELS.LOTACAO}: ${filtroDepartamento || 'Todas'}`,
     `Total de registros na listagem: ${linhas.length}`,
   ])
 
@@ -64,7 +64,7 @@ export async function downloadRelatorioEstagiariosPdf(params: {
 
   autoTable(doc, {
     startY: y,
-    head: [['Nome', 'Matrícula', 'Departamento', 'Registros', LABELS.SALDO]],
+    head: [['Nome', 'Matrícula', LABELS.LOTACAO, 'Registros', LABELS.SALDO]],
     body,
     ...senaiAutoTableCommon(),
     columnStyles: {
@@ -118,7 +118,7 @@ export async function downloadRelatorioUsuarioPdf(params: {
   let y = drawInfoBox(doc, contentStartY, [
     `Estagiário(a): ${usuario.nome}`,
     `Matrícula: ${usuario.matricula}`,
-    `Departamento: ${usuario.departamento}`,
+    `${LABELS.LOTACAO}: ${usuario.departamento}`,
     `Gestor(a) / responsável: ${gestorNome?.trim() || '—'}`,
     `Período: ${periodoLabel}`,
   ])

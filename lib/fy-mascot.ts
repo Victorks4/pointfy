@@ -82,7 +82,7 @@ export const FY_DOCK_TIPS_ADMIN: string[] = [
   'Estagiários geram o PDF mensal em Relatórios (menu deles) e assinam no portal externo; você acompanha totais no painel e histórico.',
   'Notificações curtas e objetivas têm mais leitura; use para avisos que realmente precisam de ação.',
   'Na fila de justificativas, respostas claras reduzem ida e volta, o estagiário vê o retorno no painel dele.',
-  'Usuários com departamento e carga horária corretos evitam erro no fechamento de horas.',
+  'Usuários com lotação e carga horária corretos evitam erro no fechamento de horas.',
   'Desafios semanais funcionam melhor com meta realista e prazo visível para o time acompanhar.',
   'Antes de publicar uma nova regra, revise quem está em recesso ou período especial nos cadastros.',
   'Painel geral + drill-down por estagiário no histórico/admin ajuda a priorizar quem precisa de suporte.',
@@ -270,7 +270,7 @@ export const FY_ADMIN_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
     ordem: 3,
     titulo: 'Usuários',
     mensagem:
-      'Cadastre e mantenha estagiários, departamentos e dados alinhados ao estágio. Alterações aqui refletem no registro de ponto.',
+      'Cadastre e mantenha estagiários, lotações e dados alinhados ao estágio. Alterações aqui refletem no registro de ponto.',
     rotaSugerida: '/dashboard/admin/usuarios',
     anchorId: 'fy-admin-usuarios-main',
   },

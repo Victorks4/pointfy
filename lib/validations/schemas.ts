@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LOTACOES } from '@/lib/lotacoes'
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/
@@ -58,7 +59,12 @@ const usuarioFieldsSchema = z.object({
   matricula: z.string().min(1),
   nome: z.string().min(1),
   cargo: z.enum(['estagiario', 'admin', 'gestor']),
-  departamento: z.string(),
+  departamento: z
+    .string()
+    .min(1, 'Lotação é obrigatória')
+    .refine((v) => (LOTACOES as readonly string[]).includes(v), {
+      message: 'Selecione uma lotação válida',
+    }),
   cargaHorariaSemanal: z.number().int().positive(),
   dataInicioContrato: z.string().regex(dateRegex).nullable().optional(),
   dataFimContrato: z.string().regex(dateRegex).nullable().optional(),

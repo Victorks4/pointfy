@@ -25,18 +25,9 @@ import {
   isRecessApproaching,
 } from '@/lib/time-utils'
 import type { User } from '@/lib/types'
+import { LOTACOES, lotacoesParaSelect } from '@/lib/lotacoes'
+import { LABELS } from '@/lib/labels'
 import { UserPlus, Users, Calendar, Info, AlertCircle, Search, Shield, Plus, X } from 'lucide-react'
-
-const DEPARTAMENTOS = [
-  'TI',
-  'RH',
-  'Financeiro',
-  'Marketing',
-  'Comercial',
-  'Jurídico',
-  'Operações',
-  'Administrativo',
-]
 
 const CARGAS_HORARIAS = [
   { value: '1200', label: '20h semanais' },
@@ -76,7 +67,7 @@ export default function UsuariosAdminPage() {
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
-  const [departamentoFiltro, setDepartamentoFiltro] = useState('')
+  const [lotacaoFiltro, setLotacaoFiltro] = useState('')
   const [busca, setBusca] = useState('')
 
   const [nome, setNome] = useState('')
@@ -123,13 +114,13 @@ export default function UsuariosAdminPage() {
   const estagiarios = usuarios.filter((u) => u.cargo === 'estagiario')
   const gestoresLista = usuarios.filter((u) => u.cargo === 'gestor')
   const estagiariosFiltrados = estagiarios.filter((u) => {
-    const departamentoOk =
-      !departamentoFiltro || u.departamento.toLowerCase().includes(departamentoFiltro.toLowerCase())
+    const lotacaoOk =
+      !lotacaoFiltro || u.departamento.toLowerCase().includes(lotacaoFiltro.toLowerCase())
     const buscaOk =
       !busca ||
       u.nome.toLowerCase().includes(busca.toLowerCase()) ||
       u.matricula.toLowerCase().includes(busca.toLowerCase())
-    return departamentoOk && buscaOk
+    return lotacaoOk && buscaOk
   })
 
   const createSelectedGestorIds = () => [novoGestorId, ...extraGestorIds]
@@ -669,15 +660,15 @@ export default function UsuariosAdminPage() {
                   </Field>
 
                   <Field>
-                    <FieldLabel htmlFor="departamento">Departamento</FieldLabel>
+                    <FieldLabel htmlFor="departamento">{LABELS.LOTACAO}</FieldLabel>
                     <Select value={departamento} onValueChange={setDepartamento}>
                       <SelectTrigger id="departamento">
-                        <SelectValue placeholder="Selecione o departamento" />
+                        <SelectValue placeholder="Selecione a lotação" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {DEPARTAMENTOS.map((dep) => (
-                          <SelectItem key={dep} value={dep}>
-                            {dep}
+                      <SelectContent className="max-h-72">
+                        {LOTACOES.map((lot) => (
+                          <SelectItem key={lot} value={lot}>
+                            {lot}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -812,9 +803,9 @@ export default function UsuariosAdminPage() {
           <CardContent>
             <div className="flex gap-3 items-center mb-4 flex-wrap">
               <Input
-                placeholder="Filtrar por departamento"
-                value={departamentoFiltro}
-                onChange={(e) => setDepartamentoFiltro(e.target.value)}
+                placeholder="Filtrar por lotação"
+                value={lotacaoFiltro}
+                onChange={(e) => setLotacaoFiltro(e.target.value)}
                 className="w-64"
               />
 
@@ -837,7 +828,7 @@ export default function UsuariosAdminPage() {
                       <TableHead>Nome</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Matrícula</TableHead>
-                      <TableHead>Departamento</TableHead>
+                      <TableHead>{LABELS.LOTACAO}</TableHead>
                       <TableHead>Carga Horária</TableHead>
                       <TableHead>Saldo</TableHead>
                       <TableHead>Gestor(es)</TableHead>
@@ -912,7 +903,7 @@ export default function UsuariosAdminPage() {
                       <TableHead>Nome</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Matrícula</TableHead>
-                      <TableHead>Departamento</TableHead>
+                      <TableHead>{LABELS.LOTACAO}</TableHead>
                       <TableHead>Carga</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -999,15 +990,15 @@ export default function UsuariosAdminPage() {
                     />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="edit-departamento">Departamento</FieldLabel>
+                    <FieldLabel htmlFor="edit-departamento">{LABELS.LOTACAO}</FieldLabel>
                     <Select value={departamento} onValueChange={setDepartamento}>
                       <SelectTrigger id="edit-departamento">
-                        <SelectValue placeholder="Selecione o departamento" />
+                        <SelectValue placeholder="Selecione a lotação" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {DEPARTAMENTOS.map((dep) => (
-                          <SelectItem key={dep} value={dep}>
-                            {dep}
+                      <SelectContent className="max-h-72">
+                        {lotacoesParaSelect(departamento).map((lot) => (
+                          <SelectItem key={lot} value={lot}>
+                            {lot}
                           </SelectItem>
                         ))}
                       </SelectContent>
