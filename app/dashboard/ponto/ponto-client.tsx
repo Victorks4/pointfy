@@ -26,7 +26,6 @@ import {
   precisaJustificativaHoraExtra,
 } from '@/lib/ponto-config-utils'
 import { PontifyDatePicker } from '@/components/pontify-date-calendar'
-import { listFeriadosAction } from '@/app/actions/feriados'
 import { TimeField } from '@/components/time-field'
 import { Clock, AlertCircle, Save, Info, CheckCircle, Coffee } from 'lucide-react'
  
@@ -608,14 +607,16 @@ function JustificativaAlert({
  
 export default function PontoPage() {
   const { user } = useAuth()
-  const { addPonto, updatePonto, getPontoByDate, getActivePontoConfig, isPresencaBloqueada } = useData()
+  const { addPonto, updatePonto, getPontoByDate, getActivePontoConfig, isPresencaBloqueada, feriados } =
+    useData()
   const activeConfig = getActivePontoConfig()
- 
+
   const [mounted, setMounted] = useState(false)
   const [selectedDate, setSelectedDate] = useState(getTodayString())
   const [errors, setErrors] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
-  const [feriadoDates, setFeriadoDates] = useState<string[]>([])
+
+  const feriadoDates = useMemo(() => feriados.map((f) => f.data), [feriados])
  
   const pontoHoje = user ? getPontoByDate(user.id, selectedDate) : null
  
@@ -636,9 +637,6 @@ export default function PontoPage() {
   // Efeitos
   useEffect(() => {
     setMounted(true)
-    void listFeriadosAction().then((result) => {
-      if (result.success) setFeriadoDates(result.data.map((f) => f.data))
-    })
   }, [])
  
   useEffect(() => {

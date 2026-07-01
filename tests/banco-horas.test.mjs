@@ -108,6 +108,32 @@ describe('calcularBancoHoras', () => {
     assert.equal(saldo, -360)
   })
 
+  it('ignora pontos em dia de recesso', () => {
+    const userComRecesso = {
+      ...user,
+      dataInicioRecesso1: '2024-06-10',
+      dataFimRecesso1: '2024-06-10',
+    }
+    const pontos = [
+      {
+        id: 'p1',
+        userId: 'u1',
+        data: '2024-06-10',
+        entrada1: '08:00',
+        saida1: '12:00',
+        entrada2: '13:00',
+        saida2: '18:00',
+        totalMinutos: 420,
+        observacao: null,
+        justificativaHoraExtra: 'projeto',
+        createdAt: '',
+        updatedAt: '',
+      },
+    ]
+    const saldo = calcularBancoHoras(userComRecesso, pontos, [], [])
+    assert.equal(saldo, 0)
+  })
+
   it('saldo positivo quando trabalhou acima da carga diária', () => {
     const pontos = [
       {

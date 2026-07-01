@@ -143,12 +143,8 @@ export function isInRecessPeriod(
   recessEnd: string | null
 ): boolean {
   if (!recessStart || !recessEnd) return false
-  
-  const check = new Date(checkDate)
-  const start = new Date(recessStart)
-  const end = new Date(recessEnd)
-  
-  return check >= start && check <= end
+
+  return checkDate >= recessStart && checkDate <= recessEnd
 }
 
 /** Verifica recesso 1 ou 2 do usuário. */

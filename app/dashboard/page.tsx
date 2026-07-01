@@ -86,10 +86,22 @@ function DesafiosSemanaCard() {
       const pontosNaSemana = pontosUser.filter(
         (p) => p.data >= desafio.dataInicio && p.data <= desafio.dataFim,
       )
-      const { progressoCalculado, concluido } = desafioProgressoFromPontos(desafio, pontosNaSemana, undefined)
+      const stored = getProgressoDesafio(user.id, desafio.id)
+      const { progressoCalculado, concluido } = desafioProgressoFromPontos(
+        desafio,
+        pontosNaSemana,
+        stored?.progressoAtual,
+      )
+      if (
+        stored &&
+        stored.progressoAtual === progressoCalculado &&
+        stored.concluido === concluido
+      ) {
+        continue
+      }
       atualizarProgressoDesafio(user.id, desafio.id, progressoCalculado, concluido)
     }
-  }, [user, desafiosAtivos, pontosUser, atualizarProgressoDesafio])
+  }, [user, desafiosAtivos, pontosUser, getProgressoDesafio, atualizarProgressoDesafio])
 
   return (
     <Card className="neon-card border-border transition-shadow duration-200">

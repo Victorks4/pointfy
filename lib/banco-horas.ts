@@ -1,4 +1,5 @@
 import { isPresencaBloqueada } from '@/lib/presenca-bloqueio'
+import { isUserInRecessPeriod } from '@/lib/time-utils'
 import {
   compensacaoAfetaSaldo,
   minutosCompensacaoEfetivos,
@@ -19,7 +20,8 @@ export function calcularBancoHoras(
   const userPontos = pontos.filter(
     (p) =>
       p.userId === user.id &&
-      !isPresencaBloqueada(bloqueios, user.id, p.data),
+      !isPresencaBloqueada(bloqueios, user.id, p.data) &&
+      !isUserInRecessPeriod(p.data, user),
   )
   const userJustificativas = justificativas.filter((j) => j.userId === user.id)
 
@@ -28,7 +30,8 @@ export function calcularBancoHoras(
     .filter(
       (j) =>
         compensacaoAfetaSaldo(j) &&
-        !isPresencaBloqueada(bloqueios, user.id, j.data),
+        !isPresencaBloqueada(bloqueios, user.id, j.data) &&
+        !isUserInRecessPeriod(j.data, user),
     )
     .reduce((acc, j) => acc + minutosCompensacaoEfetivos(j), 0)
 
@@ -54,13 +57,15 @@ export function calcularBancoHorasPorPeriodo(
     (p) =>
       p.userId === user.id &&
       getYearMonthFromDate(p.data) === yearMonthKey &&
-      !isPresencaBloqueada(bloqueios, user.id, p.data),
+      !isPresencaBloqueada(bloqueios, user.id, p.data) &&
+      !isUserInRecessPeriod(p.data, user),
   )
   const justificativasNoPeriodo = justificativas.filter(
     (j) =>
       j.userId === user.id &&
       getYearMonthFromDate(j.data) === yearMonthKey &&
-      !isPresencaBloqueada(bloqueios, user.id, j.data),
+      !isPresencaBloqueada(bloqueios, user.id, j.data) &&
+      !isUserInRecessPeriod(j.data, user),
   )
 
   const totalTrabalhado = pontosNoPeriodo.reduce((acc, p) => acc + p.totalMinutos, 0)

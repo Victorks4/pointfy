@@ -142,6 +142,7 @@ export async function deletePontoConfigAction(id: string) {
 export async function createFeriadoAction(input: unknown) {
   return runAction<Feriado>(async () => {
     const r = await feriadoService.createFeriado(input)
+    revalidateTag('feriados', 'max')
     revalidatePath('/dashboard/admin/feriados')
     return r
   })
@@ -151,6 +152,7 @@ export async function deleteFeriadoAction(id: string) {
   return runAction<void>(async () => {
     parseInput(uuidSchema, id)
     await feriadoService.deleteFeriado(id)
+    revalidateTag('feriados', 'max')
     revalidatePath('/dashboard/admin/feriados')
   })
 }

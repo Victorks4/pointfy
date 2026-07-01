@@ -22,9 +22,9 @@ import {
   ADMIN_BOOTSTRAP_ROW_LIMIT,
   dashboardWindowStartIso,
 } from '@/lib/server/dashboard-window'
-import { getCachedDesafiosSemanais, getCachedPontoConfigs } from '@/lib/server/cached-static-data'
+import { getCachedDesafiosSemanais, getCachedFeriados, getCachedPontoConfigs } from '@/lib/server/cached-static-data'
 import { mapDesafio } from '@/lib/server/mappers'
-import type { User, Notificacao, PontoConfig } from '@/lib/types'
+import type { User, Notificacao, PontoConfig, Feriado } from '@/lib/types'
 import type {
   PontoRegistroRow,
   JustificativaRow,
@@ -39,6 +39,7 @@ export type DashboardBootstrap = {
   desafioProgressos: ReturnType<typeof mapDesafioProgresso>[]
   pontoConfigs: PontoConfig[]
   bloqueiosPresenca: ReturnType<typeof mapBloqueio>[]
+  feriados: Feriado[]
 }
 
 export type DashboardSnapshot = DashboardBootstrap & {
@@ -176,12 +177,13 @@ export async function loadDashboardSnapshot(
       ? usuarios.filter((u) => u.cargo === 'estagiario').map((u) => u.id)
       : undefined
 
-  const [bloqueiosPresenca, desafios, desafioProgressos, pontoConfigs, notificacoes, pontos, justificativas] =
+  const [bloqueiosPresenca, desafios, desafioProgressos, pontoConfigs, feriados, notificacoes, pontos, justificativas] =
     await Promise.all([
       loadBloqueiosScoped(session, userIds, supabase),
       getCachedDesafiosSemanais(),
       loadProgressosScoped(session, userIds, supabase),
       getCachedPontoConfigs(),
+      getCachedFeriados(),
       listNotificacoesForUser(session.id, supabase),
       listPontosScoped({}, supabase, session, gestorTeamIds),
       listJustificativasScoped({ signFiles: false }, supabase, session, gestorTeamIds),
@@ -194,6 +196,7 @@ export async function loadDashboardSnapshot(
     desafioProgressos,
     pontoConfigs,
     bloqueiosPresenca,
+    feriados,
     pontos,
     justificativas,
   }
@@ -344,28 +347,20 @@ export async function getBancoHorasForUser(
   const session = await getSessionUser()
   if (!session) throw new Error('Não autenticado')
 
-  const { data: profileRow } = await supabase
-    .from('profiles')
-    .select(PROFILE_COLUMNS)
-    .eq('id', userId)
-    .single()
-
-  if (!profileRow) throw new Error('Sem permissão')
-
-  const profile = profileRow as ProfileRow
   await assertTargetUserAccess(session, userId, supabase)
-  const user = mapProfile(profile)
 
   const windowStart = dashboardWindowStartIso()
-  const pontos = await listPontosScoped({ userId, from: windowStart }, supabase)
-  const justificativas = await listJustificativasScoped({ userId, signFiles: false }, supabase)
+  const [profileResult, pontos, justificativas, bloqueiosResult] = await Promise.all([
+    supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).single(),
+    listPontosScoped({ userId, from: windowStart }, supabase, session),
+    listJustificativasScoped({ userId, signFiles: false }, supabase, session),
+    supabase.from('bloqueios_presenca').select(BLOQUEIO_COLUMNS).eq('user_id', userId),
+  ])
 
-  const { data: bloqueiosData } = await supabase
-    .from('bloqueios_presenca')
-    .select(BLOQUEIO_COLUMNS)
-    .eq('user_id', userId)
+  if (!profileResult.data) throw new Error('Sem permissão')
 
-  const bloqueios = (bloqueiosData as BloqueioPresencaRow[] ?? []).map(mapBloqueio)
+  const user = mapProfile(profileResult.data as ProfileRow)
+  const bloqueios = ((bloqueiosResult.data as BloqueioPresencaRow[] | null) ?? []).map(mapBloqueio)
 
   if (year && month) {
     return calcularBancoHorasPorPeriodo(user, pontos, justificativas, bloqueios, year, month)

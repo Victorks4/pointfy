@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { formatMinutesToDisplay, formatDate } from '@/lib/time-utils'
-import type { User } from '@/lib/types'
+import { calcularBancoHorasPorPeriodo } from '@/lib/banco-horas'
+import type { User, PontoRegistro, Justificativa } from '@/lib/types'
 import { LABELS } from '@/lib/labels'
 import { Users, Clock, TrendingUp, TrendingDown, Calendar, Search } from 'lucide-react'
 
@@ -38,7 +39,7 @@ const MESES = [
 
 export default function AdminPage() {
   const router = useRouter()
-  const { usuarios, pontos, getBancoHorasPorPeriodo } = useData()
+  const { usuarios, pontos, justificativas, bloqueiosPresenca } = useData()
 
   const currentYear = new Date().getFullYear()
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0')
@@ -61,14 +62,41 @@ export default function AdminPage() {
     [usuarios],
   )
 
+  const yearMonthKey = `${selectedYear}-${selectedMonth}`
+
+  const pontosPorUsuario = useMemo(() => {
+    const map = new Map<string, PontoRegistro[]>()
+    for (const p of pontos) {
+      if (p.data.slice(0, 7) !== yearMonthKey) continue
+      const list = map.get(p.userId)
+      if (list) list.push(p)
+      else map.set(p.userId, [p])
+    }
+    return map
+  }, [pontos, yearMonthKey])
+
+  const justificativasPorUsuario = useMemo(() => {
+    const map = new Map<string, Justificativa[]>()
+    for (const j of justificativas) {
+      const list = map.get(j.userId)
+      if (list) list.push(j)
+      else map.set(j.userId, [j])
+    }
+    return map
+  }, [justificativas])
+
   const usuariosComDados: EstagiarioComMetricas[] = useMemo(() => {
     return usuariosEstagiarios.map((usuario) => {
-      const pontosUsuario = pontos.filter((p) => {
-        const [ano, mes] = p.data.split('-')
-        return p.userId === usuario.id && ano === selectedYear && mes === selectedMonth
-      })
+      const pontosUsuario = pontosPorUsuario.get(usuario.id) ?? []
       const horasMes = pontosUsuario.reduce((acc, p) => acc + p.totalMinutos, 0)
-      const bancoHoras = getBancoHorasPorPeriodo(usuario.id, selectedYear, selectedMonth)
+      const bancoHoras = calcularBancoHorasPorPeriodo(
+        usuario,
+        pontosPorUsuario.get(usuario.id) ?? [],
+        justificativasPorUsuario.get(usuario.id) ?? [],
+        bloqueiosPresenca,
+        selectedYear,
+        selectedMonth,
+      )
       const diasTrabalhados = pontosUsuario.length
 
       return {
@@ -78,7 +106,14 @@ export default function AdminPage() {
         diasTrabalhados,
       }
     })
-  }, [usuariosEstagiarios, pontos, selectedYear, selectedMonth, getBancoHorasPorPeriodo])
+  }, [
+    usuariosEstagiarios,
+    pontosPorUsuario,
+    justificativasPorUsuario,
+    bloqueiosPresenca,
+    selectedYear,
+    selectedMonth,
+  ])
 
   const usuariosComDadosFiltradosOrdenados = usuariosComDados
     .filter((u) => {

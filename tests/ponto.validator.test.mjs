@@ -164,4 +164,66 @@ describe('validatePontoBusinessRules', () => {
     )
     assert.equal(erros.length, 0)
   })
+
+  const recessoCtx = {
+    ...ctx,
+    user: {
+      ...baseUser,
+      dataInicioRecesso1: '2026-01-10',
+      dataFimRecesso1: '2026-01-20',
+      dataInicioRecesso2: '2026-07-01',
+      dataFimRecesso2: '2026-07-15',
+    },
+  }
+
+  const pontoValido = {
+    entrada1: '09:15',
+    saida1: '12:15',
+    entrada2: '13:15',
+    saida2: '16:15',
+    totalMinutos: 360,
+    justificativaHoraExtra: null,
+  }
+
+  it('rejeita registro em recesso 1', () => {
+    const erros = validatePontoBusinessRules(
+      { ...pontoValido, data: '2026-01-15' },
+      recessoCtx,
+    )
+    assert.ok(erros.some((e) => e.includes('recesso remunerado')))
+  })
+
+  it('rejeita no último dia do recesso 1', () => {
+    const erros = validatePontoBusinessRules(
+      { ...pontoValido, data: '2026-01-20' },
+      recessoCtx,
+    )
+    assert.ok(erros.some((e) => e.includes('recesso remunerado')))
+  })
+
+  it('rejeita registro em recesso 2', () => {
+    const erros = validatePontoBusinessRules(
+      { ...pontoValido, data: '2026-07-10' },
+      recessoCtx,
+    )
+    assert.ok(erros.some((e) => e.includes('recesso remunerado')))
+  })
+
+  it('permite registro fora dos recessos', () => {
+    const erros = validatePontoBusinessRules(
+      { ...pontoValido, data: '2026-03-01' },
+      recessoCtx,
+    )
+    assert.ok(!erros.some((e) => e.includes('recesso remunerado')))
+    assert.equal(erros.length, 0)
+  })
+
+  it('permite registro no dia anterior ao recesso 1', () => {
+    const erros = validatePontoBusinessRules(
+      { ...pontoValido, data: '2026-01-09' },
+      recessoCtx,
+    )
+    assert.ok(!erros.some((e) => e.includes('recesso remunerado')))
+    assert.equal(erros.length, 0)
+  })
 })

@@ -21,6 +21,30 @@ describe('isInRecessPeriod', () => {
   it('fora do intervalo', () => {
     assert.equal(isInRecessPeriod('2026-02-01', '2026-01-10', '2026-01-20'), false)
   })
+
+  it('primeiro dia inclusivo', () => {
+    assert.equal(isInRecessPeriod('2026-01-10', '2026-01-10', '2026-01-20'), true)
+  })
+
+  it('último dia inclusivo', () => {
+    assert.equal(isInRecessPeriod('2026-01-20', '2026-01-10', '2026-01-20'), true)
+  })
+
+  it('dia anterior ao início', () => {
+    assert.equal(isInRecessPeriod('2026-01-09', '2026-01-10', '2026-01-20'), false)
+  })
+
+  it('dia após o fim', () => {
+    assert.equal(isInRecessPeriod('2026-01-21', '2026-01-10', '2026-01-20'), false)
+  })
+
+  it('período incompleto — só início', () => {
+    assert.equal(isInRecessPeriod('2026-01-15', '2026-01-10', null), false)
+  })
+
+  it('período incompleto — só fim', () => {
+    assert.equal(isInRecessPeriod('2026-01-15', null, '2026-01-20'), false)
+  })
 })
 
 describe('isUserInRecessPeriod', () => {
@@ -34,6 +58,32 @@ describe('isUserInRecessPeriod', () => {
 
   it('fora dos dois recessos', () => {
     assert.equal(isUserInRecessPeriod('2026-03-01', user), false)
+  })
+
+  it('primeiro dia do recesso 1', () => {
+    assert.equal(isUserInRecessPeriod('2026-01-10', user), true)
+  })
+
+  it('último dia do recesso 1', () => {
+    assert.equal(isUserInRecessPeriod('2026-01-20', user), true)
+  })
+
+  it('primeiro dia do recesso 2', () => {
+    assert.equal(isUserInRecessPeriod('2026-07-01', user), true)
+  })
+
+  it('último dia do recesso 2', () => {
+    assert.equal(isUserInRecessPeriod('2026-07-15', user), true)
+  })
+
+  it('bloqueia em sobreposição de recessos', () => {
+    const overlapUser = {
+      dataInicioRecesso1: '2026-06-01',
+      dataFimRecesso1: '2026-06-30',
+      dataInicioRecesso2: '2026-06-15',
+      dataFimRecesso2: '2026-07-15',
+    }
+    assert.equal(isUserInRecessPeriod('2026-06-20', overlapUser), true)
   })
 })
 

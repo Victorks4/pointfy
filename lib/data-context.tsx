@@ -57,6 +57,7 @@ import type {
   DesafioProgresso,
   PontoConfig,
   BloqueioPresenca,
+  Feriado,
 } from './types'
 import type { ActionResult } from '@/lib/types/action-result'
 
@@ -132,6 +133,8 @@ interface DataContextType {
   updatePontoConfig: (id: string, config: Partial<PontoConfig>) => void
   deletePontoConfig: (id: string) => void
   getActivePontoConfig: () => PontoConfig
+
+  feriados: Feriado[]
 }
 
 const DataContext = createContext<DataContextType | null>(null)
@@ -164,6 +167,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [desafioProgressos, setDesafioProgressos] = useState<DesafioProgresso[]>([])
   const [pontoConfigs, setPontoConfigs] = useState<PontoConfig[]>([DEFAULT_PONTO_CONFIG])
   const [bloqueiosPresenca, setBloqueiosPresenca] = useState<BloqueioPresenca[]>([])
+  const [feriados, setFeriados] = useState<Feriado[]>([])
 
   const applySnapshot = useCallback(
     (data: Awaited<ReturnType<typeof fetchDashboardSnapshot>>) => {
@@ -175,6 +179,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setBloqueiosPresenca(data.bloqueiosPresenca)
       setPontos(data.pontos)
       setJustificativas(data.justificativas)
+      setFeriados(data.feriados)
     },
     [],
   )
@@ -552,12 +557,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const atualizarProgressoDesafio = useCallback(
     (userId: string, desafioId: string, progressoAtual: number, concluido: boolean) => {
-      void runVoidAction(
-        upsertDesafioProgressoAction(userId, desafioId, progressoAtual, concluido),
-        () => refreshData(),
+      void upsertDesafioProgressoAction(userId, desafioId, progressoAtual, concluido).then(
+        (result) => {
+          if (!result.success) return
+          setDesafioProgressos((prev) => {
+            const idx = prev.findIndex(
+              (dp) => dp.userId === userId && dp.desafioId === desafioId,
+            )
+            if (idx >= 0) {
+              const next = [...prev]
+              next[idx] = result.data
+              return next
+            }
+            return [...prev, result.data]
+          })
+        },
       )
     },
-    [refreshData],
+    [],
   )
 
   const addPontoConfig = useCallback(
@@ -638,6 +655,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updatePontoConfig,
         deletePontoConfig,
         getActivePontoConfig,
+        feriados,
       }) satisfies DataContextType,
     [
       isDataLoading,
@@ -688,6 +706,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updatePontoConfig,
       deletePontoConfig,
       getActivePontoConfig,
+      feriados,
     ],
   )
 
