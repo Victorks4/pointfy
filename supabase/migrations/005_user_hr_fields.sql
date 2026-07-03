@@ -59,6 +59,7 @@ INSERT INTO feriados (data, nome, tipo, recorrente) VALUES
   ('2026-01-01', 'Confraternização Universal', 'nacional', true),
   ('2026-04-21', 'Tiradentes', 'nacional', true),
   ('2026-05-01', 'Dia do Trabalho', 'nacional', true),
+  ('2026-07-02', 'Independência da Bahia', 'municipal', true),
   ('2026-09-07', 'Independência do Brasil', 'nacional', true),
   ('2026-10-12', 'Nossa Senhora Aparecida', 'nacional', true),
   ('2026-11-02', 'Finados', 'nacional', true),
