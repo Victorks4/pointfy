@@ -1,7 +1,7 @@
 /** Colunas explícitas para reduzir payload PostgREST */
 
 export const PROFILE_COLUMNS =
-  'id,email,matricula,nome,cargo,departamento,carga_horaria_semanal,data_inicio_contrato,data_fim_contrato,data_inicio_recesso_1,data_fim_recesso_1,data_inicio_recesso_2,data_fim_recesso_2,must_change_password,gestor_id,created_at'
+  'id,email,matricula,nome,cargo,departamento,carga_horaria_semanal,data_inicio_contrato,data_fim_contrato,data_inicio_recesso_1,data_fim_recesso_1,data_inicio_recesso_2,data_fim_recesso_2,must_change_password,gestor_id,horario_trabalho_entrada_1,horario_trabalho_saida_1,horario_trabalho_entrada_2,horario_trabalho_saida_2,created_at'
 
 export const PONTO_COLUMNS =
   'id,user_id,data,entrada1,saida1,entrada2,saida2,total_minutos,observacao,justificativa_hora_extra,created_at,updated_at'

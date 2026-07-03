@@ -39,6 +39,10 @@ export function mapProfile(row: ProfileRow, gestorIds?: string[]): User {
     mustChangePassword: row.must_change_password,
     gestorId: row.gestor_id,
     gestorIds,
+    horarioTrabalhoEntrada1: row.horario_trabalho_entrada_1,
+    horarioTrabalhoSaida1: row.horario_trabalho_saida_1,
+    horarioTrabalhoEntrada2: row.horario_trabalho_entrada_2,
+    horarioTrabalhoSaida2: row.horario_trabalho_saida_2,
     createdAt: row.created_at,
   }
 }
@@ -172,6 +176,10 @@ export function profileToInsert(user: Omit<User, 'id' | 'createdAt' | 'gestorIds
     data_fim_recesso_2: user.dataFimRecesso2,
     must_change_password: user.mustChangePassword,
     gestor_id: user.gestorId ?? null,
+    horario_trabalho_entrada_1: user.horarioTrabalhoEntrada1 ?? null,
+    horario_trabalho_saida_1: user.horarioTrabalhoSaida1 ?? null,
+    horario_trabalho_entrada_2: user.horarioTrabalhoEntrada2 ?? null,
+    horario_trabalho_saida_2: user.horarioTrabalhoSaida2 ?? null,
   }
 }
 

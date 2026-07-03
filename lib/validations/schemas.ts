@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { validateHorarioTrabalho } from '@/lib/horario-trabalho'
 import { LOTACOES } from '@/lib/lotacoes'
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -75,6 +76,10 @@ const usuarioFieldsSchema = z.object({
   gestorId: z.string().uuid().nullable().optional(),
   gestorIds: z.array(z.string().uuid()).optional(),
   mustChangePassword: z.boolean().optional(),
+  horarioTrabalhoEntrada1: z.string().regex(timeRegex).nullable().optional(),
+  horarioTrabalhoSaida1: z.string().regex(timeRegex).nullable().optional(),
+  horarioTrabalhoEntrada2: z.string().regex(timeRegex).nullable().optional(),
+  horarioTrabalhoSaida2: z.string().regex(timeRegex).nullable().optional(),
 })
 
 function validateUsuarioRecessos(
@@ -113,6 +118,45 @@ function validateEstagiarioGestor(
   }
 }
 
+function validateEstagiarioHorarioTrabalho(
+  u: {
+    cargo?: string
+    horarioTrabalhoEntrada1?: string | null
+    horarioTrabalhoSaida1?: string | null
+    horarioTrabalhoEntrada2?: string | null
+    horarioTrabalhoSaida2?: string | null
+  },
+  ctx: z.RefinementCtx,
+  mode: 'create' | 'update',
+) {
+  if (u.cargo !== 'estagiario') return
+
+  const horario = {
+    horarioTrabalhoEntrada1: u.horarioTrabalhoEntrada1 ?? null,
+    horarioTrabalhoSaida1: u.horarioTrabalhoSaida1 ?? null,
+    horarioTrabalhoEntrada2: u.horarioTrabalhoEntrada2 ?? null,
+    horarioTrabalhoSaida2: u.horarioTrabalhoSaida2 ?? null,
+  }
+
+  const definedCount = [
+    u.horarioTrabalhoEntrada1,
+    u.horarioTrabalhoSaida1,
+    u.horarioTrabalhoEntrada2,
+    u.horarioTrabalhoSaida2,
+  ].filter((v) => v !== undefined).length
+
+  if (mode === 'update' && definedCount === 0) return
+
+  const err = validateHorarioTrabalho(horario)
+  if (err) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: err,
+      path: ['horarioTrabalhoEntrada1'],
+    })
+  }
+}
+
 export const usuarioInputSchema = usuarioFieldsSchema
   .refine(
     (u) => !u.dataInicioContrato || !u.dataFimContrato || u.dataFimContrato >= u.dataInicioContrato,
@@ -121,6 +165,7 @@ export const usuarioInputSchema = usuarioFieldsSchema
   .superRefine((u, ctx) => {
     validateUsuarioRecessos(u, ctx)
     validateEstagiarioGestor(u, ctx)
+    validateEstagiarioHorarioTrabalho(u, ctx, 'create')
   })
 
 export const usuarioUpdateSchema = usuarioFieldsSchema
@@ -138,6 +183,7 @@ export const usuarioUpdateSchema = usuarioFieldsSchema
         path: ['gestorId'],
       })
     }
+    validateEstagiarioHorarioTrabalho(u, ctx, 'update')
   })
 
 export const changePasswordSchema = z
