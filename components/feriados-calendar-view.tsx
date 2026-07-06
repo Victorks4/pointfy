@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, Palmtree } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/time-utils'
+import { buildMonthGrid, toDateKey } from '@/lib/calendar-grid'
 import type { Feriado, FeriadoTipo } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const
@@ -52,38 +53,6 @@ const RECESSO_STATUS_LABEL = {
   ativo: { text: 'Em andamento', className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
   passado: { text: 'Encerrado', className: 'bg-muted text-muted-foreground' },
 } as const
-
-function toDateKey(y: number, m: number, d: number): string {
-  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-}
-
-function buildMonthGrid(year: number, month: number) {
-  const first = new Date(year, month, 1)
-  const startPad = (first.getDay() + 6) % 7
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const cells: { dateKey: string; day: number; inMonth: boolean }[] = []
-
-  const prevMonthDays = new Date(year, month, 0).getDate()
-  for (let i = startPad - 1; i >= 0; i--) {
-    const day = prevMonthDays - i
-    const m = month === 0 ? 11 : month - 1
-    const y = month === 0 ? year - 1 : year
-    cells.push({ dateKey: toDateKey(y, m, day), day, inMonth: false })
-  }
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ dateKey: toDateKey(year, month, d), day: d, inMonth: true })
-  }
-
-  const remaining = 42 - cells.length
-  for (let d = 1; d <= remaining; d++) {
-    const m = month === 11 ? 0 : month + 1
-    const y = month === 11 ? year + 1 : year
-    cells.push({ dateKey: toDateKey(y, m, d), day: d, inMonth: false })
-  }
-
-  return cells
-}
 
 type RecessoPeriodo = {
   numero: 1 | 2

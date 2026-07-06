@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { buildMonthGrid, toDateKey } from '@/lib/calendar-grid'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'] as const
@@ -22,10 +23,6 @@ const MONTHS_PT = [
   'Dezembro',
 ] as const
 
-function toDateKey(y: number, m: number, d: number): string {
-  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-}
-
 function parseDateKey(key: string): { year: number; month: number; day: number } {
   const [y, m, d] = key.split('-').map(Number)
   return { year: y, month: m - 1, day: d }
@@ -34,34 +31,6 @@ function parseDateKey(key: string): { year: number; month: number; day: number }
 function formatDateKeyBr(key: string): string {
   const { year, month, day } = parseDateKey(key)
   return `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`
-}
-
-function buildMonthGrid(year: number, month: number) {
-  const first = new Date(year, month, 1)
-  const startPad = (first.getDay() + 6) % 7
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const cells: { dateKey: string; day: number; inMonth: boolean }[] = []
-
-  const prevMonthDays = new Date(year, month, 0).getDate()
-  for (let i = startPad - 1; i >= 0; i--) {
-    const day = prevMonthDays - i
-    const m = month === 0 ? 11 : month - 1
-    const y = month === 0 ? year - 1 : year
-    cells.push({ dateKey: toDateKey(y, m, day), day, inMonth: false })
-  }
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ dateKey: toDateKey(year, month, d), day: d, inMonth: true })
-  }
-
-  const remaining = 42 - cells.length
-  for (let d = 1; d <= remaining; d++) {
-    const m = month === 11 ? 0 : month + 1
-    const y = month === 11 ? year + 1 : year
-    cells.push({ dateKey: toDateKey(y, m, d), day: d, inMonth: false })
-  }
-
-  return cells
 }
 
 type CalendarPanelProps = {
