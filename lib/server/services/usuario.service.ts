@@ -121,6 +121,10 @@ export async function createUsuario(input: unknown): Promise<User> {
     dataFimRecesso2: parsed.dataFimRecesso2 ?? null,
     mustChangePassword: parsed.mustChangePassword ?? true,
     gestorId: parsed.gestorId ?? null,
+    horarioTrabalhoEntrada1: parsed.horarioTrabalhoEntrada1 ?? null,
+    horarioTrabalhoSaida1: parsed.horarioTrabalhoSaida1 ?? null,
+    horarioTrabalhoEntrada2: parsed.horarioTrabalhoEntrada2 ?? null,
+    horarioTrabalhoSaida2: parsed.horarioTrabalhoSaida2 ?? null,
   })
 
   const { data, error } = await admin
@@ -175,6 +179,18 @@ export async function updateUsuario(id: string, input: unknown): Promise<User> {
   if (parsed.dataFimRecesso2 !== undefined) update.data_fim_recesso_2 = parsed.dataFimRecesso2
   if (parsed.mustChangePassword !== undefined) update.must_change_password = parsed.mustChangePassword
   if (parsed.gestorId !== undefined) update.gestor_id = parsed.gestorId
+  if (parsed.horarioTrabalhoEntrada1 !== undefined) {
+    update.horario_trabalho_entrada_1 = parsed.horarioTrabalhoEntrada1
+  }
+  if (parsed.horarioTrabalhoSaida1 !== undefined) {
+    update.horario_trabalho_saida_1 = parsed.horarioTrabalhoSaida1
+  }
+  if (parsed.horarioTrabalhoEntrada2 !== undefined) {
+    update.horario_trabalho_entrada_2 = parsed.horarioTrabalhoEntrada2
+  }
+  if (parsed.horarioTrabalhoSaida2 !== undefined) {
+    update.horario_trabalho_saida_2 = parsed.horarioTrabalhoSaida2
+  }
 
   const { data, error } = await supabase
     .from('profiles')

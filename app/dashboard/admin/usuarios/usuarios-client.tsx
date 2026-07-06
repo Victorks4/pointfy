@@ -27,6 +27,13 @@ import {
 import type { User } from '@/lib/types'
 import { LOTACOES, lotacoesParaSelect } from '@/lib/lotacoes'
 import { LABELS } from '@/lib/labels'
+import {
+  horarioTrabalhoPadrao,
+  horarioTrabalhoVazio,
+  validateHorarioTrabalho,
+  type HorarioTrabalho,
+} from '@/lib/horario-trabalho'
+import { HorarioTrabalhoFields } from '@/components/horario-trabalho-fields'
 import { UserPlus, Users, Calendar, Info, AlertCircle, Search, Shield, Plus, X } from 'lucide-react'
 
 const CARGAS_HORARIAS = [
@@ -88,6 +95,7 @@ export default function UsuariosAdminPage() {
   const [editExtraGestorIds, setEditExtraGestorIds] = useState<string[]>([])
   const [senha, setSenha] = useState('')
   const [confirmSenha, setConfirmSenha] = useState('')
+  const [horarioTrabalho, setHorarioTrabalho] = useState<HorarioTrabalho>(horarioTrabalhoPadrao)
 
   const selectedUser = selectedUserId ? usuarios.find((u) => u.id === selectedUserId) ?? null : null
   const today = getTodayString()
@@ -109,6 +117,7 @@ export default function UsuariosAdminPage() {
     setExtraGestorIds([])
     setSenha('')
     setConfirmSenha('')
+    setHorarioTrabalho(horarioTrabalhoPadrao())
   }
 
   const estagiarios = usuarios.filter((u) => u.cargo === 'estagiario')
@@ -168,6 +177,14 @@ export default function UsuariosAdminPage() {
       return
     }
 
+    if (novoCargoCadastro === 'estagiario') {
+      const horarioErr = validateHorarioTrabalho(horarioTrabalho)
+      if (horarioErr) {
+        toast.error(horarioErr)
+        return
+      }
+    }
+
     const base = {
       nome,
       email,
@@ -201,6 +218,7 @@ export default function UsuariosAdminPage() {
         dataFimRecesso2: dataFimRecesso2 || null,
         gestorId: novoGestorId === '_none' ? null : novoGestorId,
         gestorIds: gestorIdsExtra.length > 0 ? gestorIdsExtra : undefined,
+        ...horarioTrabalho,
       })
       toast.success(`Estagiário ${nome} cadastrado com sucesso!`)
     }
@@ -246,6 +264,16 @@ export default function UsuariosAdminPage() {
     const principal = usuario.gestorId
     const extras = (usuario.gestorIds ?? []).filter((id) => id !== principal)
     setEditExtraGestorIds(extras.length > 0 ? extras : [])
+    setHorarioTrabalho(
+      usuario.horarioTrabalhoEntrada1
+        ? {
+            horarioTrabalhoEntrada1: usuario.horarioTrabalhoEntrada1,
+            horarioTrabalhoSaida1: usuario.horarioTrabalhoSaida1 ?? null,
+            horarioTrabalhoEntrada2: usuario.horarioTrabalhoEntrada2 ?? null,
+            horarioTrabalhoSaida2: usuario.horarioTrabalhoSaida2 ?? null,
+          }
+        : horarioTrabalhoPadrao(),
+    )
     setIsEditMode(false)
     setIsActionDialogOpen(true)
   }
@@ -284,6 +312,14 @@ export default function UsuariosAdminPage() {
       return
     }
 
+    if (selectedUser.cargo === 'estagiario') {
+      const horarioErr = validateHorarioTrabalho(horarioTrabalho)
+      if (horarioErr) {
+        toast.error(horarioErr)
+        return
+      }
+    }
+
     const patch: Parameters<typeof updateUsuario>[1] = {
       nome,
       matricula,
@@ -301,6 +337,10 @@ export default function UsuariosAdminPage() {
       patch.gestorId = gestorVinculoId === '_none' ? null : gestorVinculoId
       const gestorIdsExtra = editExtraGestorIds.filter((id) => id !== '_none')
       patch.gestorIds = gestorIdsExtra
+      patch.horarioTrabalhoEntrada1 = horarioTrabalho.horarioTrabalhoEntrada1
+      patch.horarioTrabalhoSaida1 = horarioTrabalho.horarioTrabalhoSaida1
+      patch.horarioTrabalhoEntrada2 = horarioTrabalho.horarioTrabalhoEntrada2
+      patch.horarioTrabalhoSaida2 = horarioTrabalho.horarioTrabalhoSaida2
     }
 
     if (selectedUser.cargo === 'gestor') {
@@ -612,6 +652,9 @@ export default function UsuariosAdminPage() {
                           setDataFimRecesso2('')
                           setNovoGestorId('_none')
                           setExtraGestorIds([])
+                          setHorarioTrabalho(horarioTrabalhoVazio())
+                        } else {
+                          setHorarioTrabalho(horarioTrabalhoPadrao())
                         }
                       }}
                     >
@@ -726,6 +769,11 @@ export default function UsuariosAdminPage() {
                         createSelectedGestorIds(),
                         'novo',
                       )}
+                      <HorarioTrabalhoFields
+                        idPrefix="novo"
+                        value={horarioTrabalho}
+                        onChange={setHorarioTrabalho}
+                      />
                       {renderRecessoFields('novo')}
                     </>
                   ) : null}
@@ -935,7 +983,7 @@ export default function UsuariosAdminPage() {
         </Card>
 
         <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {selectedUser ? `Ações de ${selectedUser.nome}` : 'Ações do usuário'}
@@ -1051,6 +1099,11 @@ export default function UsuariosAdminPage() {
                         editSelectedGestorIds(),
                         'edit',
                       )}
+                      <HorarioTrabalhoFields
+                        idPrefix="edit"
+                        value={horarioTrabalho}
+                        onChange={setHorarioTrabalho}
+                      />
                       {renderRecessoFields('edit')}
                     </>
                   ) : null}

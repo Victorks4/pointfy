@@ -22,6 +22,11 @@ export interface User {
   gestorId?: string | null
   /** Gestores adicionais (junction estagiario_gestores). */
   gestorIds?: string[]
+  /** Jornada prevista — apenas estagiários. */
+  horarioTrabalhoEntrada1?: string | null
+  horarioTrabalhoSaida1?: string | null
+  horarioTrabalhoEntrada2?: string | null
+  horarioTrabalhoSaida2?: string | null
 }
 
 export interface PontoRegistro {
