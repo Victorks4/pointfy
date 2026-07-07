@@ -24,6 +24,11 @@ type FyChromaVideoProps = {
   chromaLoad?: 'low' | 'normal'
 }
 
+function getChromaInterval(layout: 'default' | 'fab', chromaLoad: 'low' | 'normal') {
+  if (layout === 'fab') return chromaLoad === 'low' ? 4 : 3
+  return chromaLoad === 'low' ? 3 : 2
+}
+
 export function FyChromaVideo({
   src,
   className,
@@ -35,14 +40,18 @@ export function FyChromaVideo({
   const containerRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const chromaLoadRef = useRef(chromaLoad)
+  const shouldPlayRef = useRef(false)
   const chromaEnabled = isFyVideoChromaEnabled()
   const prefersReducedMotion = usePrefersReducedMotion()
   const [pageVisible, setPageVisible] = useState(true)
   const [inView, setInView] = useState(true)
   const effectiveBaseWidth = layout === 'fab' ? Math.min(canvasBaseWidth, 112) : canvasBaseWidth
 
-  const shouldAnimate =
-    playbackActive && !prefersReducedMotion && pageVisible && inView
+  const shouldPlay = playbackActive && !prefersReducedMotion && pageVisible && inView
+
+  chromaLoadRef.current = chromaLoad
+  shouldPlayRef.current = shouldPlay
 
   useEffect(() => {
     const onVisibility = () => setPageVisible(document.visibilityState === 'visible')
@@ -55,7 +64,7 @@ export function FyChromaVideo({
     if (!node) return
     const observer = new IntersectionObserver(
       ([entry]) => setInView(entry.isIntersecting),
-      { rootMargin: '48px', threshold: 0.05 },
+      { rootMargin: '96px', threshold: 0 },
     )
     observer.observe(node)
     return () => observer.disconnect()
@@ -68,57 +77,63 @@ export function FyChromaVideo({
     video.muted = true
     video.loop = true
     video.playsInline = true
-    video.setAttribute('playsInline', '')
+    video.setAttribute('playsinline', '')
 
-    const play = () => {
-      if (shouldAnimate) void video.play().catch(() => {})
+    const ensurePlaying = () => {
+      if (!shouldPlayRef.current) return
+      if (video.ended) video.currentTime = 0
+      if (video.paused) void video.play().catch(() => {})
     }
-    const pause = () => {
+
+    const onVisibilityResume = () => {
+      if (document.visibilityState === 'visible') ensurePlaying()
+    }
+
+    const onPause = () => {
+      if (shouldPlayRef.current) requestAnimationFrame(ensurePlaying)
+    }
+
+    video.addEventListener('pause', onPause)
+    video.addEventListener('ended', ensurePlaying)
+    video.addEventListener('stalled', ensurePlaying)
+    video.addEventListener('waiting', ensurePlaying)
+    document.addEventListener('visibilitychange', onVisibilityResume)
+
+    const watchdog = window.setInterval(ensurePlaying, 2000)
+
+    if (shouldPlay) {
+      void video.play().catch(() => {})
+    } else {
       video.pause()
     }
 
-    video.addEventListener('loadeddata', play)
-
-    if (shouldAnimate) {
-      void video.play().catch(() => {})
-    } else {
-      pause()
+    return () => {
+      video.removeEventListener('pause', onPause)
+      video.removeEventListener('ended', ensurePlaying)
+      video.removeEventListener('stalled', ensurePlaying)
+      video.removeEventListener('waiting', ensurePlaying)
+      document.removeEventListener('visibilitychange', onVisibilityResume)
+      window.clearInterval(watchdog)
     }
+  }, [shouldPlay, src])
 
-    if (!chromaEnabled) {
-      return () => {
-        video.removeEventListener('loadeddata', play)
-      }
-    }
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !chromaEnabled) return
 
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d', { alpha: true })
-    if (!canvas || !ctx) {
-      return () => {
-        video.removeEventListener('loadeddata', play)
-      }
-    }
+    if (!canvas || !ctx) return
 
     let raf = 0
     let layoutReady = false
     let frameTick = 0
     let lastProcessedTime = -1
 
-    const chromaInterval =
-      layout === 'fab'
-        ? chromaLoad === 'low'
-          ? 4
-          : 3
-        : chromaLoad === 'low'
-          ? 3
-          : 2
-
     const applyLayout = () => {
       const vw = video.videoWidth
       const vh = video.videoHeight
       if (vw < 2 || vh < 2) return
-      const sx = vw * FY_VIDEO_CROP_LEFT_RATIO
-      const sy = vh * FY_VIDEO_CROP_TOP_RATIO
       const sw = vw * (1 - FY_VIDEO_CROP_LEFT_RATIO - FY_VIDEO_CROP_RIGHT_RATIO)
       const sh = vh * (1 - FY_VIDEO_CROP_TOP_RATIO - FY_VIDEO_CROP_BOTTOM_RATIO)
       if (sw < 2 || sh < 2) return
@@ -129,6 +144,7 @@ export function FyChromaVideo({
     }
 
     video.addEventListener('loadedmetadata', applyLayout)
+    if (video.readyState >= 1) applyLayout()
 
     const processChromaFrame = () => {
       const vw = video.videoWidth
@@ -149,19 +165,20 @@ export function FyChromaVideo({
     }
 
     const frame = () => {
-      if (!shouldAnimate) {
+      if (!shouldPlayRef.current) {
         raf = 0
         return
       }
 
       frameTick += 1
       const videoTime = video.currentTime
-      const timeAdvanced = videoTime !== lastProcessedTime
+      const chromaInterval = getChromaInterval(layout, chromaLoadRef.current)
       const runChroma =
         frameTick % chromaInterval === 0 &&
-        timeAdvanced &&
+        videoTime !== lastProcessedTime &&
         layoutReady &&
-        video.readyState >= 2
+        video.readyState >= 2 &&
+        !video.paused
 
       if (runChroma) {
         lastProcessedTime = videoTime
@@ -171,16 +188,13 @@ export function FyChromaVideo({
       raf = requestAnimationFrame(frame)
     }
 
-    if (shouldAnimate) {
-      raf = requestAnimationFrame(frame)
-    }
+    raf = requestAnimationFrame(frame)
 
     return () => {
       cancelAnimationFrame(raf)
-      video.removeEventListener('loadeddata', play)
       video.removeEventListener('loadedmetadata', applyLayout)
     }
-  }, [src, chromaEnabled, effectiveBaseWidth, layout, shouldAnimate, chromaLoad])
+  }, [chromaEnabled, effectiveBaseWidth, layout, shouldPlay, src])
 
   return (
     <div
@@ -196,10 +210,10 @@ export function FyChromaVideo({
       <video
         ref={videoRef}
         src={src}
-        preload={layout === 'fab' ? 'metadata' : 'auto'}
+        preload="auto"
         className={cn(
           chromaEnabled
-            ? 'pointer-events-none absolute h-px w-px opacity-0'
+            ? 'pointer-events-none absolute inset-0 h-full w-full opacity-0'
             : layout === 'fab'
               ? 'pointer-events-none h-full w-full -translate-x-2 scale-125 object-cover object-bottom'
               : 'h-full w-full rounded-2xl object-contain',
@@ -207,7 +221,7 @@ export function FyChromaVideo({
         loop
         muted
         playsInline
-        autoPlay={shouldAnimate}
+        autoPlay={shouldPlay}
         aria-hidden
       />
       {chromaEnabled ? (
