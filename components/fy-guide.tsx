@@ -147,12 +147,20 @@ function FyGuideInner() {
       setShowParticles(true)
       if (!prefersReducedMotion && typeof document !== 'undefined') {
         void import('@/lib/gsap/register').then(({ ensureGsapRegistered }) => {
-          const el = document.querySelector('[data-fy-pet-dock] [data-fy-mascot]')
+          const el = document.querySelector('[data-fy-mascot]')
           if (el) {
             ensureGsapRegistered().fromTo(
               el,
               { scale: 1, y: 0 },
-              { scale: 1.08, y: -10, duration: 0.35, yoyo: true, repeat: 1, ease: 'power2.out' },
+              {
+                scale: 1.08,
+                y: -10,
+                duration: 0.35,
+                yoyo: true,
+                repeat: 1,
+                ease: 'power2.out',
+                clearProps: 'transform',
+              },
             )
           }
         })
@@ -301,18 +309,27 @@ function FyGuideInner() {
                 onClick={handleFyClick}
               >
                 <span className="sr-only">Abrir menu do assistente</span>
-                <FyMotionWrapper mood={mood} isHovered={isHovered} isClicked={isClicked}>
-                  <FyChromaVideo
-                    src={VIDEO_SRC}
-                    layout="fab"
-                    canvasBaseWidth={112}
-                    chromaLoad={chromaLoad}
-                    className="pointer-events-none"
-                    playbackActive={!prefersReducedMotion}
-                  />
-                </FyMotionWrapper>
-                {showParticles && <FyReactionParticles active />}
-                {showSleepZ && <FySleepZ />}
+                <div
+                  className={cn(
+                    'relative flex h-full w-full items-center justify-center',
+                    !prefersReducedMotion && 'animate-fy-pet-jump',
+                  )}
+                >
+                  <div data-fy-mascot className="relative">
+                    <FyMotionWrapper mood={mood} isHovered={isHovered} isClicked={isClicked}>
+                      <FyChromaVideo
+                        src={VIDEO_SRC}
+                        layout="fab"
+                        canvasBaseWidth={112}
+                        chromaLoad={chromaLoad}
+                        className="pointer-events-none"
+                        playbackActive={!prefersReducedMotion}
+                      />
+                    </FyMotionWrapper>
+                    {showParticles && <FyReactionParticles active />}
+                    {showSleepZ && <FySleepZ />}
+                  </div>
+                </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align="end" className="w-56">
@@ -501,7 +518,6 @@ function FyGuideInner() {
       </div>
 
       <div
-        data-fy-mascot
         className={cn(
           tour.uiMode !== 'exiting' && !prefersReducedMotion && 'animate-fy-pet-jump',
           tour.uiMode === 'exiting' &&
@@ -510,19 +526,21 @@ function FyGuideInner() {
           mood === 'dormindo' && 'opacity-85',
         )}
       >
-        <FyMotionWrapper mood={mood} isHovered={isHovered}>
-          <FyChromaVideo
-            src={VIDEO_SRC}
-            canvasBaseWidth={200}
-            chromaLoad={chromaLoad}
-            className="drop-shadow-xl"
-            playbackActive={
-              !prefersReducedMotion && (tour.uiMode === 'dock' || tour.isTourActive)
-            }
-          />
-        </FyMotionWrapper>
-        {showParticles && <FyReactionParticles active />}
-        {showSleepZ && <FySleepZ />}
+        <div data-fy-mascot className="relative">
+          <FyMotionWrapper mood={mood} isHovered={isHovered}>
+            <FyChromaVideo
+              src={VIDEO_SRC}
+              canvasBaseWidth={200}
+              chromaLoad={chromaLoad}
+              className="drop-shadow-xl"
+              playbackActive={
+                !prefersReducedMotion && (tour.uiMode === 'dock' || tour.isTourActive)
+              }
+            />
+          </FyMotionWrapper>
+          {showParticles && <FyReactionParticles active />}
+          {showSleepZ && <FySleepZ />}
+        </div>
       </div>
     </aside>
     <FyFaqDialog open={faqOpen} onOpenChange={setFaqOpen} role={fyTipRole} />
