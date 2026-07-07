@@ -54,7 +54,7 @@ Saída JSON: `reports/bundle-summary.json`.
 - **Carga inicial do dashboard** em um único request (`GET /api/v1/data` → `loadDashboardSnapshot`).
 - **Refresh incremental** após mutações (`refreshPontos` / `refreshJustificativas` em vez de refetch completo).
 - **Cache server** para dados semi-estáticos via `unstable_cache` + `revalidateTag` em ações admin.
-- **Middleware enxuto** — matcher apenas em `/` e `/dashboard/:path*`.
+- **Middleware enxuto** — matcher apenas em `/` e `/dashboard/:path*`.image.png
 - **LiveClock** isolado nas páginas de presença e home do dashboard (evita re-render da página a cada 1s).
 - **Fy** carregado com `next/dynamic`; guia mascote após primeiro paint ou tour ativo.
 - Páginas pesadas (`ponto`, `gestor`, `admin/usuarios`) com `dynamic()` para code-splitting.

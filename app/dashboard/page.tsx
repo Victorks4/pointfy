@@ -297,11 +297,9 @@ export default function DashboardPage() {
         <div className="mb-6 grid gap-4 md:grid-cols-3">
           <StreakFireBorder
             active={streakAtual >= 15}
-            className="neon-card border-border bg-card transition-all"
             data-fy-anchor="fy-streak"
             data-gsap-reveal
           >
-            <Card className="border-0 bg-transparent shadow-none">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-card-foreground flex items-center gap-2">
                 <Flame className="h-4 w-4 text-orange-500 drop-shadow-[0_0_6px_var(--neon-glow-orange)]" />
@@ -312,7 +310,6 @@ export default function DashboardPage() {
               <p className="text-2xl font-bold text-card-foreground">{streakAtual} dia(s)</p>
               <p className="text-xs text-muted-foreground mt-1">Mantenha consistência para subir no ranking.</p>
             </CardContent>
-            </Card>
           </StreakFireBorder>
 
           <Card data-gsap-reveal className="neon-card border-border bg-card transition-all">

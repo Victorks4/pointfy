@@ -1,6 +1,7 @@
 'use client'
 
 import { Flame } from 'lucide-react'
+import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 const SPARKS = [
@@ -12,7 +13,7 @@ const SPARKS = [
   { className: 'streak-fire-spark streak-fire-spark-6', style: { top: '38%', right: '2%' } },
 ] as const
 
-type StreakFireBorderProps = React.ComponentPropsWithoutRef<'div'> & {
+type StreakFireBorderProps = React.ComponentProps<typeof Card> & {
   active: boolean
 }
 
@@ -23,9 +24,9 @@ export function StreakFireBorder({
   ...props
 }: StreakFireBorderProps) {
   return (
-    <div
+    <Card
       className={cn(
-        'relative rounded-xl',
+        'neon-card border-border bg-card shadow-sm transition-all',
         active ? 'neon-card-streak-fire' : 'neon-card-streak',
         className,
       )}
@@ -43,6 +44,6 @@ export function StreakFireBorder({
           </span>
         ))}
       {children}
-    </div>
+    </Card>
   )
 }
