@@ -83,7 +83,7 @@ export default function FeriadosAdminPage() {
           <Card>
             <CardHeader>
               <CardTitle>Feriados nacionais</CardTitle>
-              <CardDescription>Lista importada — somente leitura</CardDescription>
+              <CardDescription>Lista importada, somente leitura</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (

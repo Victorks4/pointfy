@@ -79,7 +79,21 @@ async function loadUsuariosForSession(
   supabase: SupabaseClient,
 ): Promise<User[]> {
   if (session.cargo === 'estagiario') {
-    return [session]
+    const [estagiario] = await attachGestorIds(supabase, [session])
+    const gestorIds = new Set<string>()
+    if (estagiario.gestorId) gestorIds.add(estagiario.gestorId)
+    for (const id of estagiario.gestorIds ?? []) gestorIds.add(id)
+
+    if (gestorIds.size === 0) return [estagiario]
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(PROFILE_COLUMNS)
+      .in('id', [...gestorIds])
+    if (error) throw error
+
+    const gestores = (data as ProfileRow[]).map((row) => mapProfile(row))
+    return [estagiario, ...gestores]
   }
 
   if (session.cargo === 'gestor') {

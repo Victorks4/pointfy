@@ -441,7 +441,7 @@ export default function JustificativasPage() {
                               {STATUS_COMPENSACAO_LABELS[effectiveStatusCompensacao(j)!]}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
+                            <span className="text-muted-foreground text-sm">-</span>
                           )}
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate">

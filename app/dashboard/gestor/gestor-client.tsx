@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
+import { emptyCell } from '@/lib/display-utils'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -132,7 +133,7 @@ export default function GestorDashboardPage() {
     const fromPontos: AtividadeItem[] = pontos.slice(0, 12).map((p) => ({
       id: `p-${p.id}`,
       tipo: 'ponto',
-      titulo: `Registro de presença — ${formatDate(p.data)}`,
+      titulo: `Registro de presença: ${formatDate(p.data)}`,
       detalhe: `Total ${formatMinutesToDisplay(p.totalMinutos)}`,
       dataRef: p.updatedAt ?? p.createdAt ?? p.data,
     }))
@@ -365,10 +366,10 @@ export default function GestorDashboardPage() {
                                   <TableCell className="font-medium whitespace-nowrap">
                                     {formatDate(p.data)}
                                   </TableCell>
-                                  <TableCell>{p.entrada1 ?? '—'}</TableCell>
-                                  <TableCell>{p.saida1 ?? '—'}</TableCell>
-                                  <TableCell>{p.entrada2 ?? '—'}</TableCell>
-                                  <TableCell>{p.saida2 ?? '—'}</TableCell>
+                                  <TableCell>{emptyCell(p.entrada1)}</TableCell>
+                                  <TableCell>{emptyCell(p.saida1)}</TableCell>
+                                  <TableCell>{emptyCell(p.entrada2)}</TableCell>
+                                  <TableCell>{emptyCell(p.saida2)}</TableCell>
                                   <TableCell className="text-right font-semibold">
                                     {formatMinutesToDisplay(p.totalMinutos)}
                                   </TableCell>
@@ -474,10 +475,10 @@ export default function GestorDashboardPage() {
                                   <TableCell className="font-medium whitespace-nowrap">
                                     {formatDate(ponto.data)}
                                   </TableCell>
-                                  <TableCell>{ponto.entrada1 || '—'}</TableCell>
-                                  <TableCell>{ponto.saida1 || '—'}</TableCell>
-                                  <TableCell>{ponto.entrada2 || '—'}</TableCell>
-                                  <TableCell>{ponto.saida2 || '—'}</TableCell>
+                                  <TableCell>{emptyCell(ponto.entrada1)}</TableCell>
+                                  <TableCell>{emptyCell(ponto.saida1)}</TableCell>
+                                  <TableCell>{emptyCell(ponto.entrada2)}</TableCell>
+                                  <TableCell>{emptyCell(ponto.saida2)}</TableCell>
                                   <TableCell className="text-right font-semibold">
                                     {formatMinutesToDisplay(ponto.totalMinutos)}
                                   </TableCell>
@@ -653,7 +654,7 @@ export default function GestorDashboardPage() {
                             .filter((j) => j.tipo === 'atestado')
                             .map((j) => (
                               <li key={j.id} className="text-sm border rounded-md p-3">
-                                {formatDate(j.data)} — {j.descricao}
+                                {formatDate(j.data)}: {j.descricao}
                               </li>
                             ))}
                         </ul>

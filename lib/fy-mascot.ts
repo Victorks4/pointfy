@@ -17,7 +17,7 @@ export type FyReaction = {
   duration?: number
 }
 
-export const FY_SYSTEM_PROMPT = `Você é o Fy, mascote do sistema Pontify — plataforma de registro de ponto para estagiários do SENAI.
+export const FY_SYSTEM_PROMPT = `Você é o Fy, mascote do sistema Pontify, plataforma de registro de ponto para estagiários do SENAI.
 
 Seu papel é ajudar usuários a registrar presença corretamente e a usar o sistema com confiança.
 
@@ -48,7 +48,7 @@ export const FY_QUICK_MESSAGES: Record<FyEmotion, string[]> = {
   aviso: [
     'Passou do limite sem justificativa? Escolha uma opção antes de salvar.',
     'Confere os horários: saída precisa ser depois da entrada.',
-    'Minutos em :00 podem estar bloqueados, ajuste se precisar.',
+    'Datas em recesso não aceitam registro. Confira o calendário.',
   ],
   atencao: [
     'Ainda não registrou presença hoje. Leva só um minuto.',
@@ -64,10 +64,10 @@ export const FY_QUICK_MESSAGES: Record<FyEmotion, string[]> = {
 
 /** Dicas no dock do Fy para estagiários: produtividade, pontuação e hábitos. */
 export const FY_DOCK_TIPS_ESTAGIARIO: string[] = [
-  'Sua pontuação no dashboard mistura consistência (sequência), bater a meta diária e pontualidade — cada parte vale.',
+  'Sua pontuação no dashboard mistura consistência (sequência), bater a meta diária e pontualidade; cada parte vale.',
   'Manter dias seguidos com registro sobe sua sequência; isso pesa forte no cálculo de produtividade.',
   'Bater a meta de horas do dia ajuda o score: revise o card de nível e o que falta para o próximo tier.',
-  'Chegar e registrar perto do horário combinado melhora a nota de pontualidade — use o relógio do sistema.',
+  'Chegar e registrar perto do horário combinado melhora a nota de pontualidade; use o relógio do sistema.',
   'Desafios da semana somam com seu ritmo: acompanhe o progresso nos cards do dashboard.',
   'Histórico e saldo mostram o retrato real do mês; confira antes de falar com o RH.',
   'No fim do mês: Relatórios → baixe o PDF SENAI → depois assine no portal de assinatura da empresa.',
@@ -306,7 +306,7 @@ export const FY_ADMIN_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
     ordem: 7,
     titulo: 'Configurações de ponto',
     mensagem:
-      'Meta diária, limite para justificativa e regras de minutos: só uma configuração ativa por vez — alterações valem para todos.',
+      'Meta diária, limite para justificativa e regras de minutos: só uma configuração ativa por vez; alterações valem para todos.',
     rotaSugerida: '/dashboard/admin/configuracoes-ponto',
     anchorId: 'fy-admin-config-main',
   },
@@ -378,7 +378,7 @@ const FY_ROUTE_HINTS: { prefix: string; hint: FyRouteHint }[] = [
     prefix: '/dashboard/relatorios',
     hint: {
       emotion: 'neutro',
-      text: 'Escolha o mês, baixe o PDF SENAI e depois assine no portal de assinatura da empresa — não é aqui no app.',
+      text: 'Escolha o mês, baixe o PDF SENAI e depois assine no portal de assinatura da empresa (não é aqui no app).',
     },
   },
   { prefix: '/dashboard/justificativas', hint: { emotion: 'neutro', text: 'Envia ou acompanha justificativas. Resposta vem pelo fluxo do admin.' } },
@@ -387,7 +387,7 @@ const FY_ROUTE_HINTS: { prefix: string; hint: FyRouteHint }[] = [
   { prefix: '/dashboard/admin/notificacoes', hint: { emotion: 'neutro', text: 'Mensagens curtas e claras funcionam melhor para todo mundo ler.' } },
   { prefix: '/dashboard/admin/desafios', hint: { emotion: 'neutro', text: 'Desafios ativos respeitam o período que você definir.' } },
   { prefix: '/dashboard/admin/configuracoes-ponto', hint: { emotion: 'aviso', text: 'Mudança de config ativa afeta meta e limite de justificativa para todos.' } },
-  { prefix: '/dashboard/admin/justificativas', hint: { emotion: 'neutro', text: 'Responde com objetividade — o estagiário vê o retorno no painel dele.' } },
+  { prefix: '/dashboard/admin/justificativas', hint: { emotion: 'neutro', text: 'Responde com objetividade; o estagiário vê o retorno no painel dele.' } },
   { prefix: '/dashboard/admin', hint: { emotion: 'neutro', text: 'Visão geral do admin. Use o menu para ir direto a cada módulo.' } },
   { prefix: '/dashboard', hint: { emotion: 'neutro', text: 'Resumo do dia, sequência e desafios. Atalho: Registrar Presença no menu.' } },
 ]

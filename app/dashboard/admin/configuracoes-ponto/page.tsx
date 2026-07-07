@@ -40,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { emptyCell, emptyLabel } from '@/lib/display-utils'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, SlidersHorizontal, Check } from 'lucide-react'
 import { formatMinutesToDisplay, formatDate } from '@/lib/time-utils'
@@ -363,15 +364,15 @@ export default function AdminConfiguracoesPontoPage() {
                     <TableRow key={b.id}>
                       <TableCell>
                         {b.userId
-                          ? usuarios.find((u) => u.id === b.userId)?.nome ?? '—'
+                          ? emptyLabel(usuarios.find((u) => u.id === b.userId)?.nome)
                           : 'Todos os estagiários'}
                       </TableCell>
                       <TableCell>
                         {formatDate(b.dataInicio)}
-                        {b.dataFim ? ` — ${formatDate(b.dataFim)}` : ''}
+                        {b.dataFim ? ` até ${formatDate(b.dataFim)}` : ''}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {b.motivo ?? '—'}
+                        {emptyCell(b.motivo)}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -431,7 +432,7 @@ export default function AdminConfiguracoesPontoPage() {
                 <p className="text-xs text-muted-foreground">
                   {Number(form.metaDiariaMinutos) > 0
                     ? formatMinutesToDisplay(Number(form.metaDiariaMinutos))
-                    : '—'}
+                    : '-'}
                 </p>
               </div>
 
@@ -449,7 +450,7 @@ export default function AdminConfiguracoesPontoPage() {
                             metaDiariaMinutos: Number(form.metaDiariaMinutos),
                           }),
                         )
-                      : '—'
+                      : '-'
                   }
                 />
                 <p className="text-xs text-muted-foreground">
@@ -491,7 +492,7 @@ export default function AdminConfiguracoesPontoPage() {
                 onCheckedChange={v => setForm(prev => ({ ...prev, rejeitarMinutosZero: Boolean(v) }))}
               />
               <Label htmlFor="cfg-rejeitar" className="leading-5 cursor-pointer">
-                Rejeitar minutos fechados (<span className="font-mono">:00</span>)
+                Rejeitar registro com zero minutos no dia
               </Label>
             </div>
 

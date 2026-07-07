@@ -76,7 +76,7 @@ export default function FeriadosEstagiarioPage() {
           <CardHeader>
             <CardTitle>Calendário</CardTitle>
             <CardDescription>
-              Dias em destaque são feriados — não é necessário registrar ponto nessas datas
+              Dias em destaque são feriados. Não é necessário registrar ponto nessas datas
             </CardDescription>
           </CardHeader>
           <CardContent>

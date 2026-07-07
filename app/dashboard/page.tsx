@@ -4,12 +4,14 @@ import { useEffect, useMemo } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DashboardPageHero, DashboardPageShell } from '@/components/dashboard-page-shell'
 import { formatMinutesToDisplay, getTodayString, formatDate, calcularSequenciaAtual } from '@/lib/time-utils'
 import { computeProductivityScore } from '@/lib/productivity'
 import { Clock, TrendingUp, TrendingDown, Calendar, Bell, AlertCircle, ChevronRight, Zap, Flame, Trophy, Target, CircleCheck } from 'lucide-react'
-import Link from 'next/link'
+import { StreakFireBorder } from '@/components/streak-fire-border'
+import { humanizeText } from '@/lib/display-utils'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { LiveClock } from '@/components/live-clock'
@@ -190,7 +192,7 @@ export default function DashboardPage() {
           }
           description={
             <p className="text-sm md:text-base">
-              {formatDate(getTodayString())} — Vamos acompanhar seu dia
+              {humanizeText(`${formatDate(getTodayString())}. Vamos acompanhar seu dia`)}
             </p>
           }
           trailing={
@@ -293,11 +295,13 @@ export default function DashboardPage() {
         </div>
 
         <div className="mb-6 grid gap-4 md:grid-cols-3">
-          <Card
+          <StreakFireBorder
+            active={streakAtual >= 15}
+            className="neon-card border-border bg-card transition-all"
             data-fy-anchor="fy-streak"
             data-gsap-reveal
-            className="neon-card neon-card-streak border-border bg-card transition-all"
           >
+            <Card className="border-0 bg-transparent shadow-none">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-card-foreground flex items-center gap-2">
                 <Flame className="h-4 w-4 text-orange-500 drop-shadow-[0_0_6px_var(--neon-glow-orange)]" />
@@ -308,7 +312,8 @@ export default function DashboardPage() {
               <p className="text-2xl font-bold text-card-foreground">{streakAtual} dia(s)</p>
               <p className="text-xs text-muted-foreground mt-1">Mantenha consistência para subir no ranking.</p>
             </CardContent>
-          </Card>
+            </Card>
+          </StreakFireBorder>
 
           <Card data-gsap-reveal className="neon-card border-border bg-card transition-all">
             <CardHeader className="pb-2">

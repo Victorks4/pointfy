@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { emptyCell } from '@/lib/display-utils'
 import { LABELS } from '@/lib/labels'
 import { formatDate, formatMinutesToDisplay } from '@/lib/time-utils'
 import { precisaJustificativaHoraExtra } from '@/lib/ponto-config-utils'
@@ -240,12 +241,12 @@ export default function HistoricoPage() {
                             </Badge>
                           ) : null}
                         </TableCell>
-                        <TableCell>{bloqueada ? '—' : ponto.entrada1 || '-'}</TableCell>
-                        <TableCell>{bloqueada ? '—' : ponto.saida1 || '-'}</TableCell>
-                        <TableCell>{bloqueada ? '—' : ponto.entrada2 || '-'}</TableCell>
-                        <TableCell>{bloqueada ? '—' : ponto.saida2 || '-'}</TableCell>
+                        <TableCell>{bloqueada ? '-' : emptyCell(ponto.entrada1)}</TableCell>
+                        <TableCell>{bloqueada ? '-' : emptyCell(ponto.saida1)}</TableCell>
+                        <TableCell>{bloqueada ? '-' : emptyCell(ponto.entrada2)}</TableCell>
+                        <TableCell>{bloqueada ? '-' : emptyCell(ponto.saida2)}</TableCell>
                         <TableCell className="text-right font-semibold">
-                          {bloqueada ? '—' : formatMinutesToDisplay(ponto.totalMinutos)}
+                          {bloqueada ? '-' : formatMinutesToDisplay(ponto.totalMinutos)}
                         </TableCell>
                         <TableCell className="max-w-[220px] text-sm text-muted-foreground">
                           {bloqueada ? (
@@ -259,7 +260,7 @@ export default function HistoricoPage() {
                                     {ponto.justificativaHoraExtra}
                                   </Badge>
                                 )}
-                              {!ponto.observacao && !ponto.justificativaHoraExtra ? '—' : null}
+                              {!ponto.observacao && !ponto.justificativaHoraExtra ? '-' : null}
                             </>
                           )}
                         </TableCell>

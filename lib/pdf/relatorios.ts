@@ -1,6 +1,8 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
+import { emptyCell, emptyLabel } from '@/lib/display-utils'
+
 import { LABELS } from '@/lib/labels'
 import { formatMinutesToDisplay } from '@/lib/time-utils'
 import {
@@ -119,7 +121,7 @@ export async function downloadRelatorioUsuarioPdf(params: {
     `Estagiário(a): ${usuario.nome}`,
     `Matrícula: ${usuario.matricula}`,
     `${LABELS.LOTACAO}: ${usuario.departamento}`,
-    `Gestor(a) / responsável: ${gestorNome?.trim() || '—'}`,
+    `Gestor(a) / responsável: ${emptyLabel(gestorNome)}`,
     `Período: ${periodoLabel}`,
   ])
 
@@ -140,7 +142,7 @@ export async function downloadRelatorioUsuarioPdf(params: {
     p.entrada2 ?? '--:--',
     p.saida2 ?? '--:--',
     formatMinutesToDisplay(p.totalMinutos),
-    p.observacao?.trim() || '—',
+    emptyCell(p.observacao),
   ])
 
   autoTable(doc, {

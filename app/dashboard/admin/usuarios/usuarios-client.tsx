@@ -27,6 +27,7 @@ import {
 import type { User } from '@/lib/types'
 import { LOTACOES, lotacoesParaSelect } from '@/lib/lotacoes'
 import { LABELS } from '@/lib/labels'
+import { getGestorNomes } from '@/lib/gestor-utils'
 import {
   horarioTrabalhoPadrao,
   horarioTrabalhoVazio,
@@ -42,16 +43,6 @@ const CARGAS_HORARIAS = [
   { value: '1800', label: '30h semanais' },
   { value: '2400', label: '40h semanais' },
 ]
-
-function getGestorNomes(usuario: User, usuarios: User[]): string {
-  const ids = new Set<string>()
-  if (usuario.gestorId) ids.add(usuario.gestorId)
-  for (const id of usuario.gestorIds ?? []) ids.add(id)
-  const nomes = [...ids]
-    .map((id) => usuarios.find((x) => x.id === id)?.nome)
-    .filter(Boolean)
-  return nomes.length > 0 ? nomes.join(', ') : '—'
-}
 
 function getGestoresDisponiveis(gestoresLista: User[], selectedIds: string[], currentValue: string): User[] {
   const others = new Set(selectedIds.filter((id) => id !== '_none' && id !== currentValue))

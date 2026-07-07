@@ -13,6 +13,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LABELS } from '@/lib/labels'
 import { formatMinutesToDisplay } from '@/lib/time-utils'
 import { Download, FileBarChart2, Info, Loader2 } from 'lucide-react'
+import { getGestorNomes } from '@/lib/gestor-utils'
+import { emptyLabel } from '@/lib/display-utils'
 import { toast } from 'sonner'
 
 const MESES = [
@@ -52,8 +54,9 @@ export default function RelatoriosEstagiarioPage() {
   const periodoLabel = `${MESES.find((m) => m.value === selectedMonth)?.label} de ${selectedYear}`
 
   const gestorNome = useMemo(() => {
-    if (!user?.gestorId) return null
-    return usuarios.find((u) => u.id === user.gestorId)?.nome ?? null
+    if (!user) return emptyLabel(null)
+    const nome = getGestorNomes(user, usuarios)
+    return nome === emptyLabel(null) ? null : nome
   }, [user, usuarios])
 
   const resumo = useMemo(() => {
@@ -92,7 +95,7 @@ export default function RelatoriosEstagiarioPage() {
           matricula: user.matricula,
           departamento: user.departamento,
         },
-        gestorNome,
+        gestorNome: gestorNome ?? emptyLabel(null),
         bancoHorasMinutos: resumo.saldo,
         totalHorasMesMinutos: resumo.totalMes,
         totalHorasGeralMinutos: resumo.totalGeral,

@@ -40,7 +40,7 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
     id: 'relatorios-pdf',
     question: 'Como gero o relatório mensal e assino?',
     answer:
-      'Em “Relatórios” escolha mês e ano, confira o resumo e baixe o PDF no padrão SENAI (com logo e áreas para assinatura). Depois de emitir o arquivo, acesse o portal de assinatura da empresa para assinar digitalmente — essa etapa não é feita no Pontify.',
+      'Em “Relatórios” escolha mês e ano, confira o resumo e baixe o PDF no padrão SENAI (com logo e áreas para assinatura). Depois de emitir o arquivo, acesse o portal de assinatura da empresa para assinar digitalmente (essa etapa não é feita no Pontify).',
     roles: ['estagiario'],
   },
   {
@@ -82,7 +82,7 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
     id: 'sequencia-produtividade',
     question: 'O que é “sequência” e a pontuação do dashboard?',
     answer:
-      'A sequência conta dias seguidos com presença registrada. A pontuação mistura consistência, atingir a meta diária e pontualidade. Manter o ritmo sobe os indicadores — é um retrato do seu hábito, não uma nota escolar.',
+      'A sequência conta dias seguidos com presença registrada. A pontuação mistura consistência, atingir a meta diária e pontualidade. Manter o ritmo sobe os indicadores; é um retrato do seu hábito, não uma nota escolar.',
     roles: ['estagiario'],
   },
   {
@@ -124,7 +124,7 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
     id: 'gestor-historico',
     question: 'Posso abrir o histórico como o estagiário vê?',
     answer:
-      'Sim. No seu painel use “Histórico em tela cheia” ou acesse Histórico com o parâmetro do estagiário — o sistema só libera se ele estiver vinculado a você.',
+      'Sim. No seu painel use “Histórico em tela cheia” ou acesse Histórico com o parâmetro do estagiário; o sistema só libera se ele estiver vinculado a você.',
     roles: ['gestor'],
   },
 ]

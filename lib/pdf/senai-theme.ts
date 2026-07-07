@@ -1,4 +1,5 @@
 import type jsPDF from 'jspdf'
+import { emptyLabel } from '@/lib/display-utils'
 
 /** Cores institucionais SENAI (aproximação da marca). */
 export const SENAI = {
@@ -183,7 +184,7 @@ export function drawSignatureFooter(
   drawSlot(
     marginX + colW + gap,
     'Assinatura do(a) gestor(a) / responsável',
-    params.gestorNome?.trim() || '—',
+    emptyLabel(params.gestorNome),
   )
 
   return y + blockH + 8

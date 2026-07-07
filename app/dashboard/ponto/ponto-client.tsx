@@ -1,6 +1,6 @@
 'use client'
  
-import { memo, useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LiveClock } from '@/components/live-clock'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,7 @@ import {
 } from '@/lib/ponto-config-utils'
 import { PontifyDatePicker } from '@/components/pontify-date-calendar'
 import { TimeField } from '@/components/time-field'
+import { WaveClock, getEstadoClock } from '@/components/wave-clock'
 import { Clock, AlertCircle, Save, Info, CheckCircle, Coffee } from 'lucide-react'
  
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -37,15 +38,12 @@ type PeriodoFields = {
   entrada2: string
   saida2: string
 }
- 
-type EstadoClock = 'red' | 'yellow' | 'green'
- 
+
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 function buildRegrasPreenchimento(limiteMinutos: number) {
   return [
     { icon: AlertCircle, color: 'text-muted-foreground', texto: 'Formato HH:MM obrigatório' },
-    { icon: AlertCircle, color: 'text-muted-foreground', texto: 'Horários "fechados" (minutos = 00) não são aceitos' },
     { icon: AlertCircle, color: 'text-muted-foreground', texto: 'Saída deve ser após a entrada' },
     { icon: AlertCircle, color: 'text-muted-foreground', texto: 'Sem sobreposição de horários' },
     {
@@ -55,43 +53,12 @@ function buildRegrasPreenchimento(limiteMinutos: number) {
     },
   ]
 }
- 
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
  
 const formatTime = (date: Date) =>
   date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
- 
-// ─── Lógica do estado do relógio ──────────────────────────────────────────────
- 
-function getEstadoClock(minutos: number, meta: number): EstadoClock {
-  const pct = minutos / meta
-  if (pct >= 1) return 'green'
-  if (pct >= 0.5) return 'yellow'
-  return 'red'
-}
- 
-const CLOCK_STATE_CONFIG: Record<EstadoClock, {
-  ringColor: string
-  waveColor: string
-  label: string
-}> = {
-  red: {
-    ringColor: 'border-red-500',
-    waveColor: '#E24B4A',
-    label: 'Início',
-  },
-  yellow: {
-    ringColor: 'border-amber-400',
-    waveColor: '#EF9F27',
-    label: 'Progresso',
-  },
-  green: {
-    ringColor: 'border-green-500',
-    waveColor: '#639922',
-    label: 'Completo',
-  },
-}
- 
+
 // ─── Hook de validação ────────────────────────────────────────────────────────
  
 function useValidatePonto(
@@ -213,120 +180,7 @@ function CardRegraPreenchimento({ limiteMinutos }: { limiteMinutos: number }) {
     </Card>
   )
 }
- 
-// ─── Relógio com waves ────────────────────────────────────────────────────────
- 
-const WAVE_KEYFRAMES = `
-@keyframes wave-move {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-@keyframes pulse-ring {
-  from { transform: scale(1); opacity: 0.6; }
-  to   { transform: scale(1.5); opacity: 0; }
-}
-`
 
-const WAVE_PATH =
-  'M0 10 C12.5 2,25 18,50 10 C62.5 2,75 18,100 10 C112.5 2,125 18,150 10 C162.5 2,175 18,200 10 L200 20 L0 20 Z'
-
-const ESTADO_BADGE_CLASS: Record<EstadoClock, string> = {
-  red: 'bg-red-100 text-red-700',
-  yellow: 'bg-amber-100 text-amber-700',
-  green: 'bg-green-100 text-green-700',
-}
-
-const WaveClock = memo(function WaveClock({ totalMinutos, meta }: { totalMinutos: number; meta: number }) {
-  const progresso = Math.min((totalMinutos / meta) * 100, 100)
-  const estado = getEstadoClock(totalMinutos, meta)
-  const config = CLOCK_STATE_CONFIG[estado]
-  const isComplete = estado === 'green'
-  const fillScale = Math.max(progresso / 100, 0.04)
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <style>{WAVE_KEYFRAMES}</style>
-
-      <div className="relative">
-        {isComplete && (
-          <div
-            className="absolute inset-0 rounded-full border-2 border-green-400 pointer-events-none"
-            style={{
-              zIndex: 0,
-              animation: 'pulse-ring 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite',
-            }}
-          />
-        )}
-
-        <div
-          className={`relative w-24 h-24 rounded-full border-4 overflow-hidden transition-colors duration-500 ${config.ringColor}`}
-          style={{ borderColor: config.waveColor }}
-          aria-label={`Progresso diário: ${Math.round(progresso)}%`}
-          role="img"
-        >
-          <div className="absolute inset-0 bg-slate-900" />
-
-          <div
-            className="absolute inset-x-0 bottom-0 h-full origin-bottom transition-transform duration-500 ease-out will-change-transform"
-            style={{ transform: `scaleY(${fillScale})` }}
-          >
-            <div className="absolute inset-0 overflow-hidden">
-              <div
-                className="absolute top-[-10px] left-0 w-[200%] h-5"
-                style={{ animation: 'wave-move 2s linear infinite' }}
-              >
-                <svg
-                  viewBox="0 0 200 20"
-                  preserveAspectRatio="none"
-                  className="block h-full w-full"
-                >
-                  <path d={WAVE_PATH} fill={config.waveColor} />
-                </svg>
-              </div>
-              <div
-                className="absolute inset-x-0 bottom-0 top-2.5"
-                style={{ background: config.waveColor }}
-              />
-            </div>
-          </div>
-
-          <div className="absolute inset-0 flex items-center justify-center">
-            <AnimatePresence mode="wait">
-              {isComplete ? (
-                <motion.div
-                  key="check"
-                  initial={{ scale: 0.4, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.4, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 320, damping: 18 }}
-                >
-                  <CheckCircle className="h-9 w-9 text-white drop-shadow" />
-                </motion.div>
-              ) : (
-                <motion.span
-                  key="pct"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-xs font-semibold text-white drop-shadow"
-                >
-                  {Math.round(progresso)}%
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </div>
-
-      <span
-        className={`text-xs font-medium px-2 py-0.5 rounded-full transition-opacity duration-300 ${ESTADO_BADGE_CLASS[estado]}`}
-      >
-        {config.label}
-      </span>
-    </div>
-  )
-})
- 
 // ─── Card Total do Dia ────────────────────────────────────────────────────────
  
 function CardTotalDia({
@@ -407,7 +261,7 @@ function CardTotalDia({
             >
               <AlertCircle className="h-4 w-4 text-blue-600 shrink-0" />
               <p className="text-sm text-blue-700">
-                Acima de {formatMinutesToDisplay(limiteMinutos)} — justificativa obrigatória
+                Acima de {formatMinutesToDisplay(limiteMinutos)}: justificativa obrigatória
               </p>
             </motion.div>
           )}

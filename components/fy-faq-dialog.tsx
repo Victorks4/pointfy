@@ -47,7 +47,7 @@ export function FyFaqDialog({ open, onOpenChange, role }: FyFaqDialogProps) {
             Perguntas frequentes
           </DialogTitle>
           <DialogDescription className="text-left">
-            Escolha uma pergunta — o {FY_NAME} responde com base no seu perfil ({role === 'admin' ? 'administrador' : role === 'gestor' ? 'gestor' : 'estagiário'}).
+            Escolha uma pergunta. O {FY_NAME} responde com base no seu perfil ({role === 'admin' ? 'administrador' : role === 'gestor' ? 'gestor' : 'estagiário'}).
           </DialogDescription>
         </DialogHeader>
 
