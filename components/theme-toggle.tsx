@@ -44,7 +44,7 @@ export function ThemeToggle({ className, variant = 'icon' }: ThemeToggleProps) {
       size={variant === 'sidebar' ? 'sm' : 'icon'}
       className={cn(
         variant === 'sidebar'
-          ? 'w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent'
+          ? 'w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0'
           : 'h-9 w-9',
         className,
       )}
@@ -53,7 +53,7 @@ export function ThemeToggle({ className, variant = 'icon' }: ThemeToggleProps) {
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       {variant === 'sidebar' ? (
-        <span>{isDark ? 'Modo claro' : 'Modo escuro'}</span>
+        <span className="group-data-[collapsible=icon]:hidden">{isDark ? 'Modo claro' : 'Modo escuro'}</span>
       ) : null}
     </Button>
   )

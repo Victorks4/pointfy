@@ -117,9 +117,9 @@ export function DashboardSidebar() {
       collapsible="icon"
       className="border-r border-sidebar-border [&_[data-sidebar=sidebar]]:!bg-gradient-to-b [&_[data-sidebar=sidebar]]:!from-[#24364e] [&_[data-sidebar=sidebar]]:!to-[#16263a] dark:[&_[data-sidebar=sidebar]]:!from-[#1e3047] dark:[&_[data-sidebar=sidebar]]:!to-[#121f30]"
     >
-      <SidebarHeader className="border-b border-sidebar-border !gap-0 !p-0">
-        <div className="neon-logo-shell pontify-logo-shell mx-2 mb-0.5 mt-0.5 transition-transform duration-200 hover:scale-[1.03]">
-          <div className="pontify-logo-shell-inner">
+      <SidebarHeader className="border-b border-sidebar-border !gap-0 !p-0 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-b-0 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:pb-1 group-data-[collapsible=icon]:pt-3">
+        <div className="neon-logo-shell pontify-logo-shell mx-2 mb-0.5 mt-0.5 transition-transform duration-200 hover:scale-[1.03] group-data-[collapsible=icon]:mx-0 group-data-[collapsible=icon]:mb-0 group-data-[collapsible=icon]:mt-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:shadow-none">
+          <div className="pontify-logo-shell-inner group-data-[collapsible=icon]:hidden">
             <Link
               href={logoHref}
               className="pontify-logo-trigger flex flex-col outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
@@ -142,29 +142,55 @@ export function DashboardSidebar() {
               <PontifyDataFlowBrand variant="sidebar" />
             </Link>
           </div>
+          <Link
+            href={logoHref}
+            className="mx-auto hidden size-8 items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/35 group-data-[collapsible=icon]:flex"
+            aria-label="Pontify"
+          >
+            <Image
+              src="/pontifylogo.png"
+              alt=""
+              width={32}
+              height={32}
+              className="h-7 w-7 object-contain"
+            />
+          </Link>
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="gap-1.5 px-2 [&>[data-sidebar=group]:first-child]:pt-0">
+      <SidebarContent className="gap-1.5 px-2 group-data-[collapsible=icon]:gap-2 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:pt-3 group-data-[state=expanded]:[&>[data-sidebar=group]:first-child]:pt-0">
         {user?.cargo === 'estagiario' && (
-          <SidebarGroup data-fy-anchor="fy-sidebar-menu" className="p-1.5">
+          <SidebarGroup data-fy-anchor="fy-sidebar-menu" className="p-1.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0">
             <SidebarGroupLabel className="h-7 min-h-[1.75rem] text-xs uppercase tracking-wider text-sidebar-foreground/55">
               Menu Principal
             </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
+              <SidebarMenu className="gap-0.5 group-data-[collapsible=icon]:gap-1.5">
                 {userMenuItems.map((item) => {
                   const isActive = pathname === item.href
                   return (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={isActive} className={menuButtonClass(isActive)}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.title}
+                        className={menuButtonClass(isActive)}
+                      >
                         <Link href={item.href} className="flex items-center gap-3">
-                          <div className={menuIconClass(isActive)}>
+                          <div
+                            className={cn(
+                              menuIconClass(isActive),
+                              'group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0',
+                            )}
+                          >
                             <item.icon className="h-4 w-4" />
                           </div>
-                          <span className="flex-1">{item.title}</span>
+                          <span data-sidebar-label className="flex-1">
+                            {item.title}
+                          </span>
                           {item.badge ? (
                             <Badge
+                              data-sidebar-label
                               variant="default"
                               className="flex h-5 min-w-[20px] animate-pulse items-center justify-center bg-sidebar-primary text-xs text-sidebar-primary-foreground"
                             >
@@ -182,31 +208,38 @@ export function DashboardSidebar() {
         )}
 
         {user?.cargo === 'gestor' && (
-          <SidebarGroup data-fy-anchor="fy-sidebar-gestor" className="p-1.5">
+          <SidebarGroup data-fy-anchor="fy-sidebar-gestor" className="p-1.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0">
             <SidebarGroupLabel className="h-7 min-h-[1.75rem] text-xs uppercase tracking-wider text-sidebar-foreground/55">
               Coordenação
             </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
+              <SidebarMenu className="gap-0.5 group-data-[collapsible=icon]:gap-1.5">
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
                     isActive={pathname === '/dashboard/gestor' || pathname.startsWith('/dashboard/gestor/')}
+                    tooltip="Meus estagiários"
                     className={menuButtonClass(
                       pathname === '/dashboard/gestor' || pathname.startsWith('/dashboard/gestor/'),
                     )}
                   >
                     <Link href="/dashboard/gestor" className="flex items-center gap-3">
                       <div
-                        className={menuIconClass(
-                          pathname === '/dashboard/gestor' || pathname.startsWith('/dashboard/gestor/'),
+                        className={cn(
+                          menuIconClass(
+                            pathname === '/dashboard/gestor' || pathname.startsWith('/dashboard/gestor/'),
+                          ),
+                          'group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0',
                         )}
                       >
                         <Users className="h-4 w-4" />
                       </div>
-                      <span className="flex-1">Meus estagiários</span>
+                      <span data-sidebar-label className="flex-1">
+                        Meus estagiários
+                      </span>
                       {compensacoesPendentes > 0 ? (
                         <Badge
+                          data-sidebar-label
                           className="flex h-5 min-w-[20px] animate-pulse items-center justify-center bg-amber-500 text-xs text-white dark:bg-amber-500/90"
                           title={`${compensacoesPendentes} compensação(ões) pendente(s)`}
                         >
@@ -224,12 +257,24 @@ export function DashboardSidebar() {
                   const isActive = pathname === item.href
                   return (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={isActive} className={menuButtonClass(isActive)}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.title}
+                        className={menuButtonClass(isActive)}
+                      >
                         <Link href={item.href} className="flex items-center gap-3">
-                          <div className={menuIconClass(isActive)}>
+                          <div
+                            className={cn(
+                              menuIconClass(isActive),
+                              'group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0',
+                            )}
+                          >
                             <item.icon className="h-4 w-4" />
                           </div>
-                          <span className="flex-1">{item.title}</span>
+                          <span data-sidebar-label className="flex-1">
+                            {item.title}
+                          </span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -239,15 +284,26 @@ export function DashboardSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={pathname === '/dashboard/notificacoes'}
+                    tooltip="Notificações"
                     className={menuButtonClass(pathname === '/dashboard/notificacoes')}
                   >
                     <Link href="/dashboard/notificacoes" className="flex items-center gap-3">
-                      <div className={menuIconClass(pathname === '/dashboard/notificacoes')}>
+                      <div
+                        className={cn(
+                          menuIconClass(pathname === '/dashboard/notificacoes'),
+                          'group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0',
+                        )}
+                      >
                         <Bell className="h-4 w-4" />
                       </div>
-                      <span className="flex-1">Notificações</span>
+                      <span data-sidebar-label className="flex-1">
+                        Notificações
+                      </span>
                       {notificacoesNaoLidas > 0 ? (
-                        <Badge className="flex h-5 min-w-[20px] items-center justify-center bg-sidebar-primary text-xs text-sidebar-primary-foreground">
+                        <Badge
+                          data-sidebar-label
+                          className="flex h-5 min-w-[20px] items-center justify-center bg-sidebar-primary text-xs text-sidebar-primary-foreground"
+                        >
                           {notificacoesNaoLidas}
                         </Badge>
                       ) : null}
@@ -260,22 +316,34 @@ export function DashboardSidebar() {
         )}
 
         {user?.cargo === 'admin' && (
-          <SidebarGroup data-fy-anchor="fy-sidebar-admin" className="p-1.5">
+          <SidebarGroup data-fy-anchor="fy-sidebar-admin" className="p-1.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0">
             <SidebarGroupLabel className="h-7 min-h-[1.75rem] text-xs uppercase tracking-wider text-sidebar-foreground/55">
               Administração
             </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
+              <SidebarMenu className="gap-0.5 group-data-[collapsible=icon]:gap-1.5">
                 {adminMenuItems.map((item) => {
                   const isActive = pathname === item.href
                   return (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={isActive} className={menuButtonClass(isActive)}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.title}
+                        className={menuButtonClass(isActive)}
+                      >
                         <Link href={item.href} className="flex items-center gap-3">
-                          <div className={menuIconClass(isActive)}>
+                          <div
+                            className={cn(
+                              menuIconClass(isActive),
+                              'group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0',
+                            )}
+                          >
                             <item.icon className="h-4 w-4" />
                           </div>
-                          <span className="flex-1">{item.title}</span>
+                          <span data-sidebar-label className="flex-1">
+                            {item.title}
+                          </span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -287,19 +355,20 @@ export function DashboardSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="space-y-1 border-t border-sidebar-border p-1.5">
+      <SidebarFooter className="space-y-1 border-t border-sidebar-border p-1.5 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-1">
         <ThemeToggle variant="sidebar" className="rounded-lg" />
-        <div className="flex items-center gap-2.5 rounded-xl bg-black/15 p-1.5 dark:bg-black/25">
+        <div className="flex w-full items-center gap-2.5 rounded-xl bg-black/15 p-1.5 dark:bg-black/25 group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0">
           <Avatar className="h-9 w-9 ring-2 ring-white/15">
             <AvatarFallback className="bg-sidebar-accent text-sm font-semibold text-sidebar-foreground">
               {user?.nome ? getInitials(user.nome) : 'U'}
             </AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1">
+          <div data-sidebar-label className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-sidebar-foreground">{user?.nome}</p>
             <p className="truncate text-xs capitalize text-sidebar-foreground/55">{user?.cargo}</p>
           </div>
           <Button
+            data-sidebar-label
             variant="ghost"
             size="icon"
             onClick={handleLogout}
