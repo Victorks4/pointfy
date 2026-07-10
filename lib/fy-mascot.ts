@@ -230,12 +230,21 @@ export const FY_FIRST_VISIT_FLOW: FyOnboardingStep[] = [
 ]
 
 export const FY_ONBOARDING_STORAGE_PREFIX = 'pointfy:fyOnboardingCompleted'
+export const FY_PENDING_TOUR_PREFIX = 'pointfy:fyPendingTour'
 
 export function getFyOnboardingStorageKey(
   userId: string,
   variant: 'estagiario' | 'admin' | 'gestor',
 ): string {
   return `${FY_ONBOARDING_STORAGE_PREFIX}:${variant}:${userId}`
+}
+
+/** Tour automático agendado após a primeira troca de senha. */
+export function getFyPendingTourStorageKey(
+  userId: string,
+  variant: 'estagiario' | 'admin' | 'gestor',
+): string {
+  return `${FY_PENDING_TOUR_PREFIX}:${variant}:${userId}`
 }
 
 /** Dispensa temporária do tour na sessão (fechou o diálogo sem concluir). */

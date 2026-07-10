@@ -16,6 +16,7 @@ import {
   FY_FIRST_VISIT_FLOW,
   FY_GESTOR_FIRST_VISIT_FLOW,
   getFyOnboardingStorageKey,
+  getFyPendingTourStorageKey,
   fyPathnameMatchesRoute,
   type FyOnboardingStep,
 } from '@/lib/fy-mascot'
@@ -72,6 +73,7 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false)
 
   const storageKey = user ? getFyOnboardingStorageKey(user.id, variant) : ''
+  const pendingTourKey = user ? getFyPendingTourStorageKey(user.id, variant) : ''
 
   useEffect(() => {
     if (!user) return
@@ -82,15 +84,23 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
       return
     }
     if (!storageKey) return
+    if (user.mustChangePassword || pathname === '/dashboard/alterar-senha') {
+      setUiMode('fab')
+      return
+    }
     const done = globalThis.localStorage.getItem(storageKey) === '1'
+    const pendingTour =
+      pendingTourKey && globalThis.sessionStorage.getItem(pendingTourKey) === '1'
     setHasCompletedOnboarding(done)
     if (done) {
       setUiMode('fab')
-    } else {
+    } else if (pendingTour) {
       setUiMode('entrance')
       setTourStepIndex(0)
+    } else {
+      setUiMode('fab')
     }
-  }, [user, storageKey])
+  }, [user, storageKey, pendingTourKey, pathname])
 
   useEffect(() => {
     if (uiMode !== 'entrance') return
@@ -102,18 +112,22 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (uiMode !== 'tour') return
+    if (user?.mustChangePassword) return
     const step = flow[tourStepIndex]
     if (!step?.rotaSugerida) return
     if (!fyPathnameMatchesRoute(pathname, step.rotaSugerida)) {
       router.push(step.rotaSugerida)
     }
-  }, [uiMode, tourStepIndex, flow, pathname, router])
+  }, [uiMode, tourStepIndex, flow, pathname, router, user?.mustChangePassword])
 
   const persistComplete = useCallback(() => {
     if (!storageKey) return
     globalThis.localStorage.setItem(storageKey, '1')
+    if (pendingTourKey) {
+      globalThis.sessionStorage.removeItem(pendingTourKey)
+    }
     setHasCompletedOnboarding(true)
-  }, [storageKey])
+  }, [storageKey, pendingTourKey])
 
   const completeTourAndCollapse = useCallback(() => {
     persistComplete()

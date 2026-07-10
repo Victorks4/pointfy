@@ -39,6 +39,60 @@ type PeriodoFields = {
   saida2: string
 }
 
+type PontoDraft = {
+  campos: PeriodoFields
+  justificativa: string
+}
+
+const EMPTY_CAMPOS: PeriodoFields = {
+  entrada1: '',
+  saida1: '',
+  entrada2: '',
+  saida2: '',
+}
+
+function getPontoDraftKey(userId: string, date: string) {
+  return `ponto-draft-${userId}-${date}`
+}
+
+function readPontoDraft(userId: string, date: string): PontoDraft | null {
+  try {
+    const raw = globalThis.sessionStorage.getItem(getPontoDraftKey(userId, date))
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as PontoDraft
+    if (!parsed?.campos) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writePontoDraft(userId: string, date: string, draft: PontoDraft) {
+  globalThis.sessionStorage.setItem(getPontoDraftKey(userId, date), JSON.stringify(draft))
+}
+
+function clearPontoDraft(userId: string, date: string) {
+  globalThis.sessionStorage.removeItem(getPontoDraftKey(userId, date))
+}
+
+function camposFromPonto(ponto: {
+  entrada1?: string | null
+  saida1?: string | null
+  entrada2?: string | null
+  saida2?: string | null
+  justificativaHoraExtra?: string | null
+}): { campos: PeriodoFields; justificativa: string } {
+  return {
+    campos: {
+      entrada1: ponto.entrada1 || '',
+      saida1: ponto.saida1 || '',
+      entrada2: ponto.entrada2 || '',
+      saida2: ponto.saida2 || '',
+    },
+    justificativa: ponto.justificativaHoraExtra || '',
+  }
+}
+
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 function buildRegrasPreenchimento(limiteMinutos: number) {
@@ -473,19 +527,38 @@ export default function PontoPage() {
   const feriadoDates = useMemo(() => feriados.map((f) => f.data), [feriados])
  
   const pontoHoje = user ? getPontoByDate(user.id, selectedDate) : null
- 
-  const [campos, setCampos] = useState<PeriodoFields>({
-    entrada1: pontoHoje?.entrada1 || '',
-    saida1:   pontoHoje?.saida1   || '',
-    entrada2: pontoHoje?.entrada2 || '',
-    saida2:   pontoHoje?.saida2   || '',
-  })
-  const [justificativa, setJustificativa] = useState(pontoHoje?.justificativaHoraExtra || '')
- 
+
+  const [campos, setCampos] = useState<PeriodoFields>(EMPTY_CAMPOS)
+  const [justificativa, setJustificativa] = useState('')
+
+  const persistDraft = useCallback(
+    (nextCampos: PeriodoFields, nextJustificativa: string) => {
+      if (!user || pontoHoje) return
+      writePontoDraft(user.id, selectedDate, {
+        campos: nextCampos,
+        justificativa: nextJustificativa,
+      })
+    },
+    [user, pontoHoje, selectedDate],
+  )
+
   const setField = useCallback(
-    (field: keyof PeriodoFields) => (value: string) =>
-      setCampos((prev) => ({ ...prev, [field]: value })),
-    [],
+    (field: keyof PeriodoFields) => (value: string) => {
+      setCampos((prev) => {
+        const next = { ...prev, [field]: value }
+        persistDraft(next, justificativa)
+        return next
+      })
+    },
+    [justificativa, persistDraft],
+  )
+
+  const handleJustificativaChange = useCallback(
+    (value: string) => {
+      setJustificativa(value)
+      persistDraft(campos, value)
+    },
+    [campos, persistDraft],
   )
  
   // Efeitos
@@ -494,36 +567,22 @@ export default function PontoPage() {
   }, [])
  
   useEffect(() => {
-    if (!pontoHoje) {
-      setCampos({ entrada1: '', saida1: '', entrada2: '', saida2: '' })
-      setJustificativa('')
+    if (!user) return
+    if (pontoHoje) {
+      const saved = camposFromPonto(pontoHoje)
+      setCampos(saved.campos)
+      setJustificativa(saved.justificativa)
       return
     }
-    setCampos({
-      entrada1: pontoHoje.entrada1 || '',
-      saida1:   pontoHoje.saida1   || '',
-      entrada2: pontoHoje.entrada2 || '',
-      saida2:   pontoHoje.saida2   || '',
-    })
-    setJustificativa(pontoHoje.justificativaHoraExtra || '')
-  }, [pontoHoje])
- 
-  // Persistência de rascunho (não sobrescreve registros já salvos)
-  useEffect(() => {
-    if (!pontoHoje) {
-      sessionStorage.setItem(`ponto-draft-${selectedDate}`, JSON.stringify(campos))
+    const draft = readPontoDraft(user.id, selectedDate)
+    if (draft) {
+      setCampos(draft.campos)
+      setJustificativa(draft.justificativa)
+      return
     }
-  }, [campos, selectedDate, pontoHoje])
- 
-  // Restaura rascunho ao trocar de data (se não houver registro salvo)
-  useEffect(() => {
-    if (!pontoHoje) {
-      const draft = sessionStorage.getItem(`ponto-draft-${selectedDate}`)
-      if (draft) {
-        try { setCampos(JSON.parse(draft)) } catch { /* ignora */ }
-      }
-    }
-  }, [selectedDate, pontoHoje])
+    setCampos(EMPTY_CAMPOS)
+    setJustificativa('')
+  }, [user, selectedDate, pontoHoje])
  
   // Derivados
   const emRecesso = useMemo(
@@ -616,6 +675,7 @@ export default function PontoPage() {
     )
     fyEmit({ type: 'ponto:saved', success: true })
     setErrors([])
+    clearPontoDraft(user.id, selectedDate)
   }
  
   if (emRecesso && user) {
@@ -737,7 +797,7 @@ export default function PontoPage() {
                       >
                         <JustificativaAlert
                           justificativa={justificativa}
-                          onJustificativaChange={setJustificativa}
+                          onJustificativaChange={handleJustificativaChange}
                           limiteMinutos={limiteSemJustificativa}
                         />
                       </motion.div>

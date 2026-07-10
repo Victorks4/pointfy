@@ -9,6 +9,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { toast } from 'sonner'
+import {
+  getFyOnboardingStorageKey,
+  getFyPendingTourStorageKey,
+} from '@/lib/fy-mascot'
 
 export default function AlterarSenhaPage() {
   const router = useRouter()
@@ -31,7 +35,18 @@ export default function AlterarSenhaPage() {
       return
     }
     toast.success('Senha alterada com sucesso')
-    if (user) hydrateUser({ ...user, mustChangePassword: false })
+    if (user) {
+      hydrateUser({ ...user, mustChangePassword: false })
+      const variant =
+        user.cargo === 'admin' ? 'admin' : user.cargo === 'gestor' ? 'gestor' : 'estagiario'
+      if (variant !== 'gestor') {
+        const onboardingKey = getFyOnboardingStorageKey(user.id, variant)
+        const alreadyCompleted = globalThis.localStorage.getItem(onboardingKey) === '1'
+        if (!alreadyCompleted) {
+          globalThis.sessionStorage.setItem(getFyPendingTourStorageKey(user.id, variant), '1')
+        }
+      }
+    }
     await retryProfileLoad()
     router.refresh()
     router.replace('/dashboard')
