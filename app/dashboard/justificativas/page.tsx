@@ -20,6 +20,7 @@ import { LABELS } from '@/lib/labels'
 import {
   STATUS_COMPENSACAO_LABELS,
   effectiveStatusCompensacao,
+  isCompensacaoTipo,
 } from '@/lib/compensacao-utils'
 import { FileText, Clock, Send, Info } from 'lucide-react'
 import { uploadJustificativaArquivoAction } from '@/app/actions/justificativas'
@@ -43,11 +44,14 @@ export default function JustificativasPage() {
   const [parcialDataComp, setParcialDataComp] = useState('')
   const [parcialHoras, setParcialHoras] = useState('')
   const [parcialDescricao, setParcialDescricao] = useState('')
+  const [submittingAtestado, setSubmittingAtestado] = useState(false)
+  const [submittingComp, setSubmittingComp] = useState(false)
+  const [submittingParcial, setSubmittingParcial] = useState(false)
 
   const handleAtestadoSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!user) return
+    if (!user || submittingAtestado) return
 
     if (!atestadoData) {
       toast.error('Selecione a data do atestado')
@@ -59,6 +63,8 @@ export default function JustificativasPage() {
       return
     }
 
+    setSubmittingAtestado(true)
+    try {
     let arquivoPath: string | null = null
     if (atestadoArquivo) {
       const formData = new FormData()
@@ -90,12 +96,15 @@ export default function JustificativasPage() {
     setAtestadoData('')
     setAtestadoDescricao('')
     setAtestadoArquivo(null)
+    } finally {
+      setSubmittingAtestado(false)
+    }
   }
 
   const handleCompensacaoSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!user) return
+    if (!user || submittingComp) return
 
     if (!compDataFalta) {
       toast.error('Selecione a data da falta para compensação')
@@ -107,6 +116,8 @@ export default function JustificativasPage() {
       return
     }
 
+    setSubmittingComp(true)
+    try {
     const result = await addJustificativa({
       userId: user.id,
       data: compDataFalta,
@@ -125,11 +136,14 @@ export default function JustificativasPage() {
 
     setCompDataFalta('')
     setCompDescricao('')
+    } finally {
+      setSubmittingComp(false)
+    }
   }
 
   const handleCompensacaoParcialSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || submittingParcial) return
     const minutos = parseHorasToMinutos(parcialHoras)
     if (!parcialDataFalta || !parcialDataComp) {
       toast.error('Informe a data da falta e da compensação')
@@ -143,6 +157,8 @@ export default function JustificativasPage() {
       toast.error('Descreva o motivo')
       return
     }
+    setSubmittingParcial(true)
+    try {
     const result = await addJustificativa({
       userId: user.id,
       data: parcialDataFalta,
@@ -162,6 +178,9 @@ export default function JustificativasPage() {
     setParcialDataComp('')
     setParcialHoras('')
     setParcialDescricao('')
+    } finally {
+      setSubmittingParcial(false)
+    }
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -284,9 +303,9 @@ export default function JustificativasPage() {
                     </Field>
                   </FieldGroup>
 
-                  <Button type="submit" className="w-full">
+                  <Button type="submit" className="w-full" disabled={submittingAtestado} aria-busy={submittingAtestado}>
                     <Send className="mr-2 h-4 w-4" />
-                    Enviar Atestado
+                    {submittingAtestado ? 'Enviando...' : 'Enviar Atestado'}
                   </Button>
                 </form>
               </CardContent>
@@ -338,9 +357,9 @@ export default function JustificativasPage() {
                     </Field>
                   </FieldGroup>
 
-                  <Button type="submit" className="mt-auto w-full">
+                  <Button type="submit" className="mt-auto w-full" disabled={submittingComp} aria-busy={submittingComp}>
                     <Clock className="mr-2 h-4 w-4" />
-                    Solicitar compensação ao gestor
+                    {submittingComp ? 'Enviando...' : 'Solicitar compensação ao gestor'}
                   </Button>
                 </form>
               </CardContent>
@@ -383,9 +402,9 @@ export default function JustificativasPage() {
                       <Textarea id="parcial-descricao" value={parcialDescricao} onChange={(e) => setParcialDescricao(e.target.value)} rows={4} required />
                     </Field>
                   </FieldGroup>
-                  <Button type="submit" className="mt-auto w-full" variant="secondary">
+                  <Button type="submit" className="mt-auto w-full" variant="secondary" disabled={submittingParcial} aria-busy={submittingParcial}>
                     <Clock className="mr-2 h-4 w-4" />
-                    Solicitar compensação parcial
+                    {submittingParcial ? 'Enviando...' : 'Solicitar compensação parcial'}
                   </Button>
                 </form>
               </CardContent>
@@ -424,11 +443,11 @@ export default function JustificativasPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant={j.tipo === 'atestado' ? 'secondary' : 'default'}>
-                            {j.tipo === 'atestado' ? 'Atestado' : 'Compensação'}
+                            {j.tipo === 'atestado' ? 'Atestado' : j.tipo === 'compensacao_parcial' ? 'Compensação parcial' : 'Compensação'}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {j.tipo === 'compensacao' && effectiveStatusCompensacao(j) ? (
+                          {isCompensacaoTipo(j.tipo) && effectiveStatusCompensacao(j) ? (
                             <Badge
                               variant={
                                 effectiveStatusCompensacao(j) === 'aprovada_gestor'

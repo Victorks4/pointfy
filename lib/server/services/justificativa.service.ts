@@ -38,6 +38,38 @@ async function getEstagiarioTeamIds(
   return [...ids]
 }
 
+async function assertNoDuplicateCompensacao(
+  supabase: SupabaseClient,
+  userId: string,
+  parsed: {
+    data: string
+    tipo: Justificativa['tipo']
+    dataCompensacao?: string | null
+  },
+) {
+  if (!isCompensacaoTipo(parsed.tipo)) return
+
+  let query = supabase
+    .from('justificativas')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('data', parsed.data)
+    .eq('tipo', parsed.tipo)
+    .in('status_compensacao', ['pendente_gestor', 'aprovada_gestor'])
+
+  if (parsed.tipo === 'compensacao_parcial' && parsed.dataCompensacao) {
+    query = query.eq('data_compensacao', parsed.dataCompensacao)
+  }
+
+  const { data, error } = await query.limit(1)
+  if (error) throw error
+  if (data && data.length > 0) {
+    throw new Error(
+      'Já existe uma compensação para esta data. Consulte o histórico ou aguarde a decisão do gestor.',
+    )
+  }
+}
+
 async function notifyGestorCompensacao(
   supabase: SupabaseClient,
   gestorId: string | null,
@@ -117,6 +149,8 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
   const supabase = await createClient()
 
   if (isCompensacaoTipo(parsed.tipo)) {
+    await assertNoDuplicateCompensacao(supabase, session.id, parsed)
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('gestor_id, nome')
@@ -199,7 +233,7 @@ export async function aprovarCompensacao(
       ? -(minutosAprovados ?? row.minutos_solicitados ?? 0)
       : -MINUTOS_COMPENSACAO
 
-  const { error: upErr } = await supabase
+  const { data: updated, error: upErr } = await supabase
     .from('justificativas')
     .update({
       status_compensacao: 'aprovada_gestor',
@@ -207,8 +241,12 @@ export async function aprovarCompensacao(
       decidida_em: new Date().toISOString(),
     })
     .eq('id', justificativaId)
+    .eq('status_compensacao', 'pendente_gestor')
+    .select('id')
+    .maybeSingle()
 
   if (upErr) throw upErr
+  if (!updated) return { ok: false, reason: 'ja_decidida' }
 
   await supabase.from('notificacoes').insert({
     user_id: row.user_id,
@@ -244,7 +282,7 @@ export async function rejeitarCompensacao(
   if (row.status_compensacao !== 'pendente_gestor') return { ok: false, reason: 'ja_decidida' }
 
   const motivo = motivoRejeicao?.trim() || null
-  const { error: upErr } = await supabase
+  const { data: updated, error: upErr } = await supabase
     .from('justificativas')
     .update({
       status_compensacao: 'rejeitada_gestor',
@@ -253,8 +291,12 @@ export async function rejeitarCompensacao(
       motivo_rejeicao: motivo,
     })
     .eq('id', justificativaId)
+    .eq('status_compensacao', 'pendente_gestor')
+    .select('id')
+    .maybeSingle()
 
   if (upErr) throw upErr
+  if (!updated) return { ok: false, reason: 'ja_decidida' }
 
   await supabase.from('notificacoes').insert({
     user_id: row.user_id,

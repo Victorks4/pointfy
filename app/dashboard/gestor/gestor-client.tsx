@@ -106,6 +106,7 @@ export default function GestorDashboardPage() {
   const compensacoesHistorico = user ? getCompensacoesHistoricoGestor(user.id) : []
   const [motivoRejeicao, setMotivoRejeicao] = useState('')
   const [rejeitarId, setRejeitarId] = useState<string | null>(null)
+  const [processandoCompensacaoId, setProcessandoCompensacaoId] = useState<string | null>(null)
   const pontoHoje = selected ? getPontoByDate(selected.id, getTodayString()) : null
   const streakAtual = calcularSequenciaAtual(pontos.map((p) => p.data))
   const naoLidas = notificacoes.filter((n) => !n.lida).length
@@ -547,8 +548,11 @@ export default function GestorDashboardPage() {
                               <div className="flex gap-2">
                                 <Button
                                   size="sm"
+                                  disabled={processandoCompensacaoId === j.id}
                                   onClick={async () => {
-                                    if (!user) return
+                                    if (!user || processandoCompensacaoId) return
+                                    setProcessandoCompensacaoId(j.id)
+                                    try {
                                     const minutos =
                                       j.tipo === 'compensacao_parcial'
                                         ? j.minutosSolicitados ?? undefined
@@ -556,22 +560,31 @@ export default function GestorDashboardPage() {
                                     const r = await aprovarCompensacao(user.id, j.id, minutos)
                                     if (r.success) toast.success('Compensação aprovada')
                                     else toast.error(r.error)
+                                    } finally {
+                                      setProcessandoCompensacaoId(null)
+                                    }
                                   }}
                                 >
-                                  Aprovar
+                                  {processandoCompensacaoId === j.id ? 'Aprovando...' : 'Aprovar'}
                                 </Button>
                                 {rejeitarId === j.id ? (
                                   <Button
                                     size="sm"
                                     variant="destructive"
+                                    disabled={processandoCompensacaoId === j.id}
                                     onClick={async () => {
-                                      if (!user) return
+                                      if (!user || processandoCompensacaoId) return
+                                      setProcessandoCompensacaoId(j.id)
+                                      try {
                                       const r = await rejeitarCompensacao(user.id, j.id, motivoRejeicao)
                                       if (r.success) {
                                         toast.success('Compensação rejeitada')
                                         setRejeitarId(null)
                                         setMotivoRejeicao('')
                                       } else toast.error(r.error)
+                                      } finally {
+                                        setProcessandoCompensacaoId(null)
+                                      }
                                     }}
                                   >
                                     Confirmar rejeição
