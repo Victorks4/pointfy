@@ -82,7 +82,7 @@ const FY_FAQ_ITEMS: readonly FyFaqItem[] = [
     id: 'sequencia-produtividade',
     question: 'O que é “sequência” e a pontuação do dashboard?',
     answer:
-      'A sequência conta dias seguidos com presença registrada. A pontuação mistura consistência, atingir a meta diária e pontualidade. Manter o ritmo sobe os indicadores; é um retrato do seu hábito, não uma nota escolar.',
+      'A sequência conta dias úteis seguidos com presença registrada (segunda a sexta; fins de semana não quebram a sequência). A pontuação mistura consistência, atingir a meta diária e pontualidade. Manter o ritmo sobe os indicadores; é um retrato do seu hábito, não uma nota escolar.',
     roles: ['estagiario'],
   },
   {

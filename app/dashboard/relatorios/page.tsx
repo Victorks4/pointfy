@@ -55,7 +55,8 @@ export default function RelatoriosEstagiarioPage() {
 
   const gestorNome = useMemo(() => {
     if (!user) return emptyLabel(null)
-    const nome = getGestorNomes(user, usuarios)
+    const sessionUser = usuarios.find((u) => u.id === user.id) ?? user
+    const nome = getGestorNomes(sessionUser, usuarios)
     return nome === emptyLabel(null) ? null : nome
   }, [user, usuarios])
 

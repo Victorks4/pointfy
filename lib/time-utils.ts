@@ -190,30 +190,58 @@ export function isAnyRecessApproaching(
   )
 }
 
-const MS_PER_DAY = 1000 * 60 * 60 * 24
-
 function toLocalMidnight(dateString: string): Date {
   return new Date(`${dateString}T00:00:00`)
 }
 
-export function calcularSequenciaAtual(dates: string[]): number {
+function isWeekday(date: Date): boolean {
+  const day = date.getDay()
+  return day >= 1 && day <= 5
+}
+
+function previousWeekday(date: Date): Date {
+  const result = new Date(date)
+  do {
+    result.setDate(result.getDate() - 1)
+  } while (!isWeekday(result))
+  return result
+}
+
+function formatDateKey(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/**
+ * Conta dias úteis consecutivos com presença registrada.
+ * Fins de semana não quebram a sequência e registros em sáb/dom são ignorados.
+ * @param referenceDate Data de referência (padrão: hoje), útil para testes.
+ */
+export function calcularSequenciaAtual(dates: string[], referenceDate?: string): number {
   if (dates.length === 0) return 0
 
-  const today = toLocalMidnight(getTodayString())
-  const uniqueDates = [...new Set(dates)]
+  const today = toLocalMidnight(referenceDate ?? getTodayString())
+  const weekdayDates = [...new Set(dates)]
+    .filter((d) => isWeekday(toLocalMidnight(d)))
     .sort((a, b) => toLocalMidnight(b).getTime() - toLocalMidnight(a).getTime())
 
-  const mostRecent = toLocalMidnight(uniqueDates[0])
-  const daysSinceLast = Math.round((today.getTime() - mostRecent.getTime()) / MS_PER_DAY)
+  if (weekdayDates.length === 0) return 0
 
-  if (daysSinceLast > 1) return 0
+  const todayKey = formatDateKey(today)
+  const mostRecentKey = weekdayDates[0]
+
+  if (mostRecentKey !== todayKey) {
+    const prevWeekdayKey = formatDateKey(previousWeekday(today))
+    if (mostRecentKey !== prevWeekdayKey) return 0
+  }
 
   let streak = 1
-  for (let i = 1; i < uniqueDates.length; i++) {
-    const prev = toLocalMidnight(uniqueDates[i - 1])
-    const curr = toLocalMidnight(uniqueDates[i])
-    const diff = Math.round((prev.getTime() - curr.getTime()) / MS_PER_DAY)
-    if (diff !== 1) break
+  for (let i = 1; i < weekdayDates.length; i++) {
+    const prevKey = weekdayDates[i - 1]
+    const expectedPrev = formatDateKey(previousWeekday(toLocalMidnight(prevKey)))
+    if (weekdayDates[i] !== expectedPrev) break
     streak++
   }
   return streak
