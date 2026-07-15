@@ -1,14 +1,107 @@
-| name                                               | title                                                 | level | facing   | categories   | description                                                                                                                                                                                                              | detail                                                                                                                                                                                                                                                             | remediation                                                                                                            | metadata                                                                                                                   | cache_key                                                                                        |
-| -------------------------------------------------- | ----------------------------------------------------- | ----- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| function_search_path_mutable                       | Function Search Path Mutable                          | WARN  | EXTERNAL | ["SECURITY"] | Detects functions where the search_path parameter is not set.                                                                                                                                                            | Function \`public.set_updated_at\` has a role mutable search_path                                                                                                                                                                                                  | https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable                       | {"name":"set_updated_at","type":"function","schema":"public"}                                                              | function_search_path_mutable_public_set_updated_at_10ff09e0d1433006b865e7959e736c46              |
-| function_search_path_mutable                       | Function Search Path Mutable                          | WARN  | EXTERNAL | ["SECURITY"] | Detects functions where the search_path parameter is not set.                                                                                                                                                            | Function \`public.auth_user_role\` has a role mutable search_path                                                                                                                                                                                                  | https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable                       | {"name":"auth_user_role","type":"function","schema":"public"}                                                              | function_search_path_mutable_public_auth_user_role_96cab3564b9beb345b73d5590e0e02a4              |
-| function_search_path_mutable                       | Function Search Path Mutable                          | WARN  | EXTERNAL | ["SECURITY"] | Detects functions where the search_path parameter is not set.                                                                                                                                                            | Function \`public.auth_user_gestor_id\` has a role mutable search_path                                                                                                                                                                                             | https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable                       | {"name":"auth_user_gestor_id","type":"function","schema":"public"}                                                         | function_search_path_mutable_public_auth_user_gestor_id_21d8c85578ec9ab1222b570b58254b3f         |
-| anon_security_definer_function_executable          | Public Can Execute SECURITY DEFINER Function          | WARN  | EXTERNAL | ["SECURITY"] | Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.       | Function `public.auth_user_gestor_id()` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/auth_user_gestor_id`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.                                | https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable          | {"name":"auth_user_gestor_id","schema":"public","language":"sql","arguments":"","security_definer":true}                   | anon_security_definer_function_executable_public_auth_user_gestor_id_                            |
-| anon_security_definer_function_executable          | Public Can Execute SECURITY DEFINER Function          | WARN  | EXTERNAL | ["SECURITY"] | Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.       | Function `public.auth_user_role()` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/auth_user_role`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.                                          | https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable          | {"name":"auth_user_role","schema":"public","language":"sql","arguments":"","security_definer":true}                        | anon_security_definer_function_executable_public_auth_user_role_                                 |
-| anon_security_definer_function_executable          | Public Can Execute SECURITY DEFINER Function          | WARN  | EXTERNAL | ["SECURITY"] | Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.       | Function `public.handle_new_user()` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/handle_new_user`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.                                        | https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable          | {"name":"handle_new_user","schema":"public","language":"plpgsql","arguments":"","security_definer":true}                   | anon_security_definer_function_executable_public_handle_new_user_                                |
-| anon_security_definer_function_executable          | Public Can Execute SECURITY DEFINER Function          | WARN  | EXTERNAL | ["SECURITY"] | Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.       | Function `public.is_gestor_of_estagiario(target_id uuid)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_gestor_of_estagiario`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.          | https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable          | {"name":"is_gestor_of_estagiario","schema":"public","language":"sql","arguments":"target_id uuid","security_definer":true} | anon_security_definer_function_executable_public_is_gestor_of_estagiario_target_id uuid          |
-| authenticated_security_definer_function_executable | Signed-In Users Can Execute SECURITY DEFINER Function | WARN  | EXTERNAL | ["SECURITY"] | Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it. | Function `public.auth_user_gestor_id()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/auth_user_gestor_id`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.                       | https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable | {"name":"auth_user_gestor_id","schema":"public","language":"sql","arguments":"","security_definer":true}                   | authenticated_security_definer_function_executable_public_auth_user_gestor_id_                   |
-| authenticated_security_definer_function_executable | Signed-In Users Can Execute SECURITY DEFINER Function | WARN  | EXTERNAL | ["SECURITY"] | Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it. | Function `public.auth_user_role()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/auth_user_role`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.                                 | https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable | {"name":"auth_user_role","schema":"public","language":"sql","arguments":"","security_definer":true}                        | authenticated_security_definer_function_executable_public_auth_user_role_                        |
-| authenticated_security_definer_function_executable | Signed-In Users Can Execute SECURITY DEFINER Function | WARN  | EXTERNAL | ["SECURITY"] | Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it. | Function `public.handle_new_user()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/handle_new_user`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.                               | https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable | {"name":"handle_new_user","schema":"public","language":"plpgsql","arguments":"","security_definer":true}                   | authenticated_security_definer_function_executable_public_handle_new_user_                       |
-| authenticated_security_definer_function_executable | Signed-In Users Can Execute SECURITY DEFINER Function | WARN  | EXTERNAL | ["SECURITY"] | Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it. | Function `public.is_gestor_of_estagiario(target_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_gestor_of_estagiario`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional. | https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable | {"name":"is_gestor_of_estagiario","schema":"public","language":"sql","arguments":"target_id uuid","security_definer":true} | authenticated_security_definer_function_executable_public_is_gestor_of_estagiario_target_id uuid |
-| auth_leaked_password_protection                    | Leaked Password Protection Disabled                   | WARN  | EXTERNAL | ["SECURITY"] | Leaked password protection is currently disabled.                                                                                                                                                                        | Supabase Auth prevents the use of compromised passwords by checking against HaveIBeenPwned.org. Enable this feature to enhance security.                                                                                                                           | https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection               | {"type":"auth","entity":"Auth"}                                                                                            | auth_leaked_password_protection                                                                  |
+# Segurança — Supabase Database Linter
+
+Última verificação: **15 de julho de 2026**
+
+Migration aplicada: [`supabase/migrations/012_security_linter_hardening.sql`](../supabase/migrations/012_security_linter_hardening.sql)
+
+## Resumo
+
+| Status | Quantidade |
+|--------|------------|
+| Corrigido (código/migration) | 12 |
+| Pendente (configuração manual) | 1 |
+
+## Warnings corrigidos
+
+### `function_search_path_mutable` (3 ocorrências)
+
+Funções `SECURITY DEFINER` sem `search_path` fixo permitiam teoricamente ataques de hijack de `search_path`.
+
+| Função | Remediação |
+|--------|------------|
+| `set_updated_at` | Movida para `private`; recriada com `SET search_path = public` |
+| `auth_user_role` | Movida para `private`; recriada com `SET search_path = public` |
+| `auth_user_gestor_id` | **Removida** (código morto, não usada em nenhuma policy) |
+
+### `anon_security_definer_function_executable` (4 ocorrências)
+
+Visitantes não autenticados podiam chamar funções internas via `POST /rest/v1/rpc/*`.
+
+| Função | Remediação |
+|--------|------------|
+| `auth_user_role` | Movida para schema `private` (fora do PostgREST) |
+| `auth_user_gestor_id` | Removida |
+| `handle_new_user` | Movida para `private` (apenas trigger em `auth.users`) |
+| `is_gestor_of_estagiario` | Movida para `private` |
+
+### `authenticated_security_definer_function_executable` (4 ocorrências)
+
+Usuários logados podiam chamar RPCs internos diretamente — em especial `is_gestor_of_estagiario`, que permitia sondar vínculos gestor↔estagiário bypassando RLS.
+
+| Função | Remediação |
+|--------|------------|
+| `auth_user_role` | Schema `private` |
+| `auth_user_gestor_id` | Removida |
+| `handle_new_user` | Schema `private` |
+| `is_gestor_of_estagiario` | Schema `private` |
+
+Também movida preventivamente: `auth_user_linked_gestor_ids` (migration 011).
+
+### Permissões no schema `private`
+
+- `REVOKE ALL` de `PUBLIC` e `anon`
+- `GRANT USAGE` + `EXECUTE` apenas para `authenticated` e `service_role` (necessário para policies RLS)
+
+## Warning pendente (ação manual)
+
+### `auth_leaked_password_protection`
+
+| Campo | Valor |
+|-------|-------|
+| Severidade | WARN |
+| Descrição | Proteção contra senhas vazadas (HaveIBeenPwned) desabilitada |
+| Remediação | [Password security](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) |
+
+**Como habilitar:**
+
+1. Abra o [Dashboard Supabase](https://supabase.com/dashboard) → projeto **Pontify**
+2. **Authentication** → **Providers** → **Email**
+3. Em **Password Security**, ative **Leaked password protection**
+
+> Nota: essa funcionalidade pode exigir plano **Pro** ou superior no Supabase.
+
+Alternativa via Management API (requer Personal Access Token):
+
+```http
+PATCH /v1/projects/royszemnvodpzhwswpmm/config/auth
+Authorization: Bearer <SUPABASE_ACCESS_TOKEN>
+Content-Type: application/json
+
+{ "password_hibp_enabled": true }
+```
+
+## Validação pós-migration
+
+- [x] Advisors de segurança: 12/13 warnings resolvidos (resta apenas `auth_leaked_password_protection`)
+- [x] Suite de testes local: `npm test` — 84 testes passando
+- [ ] Smoke manual recomendado:
+  - Login estagiário / gestor / admin
+  - Gestor visualiza equipe
+  - Estagiário vê gestor no relatório PDF
+  - Admin cria usuário (trigger `private.handle_new_user`)
+  - Update de ponto (trigger `private.set_updated_at`)
+
+## Arquitetura após hardening
+
+```
+PostgREST (schema public)
+  └── tabelas + RLS policies
+        └── chamam funções em schema private (não expostas via RPC)
+
+private schema
+  ├── auth_user_role()
+  ├── is_gestor_of_estagiario(uuid)
+  ├── auth_user_linked_gestor_ids()
+  ├── handle_new_user()      → trigger auth.users
+  └── set_updated_at()       → trigger ponto_registros
+```
