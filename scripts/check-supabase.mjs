@@ -46,11 +46,17 @@ if (pe) {
   profiles?.forEach((p) => console.log(`   - ${p.email} (${p.cargo})`))
 }
 
-const { data: authList, error: ae } = await admin.auth.admin.listUsers({ perPage: 20 })
+const { data: authList, error: ae } = await admin.auth.admin.listUsers({ perPage: 100 })
 if (ae) console.log('\n❌ Auth admin:', ae.message)
 else {
   console.log('\n✓ Auth users:', authList.users.length)
   authList.users.forEach((u) => console.log(`   - ${u.email}`))
+  const profileIds = new Set((profiles ?? []).map((p) => p.id))
+  const orphans = authList.users.filter((u) => !profileIds.has(u.id))
+  if (orphans.length > 0) {
+    console.log(`\n⚠ ${orphans.length} usuário(s) no Auth sem linha em profiles (login falha):`)
+    orphans.forEach((u) => console.log(`   - ${u.email}`))
+  }
 }
 
 const pub = createClient(url, anon)
