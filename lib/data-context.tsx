@@ -108,7 +108,10 @@ interface DataContextType {
   getNotificacoesByUser: (userId: string) => Notificacao[]
 
   usuarios: User[]
-  addUsuario: (usuario: Omit<User, 'id' | 'createdAt'> & { senha?: string }) => void
+  addUsuario: (usuario: Omit<User, 'id' | 'createdAt' | 'cargaHorariaSemanal'> & {
+    senha?: string
+    cargaHorariaSemanal?: number
+  }) => void
   updateUsuario: (id: string, usuario: Partial<User>) => void
   deleteUsuario: (id: string) => void
   getEstagiariosDoGestor: (gestorId: string) => User[]
@@ -440,7 +443,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   )
 
   const addUsuario = useCallback(
-    (usuario: Omit<User, 'id' | 'createdAt'> & { senha?: string }) => {
+    (usuario: Omit<User, 'id' | 'createdAt' | 'cargaHorariaSemanal'> & {
+      senha?: string
+      cargaHorariaSemanal?: number
+    }) => {
       void runVoidAction(
         createUsuarioAction({
           email: usuario.email,
@@ -449,7 +455,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           nome: usuario.nome,
           cargo: usuario.cargo,
           departamento: usuario.departamento,
-          cargaHorariaSemanal: usuario.cargaHorariaSemanal,
+          ...(usuario.cargaHorariaSemanal != null
+            ? { cargaHorariaSemanal: usuario.cargaHorariaSemanal }
+            : {}),
           dataInicioContrato: usuario.dataInicioContrato,
           dataFimContrato: usuario.dataFimContrato,
           dataInicioRecesso1: usuario.dataInicioRecesso1,

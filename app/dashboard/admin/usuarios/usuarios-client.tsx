@@ -13,8 +13,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
+import { resetUsuarioSenhaAction } from '@/app/actions/admin'
 import {
   formatDate,
   formatMinutesToDisplay,
@@ -35,7 +46,8 @@ import {
   type HorarioTrabalho,
 } from '@/lib/horario-trabalho'
 import { HorarioTrabalhoFields } from '@/components/horario-trabalho-fields'
-import { UserPlus, Users, Calendar, Info, AlertCircle, Search, Shield, Plus, X } from 'lucide-react'
+import { LotacaoCombobox } from '@/components/lotacao-combobox'
+import { UserPlus, Users, Calendar, Info, AlertCircle, Search, Shield, Plus, X, KeyRound } from 'lucide-react'
 
 const CARGAS_HORARIAS = [
   { value: '1200', label: '20h semanais' },
@@ -64,6 +76,8 @@ export default function UsuariosAdminPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false)
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [lotacaoFiltro, setLotacaoFiltro] = useState('')
   const [busca, setBusca] = useState('')
@@ -86,7 +100,7 @@ export default function UsuariosAdminPage() {
   const [editExtraGestorIds, setEditExtraGestorIds] = useState<string[]>([])
   const [senha, setSenha] = useState('')
   const [confirmSenha, setConfirmSenha] = useState('')
-  const [horarioTrabalho, setHorarioTrabalho] = useState<HorarioTrabalho>(horarioTrabalhoPadrao)
+  const [horarioTrabalho, setHorarioTrabalho] = useState<HorarioTrabalho>(() => horarioTrabalhoPadrao())
 
   const selectedUser = selectedUserId ? usuarios.find((u) => u.id === selectedUserId) ?? null : null
   const today = getTodayString()
@@ -111,6 +125,36 @@ export default function UsuariosAdminPage() {
     setHorarioTrabalho(horarioTrabalhoPadrao())
   }
 
+  const resetEditForm = () => {
+    setSelectedUserId(null)
+    setIsEditMode(false)
+    setNome('')
+    setEmail('')
+    setMatricula('')
+    setDepartamento('')
+    setCargaHoraria('')
+    setDataInicioContrato('')
+    setDataFimContrato('')
+    setDataInicioRecesso1('')
+    setDataFimRecesso1('')
+    setDataInicioRecesso2('')
+    setDataFimRecesso2('')
+    setGestorVinculoId('_none')
+    setEditExtraGestorIds([])
+    setHorarioTrabalho(horarioTrabalhoPadrao())
+  }
+
+  const handleOpenNovoUsuario = (open: boolean) => {
+    if (open) resetNovoUsuarioForm()
+    setIsDialogOpen(open)
+    if (!open) resetNovoUsuarioForm()
+  }
+
+  const handleActionDialogChange = (open: boolean) => {
+    setIsActionDialogOpen(open)
+    if (!open) resetEditForm()
+  }
+
   const estagiarios = usuarios.filter((u) => u.cargo === 'estagiario')
   const gestoresLista = usuarios.filter((u) => u.cargo === 'gestor')
   const estagiariosFiltrados = estagiarios.filter((u) => {
@@ -129,7 +173,8 @@ export default function UsuariosAdminPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!nome || !email || !matricula || !departamento || !cargaHoraria) {
+    const requiresCargaHoraria = novoCargoCadastro === 'estagiario'
+    if (!nome || !email || !matricula || !departamento || (requiresCargaHoraria && !cargaHoraria)) {
       toast.error('Preencha todos os campos obrigatórios')
       return
     }
@@ -181,7 +226,7 @@ export default function UsuariosAdminPage() {
       email,
       matricula,
       departamento,
-      cargaHorariaSemanal: parseInt(cargaHoraria, 10),
+      ...(cargaHoraria ? { cargaHorariaSemanal: parseInt(cargaHoraria, 10) } : {}),
       senha,
       dataInicioContrato: dataInicioContrato || null,
       dataFimContrato: dataFimContrato || null,
@@ -273,7 +318,8 @@ export default function UsuariosAdminPage() {
     e.preventDefault()
     if (!selectedUser) return
 
-    if (!nome || !email || !matricula || !departamento || !cargaHoraria) {
+    const requiresCargaHoraria = selectedUser.cargo === 'estagiario'
+    if (!nome || !email || !matricula || !departamento || (requiresCargaHoraria && !cargaHoraria)) {
       toast.error('Preencha todos os campos obrigatórios')
       return
     }
@@ -315,9 +361,12 @@ export default function UsuariosAdminPage() {
       nome,
       matricula,
       departamento,
-      cargaHorariaSemanal: parseInt(cargaHoraria, 10),
       dataInicioContrato: dataInicioContrato || null,
       dataFimContrato: dataFimContrato || null,
+    }
+
+    if (cargaHoraria) {
+      patch.cargaHorariaSemanal = parseInt(cargaHoraria, 10)
     }
 
     if (selectedUser.cargo === 'estagiario') {
@@ -351,9 +400,29 @@ export default function UsuariosAdminPage() {
     if (!selectedUser) return
     deleteUsuario(selectedUser.id)
     toast.success('Usuário excluído com sucesso!')
-    setIsActionDialogOpen(false)
-    setSelectedUserId(null)
-    setIsEditMode(false)
+    handleActionDialogChange(false)
+  }
+
+  const handleConfirmResetPassword = async () => {
+    if (!selectedUser) return
+    setResetPasswordLoading(true)
+    const result = await resetUsuarioSenhaAction(selectedUser.id)
+    setResetPasswordLoading(false)
+    setResetPasswordOpen(false)
+
+    if (!result.success) {
+      toast.error(result.error)
+      return
+    }
+
+    if (result.data.mode === 'email') {
+      toast.success('E-mail de redefinição de senha enviado ao usuário.')
+    } else {
+      toast.success(
+        `Senha temporária gerada: ${result.data.senhaTemporaria}. O usuário deverá alterá-la no próximo acesso.`,
+        { duration: 12000 },
+      )
+    }
   }
 
   const renderRecessoCell = (u: User) => {
@@ -609,13 +678,7 @@ export default function UsuariosAdminPage() {
             <p className="text-muted-foreground">Estagiários, gestores e vínculos entre eles</p>
           </div>
 
-          <Dialog
-            open={isDialogOpen}
-            onOpenChange={(open) => {
-              setIsDialogOpen(open)
-              if (!open) resetNovoUsuarioForm()
-            }}
-          >
+          <Dialog open={isDialogOpen} onOpenChange={handleOpenNovoUsuario}>
             <DialogTrigger asChild>
               <Button>
                 <UserPlus className="mr-2 h-4 w-4" />
@@ -673,8 +736,9 @@ export default function UsuariosAdminPage() {
                   <Field>
                     <FieldLabel htmlFor="email">Email</FieldLabel>
                     <Input
-                      id="email"
+                      id="novo-email"
                       type="email"
+                      autoComplete="off"
                       placeholder="email@empresa.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -695,25 +759,30 @@ export default function UsuariosAdminPage() {
 
                   <Field>
                     <FieldLabel htmlFor="departamento">{LABELS.LOTACAO}</FieldLabel>
-                    <Select value={departamento} onValueChange={setDepartamento}>
-                      <SelectTrigger id="departamento">
-                        <SelectValue placeholder="Selecione a lotação" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-72">
-                        {LOTACOES.map((lot) => (
-                          <SelectItem key={lot} value={lot}>
-                            {lot}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <LotacaoCombobox
+                      id="departamento"
+                      value={departamento}
+                      onValueChange={setDepartamento}
+                      options={LOTACOES}
+                    />
                   </Field>
 
                   <Field className={novoCargoCadastro === 'gestor' ? 'sm:col-span-2' : undefined}>
-                    <FieldLabel htmlFor="cargaHoraria">Carga Horária Semanal</FieldLabel>
+                    <FieldLabel htmlFor="cargaHoraria">
+                      Carga Horária Semanal
+                      {novoCargoCadastro === 'gestor' ? (
+                        <span className="ml-1 font-normal text-muted-foreground">(opcional)</span>
+                      ) : null}
+                    </FieldLabel>
                     <Select value={cargaHoraria} onValueChange={setCargaHoraria}>
                       <SelectTrigger id="cargaHoraria">
-                        <SelectValue placeholder="Selecione a carga horária" />
+                        <SelectValue
+                          placeholder={
+                            novoCargoCadastro === 'gestor'
+                              ? 'Opcional para gestor'
+                              : 'Selecione a carga horária'
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {CARGAS_HORARIAS.map((ch) => (
@@ -973,7 +1042,7 @@ export default function UsuariosAdminPage() {
           </CardContent>
         </Card>
 
-        <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>
+        <Dialog open={isActionDialogOpen} onOpenChange={handleActionDialogChange}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
@@ -1004,6 +1073,15 @@ export default function UsuariosAdminPage() {
                 <Button type="button" variant="outline" className="w-full" onClick={() => setIsEditMode(true)}>
                   Editar Usuário
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setResetPasswordOpen(true)}
+                >
+                  <KeyRound className="mr-2 h-4 w-4" aria-hidden />
+                  Resetar senha
+                </Button>
                 <Button type="button" variant="destructive" className="w-full" onClick={handleDeleteSelectedUser}>
                   Excluir Usuário
                 </Button>
@@ -1017,7 +1095,7 @@ export default function UsuariosAdminPage() {
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="edit-email">Email</FieldLabel>
-                    <Input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    <Input id="edit-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="edit-matricula">Matrícula</FieldLabel>
@@ -1030,24 +1108,29 @@ export default function UsuariosAdminPage() {
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="edit-departamento">{LABELS.LOTACAO}</FieldLabel>
-                    <Select value={departamento} onValueChange={setDepartamento}>
-                      <SelectTrigger id="edit-departamento">
-                        <SelectValue placeholder="Selecione a lotação" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-72">
-                        {lotacoesParaSelect(departamento).map((lot) => (
-                          <SelectItem key={lot} value={lot}>
-                            {lot}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <LotacaoCombobox
+                      id="edit-departamento"
+                      value={departamento}
+                      onValueChange={setDepartamento}
+                      options={lotacoesParaSelect(departamento)}
+                    />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="edit-carga">Carga Horária Semanal</FieldLabel>
+                    <FieldLabel htmlFor="edit-carga">
+                      Carga Horária Semanal
+                      {selectedUser?.cargo === 'gestor' ? (
+                        <span className="ml-1 font-normal text-muted-foreground">(opcional)</span>
+                      ) : null}
+                    </FieldLabel>
                     <Select value={cargaHoraria} onValueChange={setCargaHoraria}>
                       <SelectTrigger id="edit-carga">
-                        <SelectValue placeholder="Selecione a carga horária" />
+                        <SelectValue
+                          placeholder={
+                            selectedUser?.cargo === 'gestor'
+                              ? 'Opcional para gestor'
+                              : 'Selecione a carga horária'
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {CARGAS_HORARIAS.map((ch) => (
@@ -1111,6 +1194,30 @@ export default function UsuariosAdminPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Resetar senha</AlertDialogTitle>
+              <AlertDialogDescription>
+                Deseja realmente redefinir a senha de {selectedUser?.nome ?? 'este usuário'}? Um e-mail de
+                recuperação será enviado quando possível.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={resetPasswordLoading}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={resetPasswordLoading}
+                onClick={(e) => {
+                  e.preventDefault()
+                  void handleConfirmResetPassword()
+                }}
+              >
+                {resetPasswordLoading ? 'Processando...' : 'Confirmar'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </>
   )

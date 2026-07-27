@@ -6,8 +6,19 @@ import { parseInput } from '@/lib/validations/parse'
 import { usuarioInputSchema, usuarioUpdateSchema } from '@/lib/validations/schemas'
 import { PROFILE_COLUMNS } from '@/lib/server/query-columns'
 import { notifyRecessoCadastrado } from '@/lib/server/services/hr-scheduler.service'
+import { buildPasswordResetRedirectUrl, getSiteOrigin } from '@/lib/auth/site-origin'
 import type { User } from '@/lib/types'
 import type { EstagiarioGestorRow, ProfileRow } from '@/lib/server/db-types'
+import { randomBytes } from 'node:crypto'
+
+export type PasswordResetForUsuarioResult =
+  | { mode: 'email' }
+  | { mode: 'temporary'; senhaTemporaria: string }
+
+function generateTemporaryPassword(): string {
+  const raw = randomBytes(9).toString('base64url')
+  return `Pf${raw}!`
+}
 
 async function loadGestorIdsMap(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -106,13 +117,19 @@ export async function createUsuario(input: unknown): Promise<User> {
   })
   if (authError) throw authError
 
+  const cargaHorariaSemanal =
+    parsed.cargaHorariaSemanal ?? (parsed.cargo === 'gestor' ? 1800 : undefined)
+  if (cargaHorariaSemanal == null) {
+    throw new Error('Carga horária é obrigatória para estagiário')
+  }
+
   const profile = profileToInsert({
     email: parsed.email,
     matricula: parsed.matricula,
     nome: parsed.nome,
     cargo: parsed.cargo,
     departamento: parsed.departamento,
-    cargaHorariaSemanal: parsed.cargaHorariaSemanal,
+    cargaHorariaSemanal,
     dataInicioContrato: parsed.dataInicioContrato ?? null,
     dataFimContrato: parsed.dataFimContrato ?? null,
     dataInicioRecesso1: parsed.dataInicioRecesso1 ?? null,
@@ -170,7 +187,9 @@ export async function updateUsuario(id: string, input: unknown): Promise<User> {
   if (parsed.nome) update.nome = parsed.nome
   if (parsed.cargo) update.cargo = parsed.cargo
   if (parsed.departamento) update.departamento = parsed.departamento
-  if (parsed.cargaHorariaSemanal) update.carga_horaria_semanal = parsed.cargaHorariaSemanal
+  if (parsed.cargaHorariaSemanal !== undefined) {
+    update.carga_horaria_semanal = parsed.cargaHorariaSemanal
+  }
   if (parsed.dataInicioContrato !== undefined) update.data_inicio_contrato = parsed.dataInicioContrato
   if (parsed.dataFimContrato !== undefined) update.data_fim_contrato = parsed.dataFimContrato
   if (parsed.dataInicioRecesso1 !== undefined) update.data_inicio_recesso_1 = parsed.dataInicioRecesso1
@@ -252,4 +271,64 @@ export async function deleteUsuario(id: string): Promise<void> {
   const admin = createAdminClient()
   const { error } = await admin.auth.admin.deleteUser(id)
   if (error) throw error
+}
+
+export async function requestPasswordResetForUsuario(
+  userId: string,
+): Promise<PasswordResetForUsuarioResult> {
+  const adminUser = await requireRole('admin')
+  const supabase = await createClient()
+  const admin = createAdminClient()
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, email')
+    .eq('id', userId)
+    .single()
+
+  if (profileError || !profile?.email) {
+    throw new Error('Usuário não encontrado')
+  }
+
+  const origin = await getSiteOrigin()
+  const redirectTo = buildPasswordResetRedirectUrl(origin)
+
+  const { error: resetError } = await supabase.auth.resetPasswordForEmail(profile.email, {
+    redirectTo,
+  })
+
+  if (!resetError) {
+    console.info('[admin] password_reset', {
+      adminId: adminUser.id,
+      targetUserId: userId,
+      mode: 'email',
+    })
+    return { mode: 'email' }
+  }
+
+  console.warn('[admin] password_reset email failed, using temporary password', {
+    adminId: adminUser.id,
+    targetUserId: userId,
+    error: resetError.message,
+  })
+
+  const senhaTemporaria = generateTemporaryPassword()
+  const { error: updateError } = await admin.auth.admin.updateUserById(userId, {
+    password: senhaTemporaria,
+  })
+  if (updateError) throw updateError
+
+  const { error: flagError } = await admin
+    .from('profiles')
+    .update({ must_change_password: true })
+    .eq('id', userId)
+  if (flagError) throw flagError
+
+  console.info('[admin] password_reset', {
+    adminId: adminUser.id,
+    targetUserId: userId,
+    mode: 'temporary',
+  })
+
+  return { mode: 'temporary', senhaTemporaria }
 }

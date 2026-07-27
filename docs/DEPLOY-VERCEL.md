@@ -43,9 +43,9 @@ No painel Supabase → **Authentication → URL Configuration**:
 
 | Campo | Valor |
 |-------|--------|
-| **Site URL** | `https://SEU-DOMINIO.vercel.app` |
-| **Redirect URLs** | `https://SEU-DOMINIO.vercel.app/auth/callback` |
-| | `https://SEU-DOMINIO.vercel.app/**` |
+| **Site URL** | `https://pointfy.vercel.app` |
+| **Redirect URLs** | `https://pointfy.vercel.app/auth/callback` |
+| | `https://pointfy.vercel.app/**` |
 | | `http://localhost:3000/auth/callback` (dev) |
 
 Sem isso, login OAuth/magic link e refresh de sessão podem falhar em produção.

@@ -42,6 +42,7 @@ const keys = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
+  'NEXT_PUBLIC_SITE_URL',
 ]
 
 const targets = ['production', 'preview', 'development']
@@ -73,6 +74,10 @@ function addEnv(name, value, target) {
 for (const key of keys) {
   const value = vars[key]?.trim()
   if (!value) {
+    if (key === 'NEXT_PUBLIC_SITE_URL') {
+      vars[key] = 'https://pointfy.vercel.app'
+      continue
+    }
     console.error(`✗ ${key} ausente em ${envPath}`)
     process.exit(1)
   }

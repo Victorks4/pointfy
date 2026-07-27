@@ -15,6 +15,7 @@
     "icons:generate": "node scripts/generate-fy-icons.mjs",
     "vercel:preflight": "node scripts/vercel-preflight.mjs",
     "vercel:env": "node scripts/sync-vercel-env.mjs",
+    "supabase:auth-urls": "node scripts/configure-supabase-auth-urls.mjs",
     "test": "npx tsx --test tests/**/*.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"

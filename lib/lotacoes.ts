@@ -1,6 +1,6 @@
 /** Lotações FIEB — opções do cadastro de usuário */
 
-export const LOTACOES = [
+const LOTACOES_RAW = [
   'CENTRAL DE MATRICULA',
   'CONSTRUCAO CIVIL',
   'COURO E CALÇADO',
@@ -38,7 +38,11 @@ export const LOTACOES = [
   'NÚCLEO DE GESTÃO DA QUALIDADE',
 ] as const
 
-export type Lotacao = (typeof LOTACOES)[number]
+export const LOTACOES = [...LOTACOES_RAW].sort((a, b) =>
+  a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }),
+) as readonly string[]
+
+export type Lotacao = (typeof LOTACOES_RAW)[number]
 
 /** Inclui valor legado no select de edição quando ainda não está na lista oficial */
 export function lotacoesParaSelect(valorAtual?: string): readonly string[] {

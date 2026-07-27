@@ -6,10 +6,11 @@ import { getSessionUser } from '@/lib/server/auth'
 import { mapProfile } from '@/lib/server/mappers'
 import { clearMustChangePassword } from '@/lib/server/services/usuario.service'
 import { parseInput } from '@/lib/validations/parse'
-import { changePasswordSchema } from '@/lib/validations/schemas'
+import { changePasswordSchema, passwordResetRequestSchema } from '@/lib/validations/schemas'
 import { runAction } from '@/lib/server/action-result'
 import { PROFILE_COLUMNS } from '@/lib/server/query-columns'
 import type { ProfileRow } from '@/lib/server/db-types'
+import { buildPasswordResetRedirectUrl, getSiteOrigin } from '@/lib/auth/site-origin'
 
 export type SignInResult =
   | { ok: true; cargo: import('@/lib/types').UserRole; mustChangePassword: boolean }
@@ -72,4 +73,32 @@ export async function changePasswordAction(senha: string, confirmacao: string) {
 export async function signOutAction() {
   const supabase = await createClient()
   await supabase.auth.signOut()
+}
+
+/** Solicita e-mail de recuperação de senha (mensagem genérica na UI). */
+export async function requestPasswordResetAction(email: string) {
+  return runAction<void>(async () => {
+    const { email: parsedEmail } = parseInput(passwordResetRequestSchema, { email })
+    const supabase = await createClient()
+    const origin = await getSiteOrigin()
+    const redirectTo = buildPasswordResetRedirectUrl(origin)
+
+    const { error } = await supabase.auth.resetPasswordForEmail(parsedEmail, { redirectTo })
+    if (error) throw error
+  })
+}
+
+/** Conclui redefinição de senha após link de recuperação. */
+export async function completePasswordResetAction(senha: string, confirmacao: string) {
+  return runAction<void>(async () => {
+    parseInput(changePasswordSchema, { senha, confirmacao })
+    const supabase = await createClient()
+    const session = await getSessionUser()
+    if (!session) throw new Error('Sessão inválida ou expirada. Solicite um novo link de recuperação.')
+
+    const { error } = await supabase.auth.updateUser({ password: senha })
+    if (error) throw error
+
+    await supabase.auth.signOut()
+  })
 }

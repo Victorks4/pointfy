@@ -37,6 +37,13 @@ export async function deleteUsuarioAction(id: string) {
   })
 }
 
+export async function resetUsuarioSenhaAction(userId: string) {
+  return runAction<usuarioService.PasswordResetForUsuarioResult>(async () => {
+    parseInput(uuidSchema, userId)
+    return usuarioService.requestPasswordResetForUsuario(userId)
+  })
+}
+
 export async function createNotificacaoAction(input: unknown) {
   return runAction<Notificacao>(async () => {
     const r = await notificacaoService.createNotificacao(input)

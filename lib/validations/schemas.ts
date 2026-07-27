@@ -66,7 +66,7 @@ const usuarioFieldsSchema = z.object({
     .refine((v) => (LOTACOES as readonly string[]).includes(v), {
       message: 'Selecione uma lotação válida',
     }),
-  cargaHorariaSemanal: z.number().int().positive(),
+  cargaHorariaSemanal: z.number().int().positive().optional(),
   dataInicioContrato: z.string().regex(dateRegex).nullable().optional(),
   dataFimContrato: z.string().regex(dateRegex).nullable().optional(),
   dataInicioRecesso1: z.string().regex(dateRegex).nullable().optional(),
@@ -166,6 +166,13 @@ export const usuarioInputSchema = usuarioFieldsSchema
     validateUsuarioRecessos(u, ctx)
     validateEstagiarioGestor(u, ctx)
     validateEstagiarioHorarioTrabalho(u, ctx, 'create')
+    if (u.cargo === 'estagiario' && u.cargaHorariaSemanal == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Carga horária é obrigatória para estagiário',
+        path: ['cargaHorariaSemanal'],
+      })
+    }
   })
 
 export const usuarioUpdateSchema = usuarioFieldsSchema
@@ -184,6 +191,14 @@ export const usuarioUpdateSchema = usuarioFieldsSchema
       })
     }
     validateEstagiarioHorarioTrabalho(u, ctx, 'update')
+    const cargo = u.cargo
+    if (cargo === 'estagiario' && u.cargaHorariaSemanal === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Carga horária é obrigatória para estagiário',
+        path: ['cargaHorariaSemanal'],
+      })
+    }
   })
 
 export const changePasswordSchema = z
@@ -195,6 +210,10 @@ export const changePasswordSchema = z
     message: 'As senhas não coincidem',
     path: ['confirmacao'],
   })
+
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email('E-mail inválido'),
+})
 
 export const feriadoInputSchema = z.object({
   data: z.string().regex(dateRegex),

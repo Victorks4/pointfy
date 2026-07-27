@@ -2,8 +2,10 @@
 
 import { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { signInAction } from "@/app/actions/auth";
 import { useAuth } from "@/lib/auth-context";
 import { navigateAfterLogin } from "@/lib/post-login-nav";
@@ -70,6 +72,9 @@ function LoginPageContent() {
   useEffect(() => {
     if (searchParams.get("error") === "auth") {
       setError("Não foi possível concluir o login. Tente novamente com email e senha.");
+    }
+    if (searchParams.get("reset") === "success") {
+      toast.success("Senha alterada com sucesso. Faça login com sua nova senha.");
     }
   }, [searchParams]);
 
@@ -233,6 +238,15 @@ function LoginPageContent() {
                   )}
                 </Button>
               </motion.div>
+
+              <p className="text-center">
+                <Link
+                  href="/auth/esqueci-senha"
+                  className="text-sm font-medium text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
+                >
+                  Esqueci minha senha
+                </Link>
+              </p>
             </form>
 
             <div className="mt-6 flex items-center gap-3 rounded-xl border border-cyan-200/80 bg-blue-50/60 p-3 shadow-[0_0_20px_-8px_var(--neon-glow-cyan)] dark:border-cyan-500/40 dark:bg-[#1a2d44] dark:shadow-[0_0_20px_-8px_var(--neon-glow-cyan)]">

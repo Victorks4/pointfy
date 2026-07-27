@@ -159,22 +159,22 @@ export default function GestorDashboardPage() {
         data-fy-anchor="fy-gestor-panel"
         className="flex flex-1 flex-col gap-4 p-4 md:flex-row md:p-6 md:gap-6"
       >
-        <Card className="md:w-72 shrink-0 border-border/80">
-          <CardHeader className="pb-2">
+        <Card className="md:w-72 shrink-0 border-border/80 flex flex-col min-h-0 max-h-[min(70vh,32rem)]">
+          <CardHeader className="pb-2 shrink-0">
             <CardTitle className="text-base flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
               Vinculados a você
             </CardTitle>
             <CardDescription>Selecione um estagiário para acompanhar</CardDescription>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="pt-0 flex-1 min-h-0 overflow-hidden">
             {vinculados.length === 0 ? (
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Nenhum estagiário vinculado. Peça ao administrador para associar estagiários ao seu perfil em
                 Usuários.
               </p>
             ) : (
-              <ScrollArea className="h-[min(60vh,28rem)] pr-3">
+              <ScrollArea className="h-full max-h-[min(60vh,28rem)] pr-3 [&_[data-slot=scroll-area-thumb]]:bg-muted-foreground/50">
                 <ul className="flex flex-col gap-1">
                   {vinculados.map((e) => (
                     <li key={e.id}>
