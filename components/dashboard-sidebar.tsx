@@ -38,6 +38,7 @@ import {
   CalendarRange,
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { DeveloperCredit } from '@/components/developer-credit'
 import { cn } from '@/lib/utils'
 
 function menuButtonClass(isActive: boolean) {
@@ -379,6 +380,7 @@ export function DashboardSidebar() {
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
+        <DeveloperCredit variant="sidebar" className="px-1 pt-1" />
       </SidebarFooter>
     </Sidebar>
   )

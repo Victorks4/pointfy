@@ -28,6 +28,7 @@ const LoginLeftPanel = dynamic(
   },
 );
 import { GsapLoginEntrance } from "@/components/gsap-login-entrance";
+import { DeveloperCredit } from "@/components/developer-credit";
 import {
   LOGIN_SYNC_TRANSITION,
   LoginAmbientProvider,
@@ -261,6 +262,8 @@ function LoginPageContent() {
                 Depois do login, o <strong>Fy</strong> aparece no canto da tela com dicas em um balão, sem janelas extras.
               </p>
             </div>
+
+            <DeveloperCredit className="mt-8" />
 
           </div>
         </div>
