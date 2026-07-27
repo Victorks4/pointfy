@@ -47,7 +47,7 @@ import {
 } from '@/lib/horario-trabalho'
 import { HorarioTrabalhoFields } from '@/components/horario-trabalho-fields'
 import { LotacaoCombobox } from '@/components/lotacao-combobox'
-import { UserPlus, Users, Calendar, Info, AlertCircle, Search, Shield, Plus, X, KeyRound } from 'lucide-react'
+import { UserPlus, Users, Calendar, Info, AlertCircle, Search, Shield, Plus, X, KeyRound, Copy } from 'lucide-react'
 
 const CARGAS_HORARIAS = [
   { value: '1200', label: '20h semanais' },
@@ -78,6 +78,7 @@ export default function UsuariosAdminPage() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false)
   const [resetPasswordLoading, setResetPasswordLoading] = useState(false)
+  const [tempPassword, setTempPassword] = useState<string | null>(null)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [lotacaoFiltro, setLotacaoFiltro] = useState('')
   const [busca, setBusca] = useState('')
@@ -418,10 +419,17 @@ export default function UsuariosAdminPage() {
     if (result.data.mode === 'email') {
       toast.success('E-mail de redefinição de senha enviado ao usuário.')
     } else {
-      toast.success(
-        `Senha temporária gerada: ${result.data.senhaTemporaria}. O usuário deverá alterá-la no próximo acesso.`,
-        { duration: 12000 },
-      )
+      setTempPassword(result.data.senhaTemporaria)
+    }
+  }
+
+  const handleCopyTempPassword = async () => {
+    if (!tempPassword) return
+    try {
+      await navigator.clipboard.writeText(tempPassword)
+      toast.success('Senha temporária copiada')
+    } catch {
+      toast.error('Não foi possível copiar. Selecione e copie manualmente.')
     }
   }
 
@@ -1215,6 +1223,37 @@ export default function UsuariosAdminPage() {
               >
                 {resetPasswordLoading ? 'Processando...' : 'Confirmar'}
               </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog
+          open={tempPassword !== null}
+          onOpenChange={(open) => {
+            if (!open) setTempPassword(null)
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Senha temporária gerada</AlertDialogTitle>
+              <AlertDialogDescription>
+                O e-mail de recuperação não pôde ser enviado. Copie a senha abaixo e repasse ao usuário com
+                segurança. Ela não será exibida novamente. O usuário deverá alterá-la no próximo acesso.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex gap-2">
+              <Input
+                readOnly
+                value={tempPassword ?? ''}
+                aria-label="Senha temporária"
+                className="font-mono"
+              />
+              <Button type="button" variant="outline" size="icon" onClick={() => void handleCopyTempPassword()} aria-label="Copiar senha">
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setTempPassword(null)}>Fechar</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

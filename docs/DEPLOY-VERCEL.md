@@ -25,8 +25,11 @@ Em **Project → Settings → Environment Variables**, configure para **Producti
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → General → Project URL (sem `/rest/v1`) | Sim |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API → anon public | Sim |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → service_role | **Não** (só servidor) |
+| `NEXT_PUBLIC_SITE_URL` | URL pública do app (ex.: `https://pointfy.vercel.app`) | Sim |
+| `RESEND_API_KEY` | [Resend](https://resend.com) → API Keys (opcional, e-mail) | **Não** |
+| `EMAIL_FROM` | Remetente verificado no Resend (ex.: `Pontify <noreply@dominio.com>`) | **Não** |
 
-Copie de `.env.example`. **Nunca** commite `.env` ou `.env.local`.
+Copie de `.env.example`. **Nunca** commite `.env`, `.env.local` ou `docs/DADOS-API.md` (notas locais de credenciais).
 
 ### Via CLI (a partir da máquina com `.env` local)
 

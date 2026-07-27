@@ -11,6 +11,7 @@ next.user-config.*
 # Environment variables
 .env*.local
 .env
+docs/DADOS-API.md
 
 # Common ignores
 node_modules/

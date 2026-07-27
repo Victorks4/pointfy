@@ -52,6 +52,12 @@ Também movida preventivamente: `auth_user_linked_gestor_ids` (migration 011).
 - `REVOKE ALL` de `PUBLIC` e `anon`
 - `GRANT USAGE` + `EXECUTE` apenas para `authenticated` e `service_role` (necessário para policies RLS)
 
+## Rotação de credenciais (histórico Git)
+
+Scripts com senhas em texto (`scripts/create-admin-allana.mjs`, `scripts/sql/create-admin-allana.sql`) foram **removidos** do repositório. Se já foram usados em produção, **rotacione a senha** dos usuários afetados no Supabase (Authentication → Users → reset password).
+
+`docs/DADOS-API.md` é apenas para notas locais — está no `.gitignore` e não deve ser commitado.
+
 ## Warning pendente (ação manual)
 
 ### `auth_leaked_password_protection`
