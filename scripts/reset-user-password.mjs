@@ -79,6 +79,6 @@ if (updateError) {
   process.exit(1)
 }
 
-await admin.from('profiles').update({ must_change_password: false }).eq('id', user.id)
+await admin.from('profiles').update({ must_change_password: true }).eq('id', user.id)
 
 console.log(`Senha atualizada para: ${updated.user.email}`)
