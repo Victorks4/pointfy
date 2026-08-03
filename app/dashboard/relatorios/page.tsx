@@ -15,6 +15,7 @@ import { formatMinutesToDisplay } from '@/lib/time-utils'
 import { Download, FileBarChart2, Info, Loader2 } from 'lucide-react'
 import { getGestorNomes } from '@/lib/gestor-utils'
 import { emptyLabel } from '@/lib/display-utils'
+import { buildRelatorioPresencaRows } from '@/lib/relatorio-presenca'
 import { toast } from 'sonner'
 
 const MESES = [
@@ -35,7 +36,7 @@ const MESES = [
 export default function RelatoriosEstagiarioPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { pontos, usuarios, getBancoHorasPorPeriodo, isPresencaBloqueada } = useData()
+  const { pontos, usuarios, justificativas, getBancoHorasPorPeriodo, isPresencaBloqueada } = useData()
   const [downloading, setDownloading] = useState(false)
 
   const currentYear = new Date().getFullYear()
@@ -69,21 +70,27 @@ export default function RelatoriosEstagiarioPage() {
     const totalGeral = pontos
       .filter((p) => p.userId === user.id && !isPresencaBloqueada(user.id, p.data))
       .reduce((acc, p) => acc + p.totalMinutos, 0)
+    const pontosRelatorio = buildRelatorioPresencaRows({
+      year: selectedYear,
+      month: selectedMonth,
+      userId: user.id,
+      pontos: pontos.filter(
+        (ponto) => ponto.userId === user.id && !isPresencaBloqueada(user.id, ponto.data),
+      ),
+      justificativas,
+    })
     return {
       registros: pontosPeriodo.length,
       saldo: getBancoHorasPorPeriodo(user.id, selectedYear, selectedMonth),
       totalMes,
       totalGeral,
       pontosPeriodo,
+      pontosRelatorio,
     }
-  }, [user, pontos, periodoKey, selectedYear, selectedMonth, getBancoHorasPorPeriodo, isPresencaBloqueada])
+  }, [user, pontos, justificativas, periodoKey, selectedYear, selectedMonth, getBancoHorasPorPeriodo, isPresencaBloqueada])
 
   const handleDownloadPdf = async () => {
     if (!user || !resumo) return
-    if (resumo.registros === 0) {
-      toast.error('Não há registros de presença neste período para gerar o PDF.')
-      return
-    }
 
     setDownloading(true)
     try {
@@ -100,15 +107,7 @@ export default function RelatoriosEstagiarioPage() {
         bancoHorasMinutos: resumo.saldo,
         totalHorasMesMinutos: resumo.totalMes,
         totalHorasGeralMinutos: resumo.totalGeral,
-        pontos: resumo.pontosPeriodo.map((p) => ({
-          data: p.data,
-          entrada1: p.entrada1,
-          saida1: p.saida1,
-          entrada2: p.entrada2,
-          saida2: p.saida2,
-          totalMinutos: p.totalMinutos,
-          observacao: p.observacao,
-        })),
+        pontos: resumo.pontosRelatorio,
         filename: `relatorio-presenca-${user.matricula}-${periodoKey}.pdf`,
       })
       toast.success('PDF gerado. Acesse o portal de assinatura da empresa para assinar o documento.')
@@ -193,45 +192,41 @@ export default function RelatoriosEstagiarioPage() {
               </div>
             </div>
 
-            {semRegistros ? (
-              <div className="rounded-xl border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                <p className="font-medium text-foreground">Nenhum registro neste período</p>
-                <p className="mt-1">
-                  Registre sua presença nos dias trabalhados antes de gerar o relatório para assinatura.
+            {resumo && (
+              <div className="rounded-xl border bg-muted/40 p-4 text-sm space-y-1">
+                <p>
+                  <span className="text-muted-foreground">Registros no período:</span>{' '}
+                  <strong>{resumo.registros}</strong>
                 </p>
+                <p>
+                  <span className="text-muted-foreground">Total de horas no período:</span>{' '}
+                  <strong>{formatMinutesToDisplay(resumo.totalMes)}</strong>
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Total de horas (todos os meses):</span>{' '}
+                  <strong>{formatMinutesToDisplay(resumo.totalGeral)}</strong>
+                </p>
+                <p>
+                  <span className="text-muted-foreground">{LABELS.SALDO} no período:</span>{' '}
+                  <strong>{formatMinutesToDisplay(resumo.saldo)}</strong>
+                </p>
+                {gestorNome ? (
+                  <p>
+                    <span className="text-muted-foreground">Gestor(a):</span>{' '}
+                    <strong>{gestorNome}</strong>
+                  </p>
+                ) : null}
+                {semRegistros ? (
+                  <p className="pt-2 text-muted-foreground">
+                    O PDF inclui todos os dias do mês, inclusive fins de semana e compensações aprovadas.
+                  </p>
+                ) : null}
               </div>
-            ) : (
-              resumo && (
-                <div className="rounded-xl border bg-muted/40 p-4 text-sm space-y-1">
-                  <p>
-                    <span className="text-muted-foreground">Registros no período:</span>{' '}
-                    <strong>{resumo.registros}</strong>
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Total de horas no período:</span>{' '}
-                    <strong>{formatMinutesToDisplay(resumo.totalMes)}</strong>
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Total de horas (todos os meses):</span>{' '}
-                    <strong>{formatMinutesToDisplay(resumo.totalGeral)}</strong>
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">{LABELS.SALDO} no período:</span>{' '}
-                    <strong>{formatMinutesToDisplay(resumo.saldo)}</strong>
-                  </p>
-                  {gestorNome ? (
-                    <p>
-                      <span className="text-muted-foreground">Gestor(a):</span>{' '}
-                      <strong>{gestorNome}</strong>
-                    </p>
-                  ) : null}
-                </div>
-              )
             )}
 
             <Button
               onClick={handleDownloadPdf}
-              disabled={downloading || semRegistros}
+              disabled={downloading}
               className="w-full sm:w-auto"
             >
               {downloading ? (

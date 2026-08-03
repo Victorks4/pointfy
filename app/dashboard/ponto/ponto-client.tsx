@@ -20,7 +20,6 @@ import { JUSTIFICATIVAS_HORA_EXTRA } from '@/lib/types'
 import type { PontoConfig } from '@/lib/types'
 import { fyEmit } from '@/lib/fy-event-bus'
 import { LABELS } from '@/lib/labels'
-import { buildObservacaoComAnotacao } from '@/lib/presenca-anotacoes'
 import {
   getLimiteMinutosSemJustificativa,
   precisaJustificativaHoraExtra,
@@ -651,10 +650,7 @@ export default function PontoPage() {
       entrada2: campos.entrada2 || null,
       saida2:   campos.saida2   || null,
       totalMinutos,
-      observacao: buildObservacaoComAnotacao(
-        selectedDate,
-        pontoHoje?.observacao ?? null,
-      ),
+      observacao: pontoHoje?.observacao ?? null,
       justificativaHoraExtra: precisaJustificativa ? justificativa : null,
     }
 
