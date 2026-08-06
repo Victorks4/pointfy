@@ -7,7 +7,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
-const envPath = [resolve(root, '.env'), resolve(root, '.env.local')].find((p) =>
+const envPath = [resolve(root, '.env.local'), resolve(root, '.env')].find((p) =>
   existsSync(p),
 )
 
@@ -52,6 +52,14 @@ if (url && /\/rest\/v1/i.test(url)) {
 if (!ok) {
   console.error('\nCorrija .env.local ou as env vars na Vercel antes do deploy.')
   process.exit(1)
+}
+
+const emailOk =
+  Boolean(env.RESEND_API_KEY?.trim()) || Boolean(env.SMTP_HOST?.trim())
+if (emailOk) {
+  console.log('✓ E-mail de atestados (RESEND_API_KEY ou SMTP_HOST)')
+} else {
+  console.warn('⚠ E-mail de atestados não configurado (RESEND_API_KEY ou SMTP_HOST)')
 }
 
 console.log('\n✅ Preflight OK — pronto para build/deploy na Vercel.')

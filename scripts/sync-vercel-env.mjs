@@ -8,7 +8,7 @@ import { resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 
 const root = resolve(import.meta.dirname, '..')
-const envPath = [resolve(root, '.env'), resolve(root, '.env.local')].find((p) =>
+const envPath = [resolve(root, '.env.local'), resolve(root, '.env')].find((p) =>
   existsSync(p),
 )
 
@@ -43,7 +43,11 @@ const keys = [
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
   'NEXT_PUBLIC_SITE_URL',
+  'RESEND_API_KEY',
+  'EMAIL_FROM',
 ]
+
+const optionalKeys = new Set(['RESEND_API_KEY', 'EMAIL_FROM'])
 
 const targets = ['production', 'preview', 'development']
 
@@ -78,14 +82,21 @@ for (const key of keys) {
       vars[key] = 'https://pointfy.vercel.app'
       continue
     }
+    if (optionalKeys.has(key)) {
+      continue
+    }
     console.error(`✗ ${key} ausente em ${envPath}`)
     process.exit(1)
   }
 }
 
-console.log(`Sincronizando ${keys.length} variáveis a partir de ${envPath}…`)
+console.log(`Sincronizando variáveis a partir de ${envPath}…`)
 
 for (const key of keys) {
+  if (!vars[key]?.trim()) {
+    console.log(`  ⊘ ${key} (opcional, ausente — ignorado)`)
+    continue
+  }
   for (const target of targets) {
     process.stdout.write(`  ${key} → ${target}… `)
     try {

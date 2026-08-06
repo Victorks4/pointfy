@@ -253,7 +253,8 @@ export default function JustificativasPage() {
                 <Alert className="mb-4">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    O atestado será enviado automaticamente para o RH por email para validação.
+                    Com anexo, uma cópia é enviada automaticamente para{' '}
+                    <strong>ngpsenaifeira@fieb.org.br</strong> para validação pelo RH.
                     Faltas justificadas não geram débito no saldo.
                   </AlertDescription>
                 </Alert>
