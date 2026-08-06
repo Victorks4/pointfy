@@ -153,12 +153,8 @@ export const TIPO_DESAFIO_LABELS: Record<TipoDesafio, string> = {
 
 // Justificativas pré-definidas para hora extra
 export const JUSTIFICATIVAS_HORA_EXTRA = [
-  'Alinhado com a coordenação',
-  'Alto nível de demanda',
-  'Projeto urgente',
-  'Reunião estendida',
-  'Treinamento',
-  'Outro'
+  'Autorizado pelo gestor',
+  'Outro',
 ] as const
 
 export type JustificativaHoraExtra = typeof JUSTIFICATIVAS_HORA_EXTRA[number]
