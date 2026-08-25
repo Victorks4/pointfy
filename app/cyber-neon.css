@@ -40,6 +40,9 @@
 
 /* Feixe de luz percorrendo a borda (CTA) */
 @keyframes neon-border-beam-walk {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
   to {
     transform: translate(-50%, -50%) rotate(360deg);
   }
@@ -203,7 +206,7 @@
 .neon-card-streak-fire {
   position: relative;
   isolation: isolate;
-  overflow: visible;
+  overflow: hidden;
   border-color: color-mix(in srgb, var(--neon-orange) 65%, var(--border)) !important;
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--neon-orange) 35%, transparent),
@@ -253,8 +256,11 @@
 }
 
 @keyframes streak-fire-border-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
   to {
-    transform: rotate(360deg);
+    transform: translate(-50%, -50%) rotate(360deg);
   }
 }
 
