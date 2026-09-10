@@ -30,10 +30,8 @@ import {
   formatDateShort,
   formatMinutesToDisplay,
   getTodayString,
-  isInRecessPeriod,
   isUserInRecessPeriod,
   isAnyRecessApproaching,
-  isRecessApproaching,
   RECESSO_PROXIMO_DIAS,
 } from '@/lib/time-utils'
 import type { User } from '@/lib/types'
@@ -62,6 +60,10 @@ function getGestoresDisponiveis(gestoresLista: User[], selectedIds: string[], cu
   return gestoresLista.filter((g) => !others.has(g.id))
 }
 
+function isUsuarioAtivo(user: Pick<User, 'ativo'>): boolean {
+  return user.ativo !== false
+}
+
 function validateDateRange(inicio: string, fim: string, label: string): boolean {
   if (inicio && fim && fim < inicio) {
     toast.error(`${label}: a data fim deve ser após o início`)
@@ -85,7 +87,7 @@ export default function UsuariosAdminPage() {
   const [busca, setBusca] = useState('')
   const [gestorFiltro, setGestorFiltro] = useState('')
   const [filtroRecesso, setFiltroRecesso] = useState<'todos' | 'em_recesso' | 'recesso_proximo'>('todos')
-  const [statusFiltro, setStatusFiltro] = useState<'todos' | 'ativos' | 'inativos'>('ativos')
+  const [statusFiltro, setStatusFiltro] = useState<'ativos' | 'inativos'>('ativos')
   const [editAtivo, setEditAtivo] = useState(true)
 
   const [nome, setNome] = useState('')
@@ -162,13 +164,16 @@ export default function UsuariosAdminPage() {
   }
 
   const estagiarios = usuarios.filter((u) => u.cargo === 'estagiario')
-  const estagiariosAtivos = estagiarios.filter((u) => u.ativo)
+  const estagiariosAtivos = estagiarios.filter(isUsuarioAtivo)
   const gestoresLista = usuarios.filter((u) => u.cargo === 'gestor')
+  const gestoresAtivos = gestoresLista.filter(isUsuarioAtivo)
+  const gestoresFiltrados = gestoresLista.filter((u) =>
+    statusFiltro === 'ativos' ? isUsuarioAtivo(u) : !isUsuarioAtivo(u),
+  )
+
   const estagiariosFiltrados = estagiarios.filter((u) => {
     const statusOk =
-      statusFiltro === 'todos' ||
-      (statusFiltro === 'ativos' && u.ativo) ||
-      (statusFiltro === 'inativos' && !u.ativo)
+      statusFiltro === 'ativos' ? isUsuarioAtivo(u) : !isUsuarioAtivo(u)
     const lotacaoOk =
       !lotacaoFiltro || u.departamento.toLowerCase().includes(lotacaoFiltro.toLowerCase())
     const buscaOk =
@@ -231,7 +236,7 @@ export default function UsuariosAdminPage() {
       return
     }
 
-    if (novoCargoCadastro === 'estagiario' && gestoresLista.length === 0) {
+    if (novoCargoCadastro === 'estagiario' && gestoresAtivos.length === 0) {
       toast.error('Cadastre um gestor antes de vincular o estagiário')
       return
     }
@@ -459,33 +464,10 @@ export default function UsuariosAdminPage() {
   }
 
   const renderRecessoCell = (u: User) => {
+    const temRecesso = u.dataInicioRecesso1 || u.dataInicioRecesso2
     const emRecesso = isUserInRecessPeriod(today, u)
-    const recessoProximo = !emRecesso && isAnyRecessApproaching(u)
-
-    if (emRecesso) {
-      const emR1 = isInRecessPeriod(today, u.dataInicioRecesso1, u.dataFimRecesso1)
-      const fim = emR1 ? u.dataFimRecesso1 : u.dataFimRecesso2
-      const num = emR1 ? 1 : 2
-      return (
-        <Badge className="bg-blue-100 text-blue-800">
-          Recesso {num} até {fim && formatDateShort(fim)}
-        </Badge>
-      )
-    }
-
-    if (recessoProximo) {
-      const proxR1 = isRecessApproaching(u.dataInicioRecesso1)
-      const inicio = proxR1 ? u.dataInicioRecesso1 : u.dataInicioRecesso2
-      const num = proxR1 ? 1 : 2
-      return (
-        <Badge variant="outline" className="border-amber-500 text-amber-600">
-          Recesso {num} inicia em {inicio && formatDateShort(inicio)}
-        </Badge>
-      )
-    }
-
-    const temRecesso =
-      u.dataInicioRecesso1 || u.dataInicioRecesso2
+    const recessoProximo =
+      !emRecesso && isAnyRecessApproaching(u, RECESSO_PROXIMO_DIAS)
 
     if (temRecesso) {
       const partes: string[] = []
@@ -499,7 +481,8 @@ export default function UsuariosAdminPage() {
           `R2: ${formatDateShort(u.dataInicioRecesso2)}${u.dataFimRecesso2 ? ` – ${formatDateShort(u.dataFimRecesso2)}` : ''}`,
         )
       }
-      return <span className="text-sm text-muted-foreground">{partes.join(' · ')}</span>
+      const colorClass = recessoProximo ? 'text-amber-600 font-medium' : 'text-muted-foreground'
+      return <span className={`text-sm ${colorClass}`}>{partes.join(' · ')}</span>
     }
 
     const recessoAlvo: 1 | 2 = 1
@@ -561,7 +544,7 @@ export default function UsuariosAdminPage() {
             <SelectValue placeholder="Selecione o gestor" />
           </SelectTrigger>
           <SelectContent>
-            {getGestoresDisponiveis(gestoresLista, selectedIds, primary).map((g) => (
+            {getGestoresDisponiveis(gestoresAtivos, selectedIds, primary).map((g) => (
               <SelectItem key={g.id} value={g.id}>
                 {g.nome}
               </SelectItem>
@@ -588,7 +571,7 @@ export default function UsuariosAdminPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_none">Nenhum</SelectItem>
-                  {getGestoresDisponiveis(gestoresLista, selectedIds, extraId).map((g) => (
+                  {getGestoresDisponiveis(gestoresAtivos, selectedIds, extraId).map((g) => (
                     <SelectItem key={g.id} value={g.id}>
                       {g.nome}
                     </SelectItem>
@@ -614,7 +597,7 @@ export default function UsuariosAdminPage() {
         variant="outline"
         size="sm"
         onClick={() => setExtras([...extras, '_none'])}
-        disabled={getGestoresDisponiveis(gestoresLista, selectedIds, '_none').length === 0}
+        disabled={getGestoresDisponiveis(gestoresAtivos, selectedIds, '_none').length === 0}
       >
         <Plus className="mr-2 h-4 w-4" />
         Adicionar gestor
@@ -907,7 +890,7 @@ export default function UsuariosAdminPage() {
               <Shield className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{gestoresLista.length}</div>
+              <div className="text-2xl font-bold">{gestoresAtivos.length}</div>
             </CardContent>
           </Card>
 
@@ -966,7 +949,7 @@ export default function UsuariosAdminPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_all">Todos os gestores</SelectItem>
-                  {gestoresLista.map((g) => (
+                  {gestoresAtivos.map((g) => (
                     <SelectItem key={g.id} value={g.id}>
                       {g.nome} ({g.matricula})
                     </SelectItem>
@@ -976,7 +959,7 @@ export default function UsuariosAdminPage() {
 
               <Select
                 value={statusFiltro}
-                onValueChange={(v) => setStatusFiltro(v as 'todos' | 'ativos' | 'inativos')}
+                onValueChange={(v) => setStatusFiltro(v as 'ativos' | 'inativos')}
               >
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Status" />
@@ -984,7 +967,6 @@ export default function UsuariosAdminPage() {
                 <SelectContent>
                   <SelectItem value="ativos">Ativos</SelectItem>
                   <SelectItem value="inativos">Inativos</SelectItem>
-                  <SelectItem value="todos">Todos</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -1033,9 +1015,9 @@ export default function UsuariosAdminPage() {
                     </button>
                   </Badge>
                 )}
-                {statusFiltro !== 'ativos' && (
+                {statusFiltro === 'inativos' && (
                   <Badge variant="secondary" className="gap-1">
-                    Status: {statusFiltro === 'inativos' ? 'Inativos' : 'Todos'}
+                    Status: Inativos
                     <button type="button" onClick={() => setStatusFiltro('ativos')} aria-label="Remover filtro">
                       <X className="h-3 w-3" />
                     </button>
@@ -1090,8 +1072,11 @@ export default function UsuariosAdminPage() {
                             </span>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={u.ativo ? 'default' : 'secondary'} className={u.ativo ? 'bg-green-600' : ''}>
-                              {u.ativo ? 'Ativo' : 'Inativo'}
+                            <Badge
+                              variant={isUsuarioAtivo(u) ? 'default' : 'secondary'}
+                              className={isUsuarioAtivo(u) ? 'bg-green-600' : ''}
+                            >
+                              {isUsuarioAtivo(u) ? 'Ativo' : 'Inativo'}
                             </Badge>
                           </TableCell>
                           <TableCell
@@ -1121,9 +1106,11 @@ export default function UsuariosAdminPage() {
             <CardDescription>Quem pode acompanhar estagiários vinculados</CardDescription>
           </CardHeader>
           <CardContent>
-            {gestoresLista.length === 0 ? (
+            {gestoresFiltrados.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
-                Nenhum gestor cadastrado. Use &quot;Novo usuário&quot; e escolha o tipo Gestor.
+                {statusFiltro === 'inativos'
+                  ? 'Nenhum gestor inativo encontrado.'
+                  : 'Nenhum gestor cadastrado. Use &quot;Novo usuário&quot; e escolha o tipo Gestor.'}
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -1135,10 +1122,11 @@ export default function UsuariosAdminPage() {
                       <TableHead>Matrícula</TableHead>
                       <TableHead>{LABELS.LOTACAO}</TableHead>
                       <TableHead>Carga</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {gestoresLista.map((g) => (
+                    {gestoresFiltrados.map((g) => (
                       <TableRow key={g.id}>
                         <TableCell className="font-medium">
                           <button
@@ -1155,6 +1143,14 @@ export default function UsuariosAdminPage() {
                           <Badge variant="outline">{g.departamento}</Badge>
                         </TableCell>
                         <TableCell>{formatMinutesToDisplay(g.cargaHorariaSemanal)}/sem</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={isUsuarioAtivo(g) ? 'default' : 'secondary'}
+                            className={isUsuarioAtivo(g) ? 'bg-green-600' : ''}
+                          >
+                            {isUsuarioAtivo(g) ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1212,12 +1208,13 @@ export default function UsuariosAdminPage() {
                     variant="outline"
                     className="w-full"
                     onClick={() => {
-                      updateUsuario(selectedUser.id, { ativo: !selectedUser.ativo })
-                      toast.success(selectedUser.ativo ? 'Usuário desativado' : 'Usuário reativado')
+                      const novoAtivo = !isUsuarioAtivo(selectedUser)
+                      updateUsuario(selectedUser.id, { ativo: novoAtivo })
+                      toast.success(novoAtivo ? 'Usuário reativado' : 'Usuário desativado')
                       handleActionDialogChange(false)
                     }}
                   >
-                    {selectedUser.ativo ? 'Marcar como Inativo' : 'Marcar como Ativo'}
+                    {isUsuarioAtivo(selectedUser) ? 'Marcar como Inativo' : 'Marcar como Ativo'}
                   </Button>
                 ) : null}
                 <Button type="button" variant="outline" className="w-full" onClick={() => setIsEditMode(true)}>

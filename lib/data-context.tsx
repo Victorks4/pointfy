@@ -483,7 +483,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     (id: string, usuarioUpdate: Partial<User>) => {
       void runVoidAction(
         updateUsuarioAction(id, usuarioUpdate),
-        () => refreshData(),
+        async () => {
+          setUsuarios((prev) =>
+            prev.map((u) => (u.id === id ? { ...u, ...usuarioUpdate } : u)),
+          )
+          await refreshData()
+        },
         'Não foi possível atualizar o usuário.',
       )
     },
@@ -506,6 +511,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       usuarios.filter(
         (u) =>
           u.cargo === 'estagiario' &&
+          u.ativo !== false &&
           (u.gestorId === gestorId || u.gestorIds?.includes(gestorId)),
       ),
     [usuarios],
