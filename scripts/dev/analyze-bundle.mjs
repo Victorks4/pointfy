@@ -12,7 +12,7 @@ import { gzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const root = path.join(__dirname, '..')
+const root = path.join(__dirname, '..', '..')
 const chunksDir = path.join(root, '.next', 'static', 'chunks')
 const reportsDir = path.join(root, 'reports')
 

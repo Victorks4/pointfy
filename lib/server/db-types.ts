@@ -21,6 +21,7 @@ export type ProfileRow = {
   data_inicio_recesso_2: string | null
   data_fim_recesso_2: string | null
   must_change_password: boolean
+  ativo: boolean
   gestor_id: string | null
   horario_trabalho_entrada_1: string | null
   horario_trabalho_saida_1: string | null

@@ -137,6 +137,7 @@ export async function createUsuario(input: unknown): Promise<User> {
     dataInicioRecesso2: parsed.dataInicioRecesso2 ?? null,
     dataFimRecesso2: parsed.dataFimRecesso2 ?? null,
     mustChangePassword: parsed.mustChangePassword ?? true,
+    ativo: parsed.ativo ?? true,
     gestorId: parsed.gestorId ?? null,
     horarioTrabalhoEntrada1: parsed.horarioTrabalhoEntrada1 ?? null,
     horarioTrabalhoSaida1: parsed.horarioTrabalhoSaida1 ?? null,
@@ -197,6 +198,7 @@ export async function updateUsuario(id: string, input: unknown): Promise<User> {
   if (parsed.dataInicioRecesso2 !== undefined) update.data_inicio_recesso_2 = parsed.dataInicioRecesso2
   if (parsed.dataFimRecesso2 !== undefined) update.data_fim_recesso_2 = parsed.dataFimRecesso2
   if (parsed.mustChangePassword !== undefined) update.must_change_password = parsed.mustChangePassword
+  if (parsed.ativo !== undefined) update.ativo = parsed.ativo
   if (parsed.gestorId !== undefined) update.gestor_id = parsed.gestorId
   if (parsed.horarioTrabalhoEntrada1 !== undefined) {
     update.horario_trabalho_entrada_1 = parsed.horarioTrabalhoEntrada1

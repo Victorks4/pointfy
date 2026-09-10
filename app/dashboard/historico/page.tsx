@@ -15,6 +15,9 @@ import { LABELS } from '@/lib/labels'
 import { formatDate, formatMinutesToDisplay } from '@/lib/time-utils'
 import { precisaJustificativaHoraExtra } from '@/lib/ponto-config-utils'
 import { Calendar, TrendingUp, TrendingDown } from 'lucide-react'
+import { RelatorioPontoPanel } from '@/components/ponto/relatorio-ponto-panel'
+import { getGestorNomes } from '@/lib/gestor-utils'
+import { emptyLabel } from '@/lib/display-utils'
 
 const MESES = [
   { value: '01', label: 'Janeiro' },
@@ -33,7 +36,17 @@ const MESES = [
 
 export default function HistoricoPage() {
   const { user } = useAuth()
-  const { usuarios, getPontosByUser, getBancoHoras, getActivePontoConfig, getEstagiariosDoGestor, isPresencaBloqueada } = useData()
+  const {
+    usuarios,
+    pontos,
+    justificativas,
+    getPontosByUser,
+    getBancoHoras,
+    getBancoHorasPorPeriodo,
+    getActivePontoConfig,
+    getEstagiariosDoGestor,
+    isPresencaBloqueada,
+  } = useData()
   const activeConfig = getActivePontoConfig()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -72,12 +85,27 @@ export default function HistoricoPage() {
   }, [user?.cargo, requestedUserId, idsVinculadosAoGestor, router])
 
   const targetUser = targetUserId ? usuarios.find((u) => u.id === targetUserId) : null
+  const showRelatorioPanel =
+    targetUser &&
+    (user?.cargo === 'admin' || user?.cargo === 'gestor' || user?.cargo === 'estagiario')
 
-  const pontos = targetUserId ? getPontosByUser(targetUserId) : []
+  const gestorNomeRelatorio = useMemo(() => {
+    if (!targetUser) return null
+    const nome = getGestorNomes(targetUser, usuarios)
+    return nome === emptyLabel(null) ? null : nome
+  }, [targetUser, usuarios])
+
+  useEffect(() => {
+    if (searchParams.get('relatorio') !== '1') return
+    const el = document.getElementById('relatorio-ponto-print')
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [searchParams, targetUserId])
+
+  const pontosUsuario = targetUserId ? getPontosByUser(targetUserId) : []
   const bancoHoras = targetUserId ? getBancoHoras(targetUserId) : 0
 
   // Filtrar por mês/ano
-  const pontosFiltrados = pontos.filter((p) => {
+  const pontosFiltrados = pontosUsuario.filter((p) => {
     const [ano, mes] = p.data.split('-')
     return ano === selectedYear && mes === selectedMonth
   })
@@ -204,8 +232,22 @@ export default function HistoricoPage() {
           </Card>
         </div>
 
+        {showRelatorioPanel && targetUser ? (
+          <RelatorioPontoPanel
+            targetUser={targetUser}
+            gestorNome={gestorNomeRelatorio}
+            pontos={pontos}
+            justificativas={justificativas}
+            getBancoHorasPorPeriodo={getBancoHorasPorPeriodo}
+            isPresencaBloqueada={isPresencaBloqueada}
+            title="Relatório de ponto encerrado"
+            description={`Exporte o relatório mensal de ${targetUser.nome}`}
+            showInfoAlert={user?.cargo !== 'estagiario'}
+          />
+        ) : null}
+
         {/* Tabela de Registros */}
-        <Card>
+        <Card className="print:hidden">
           <CardHeader>
             <CardTitle>Registros do Período</CardTitle>
             <CardDescription>

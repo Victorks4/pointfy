@@ -36,6 +36,10 @@ export function validatePontoBusinessRules(
   const { rejeitarMinutosZero } = activeConfig
   const limiteMinutosSemJustificativa = getLimiteMinutosSemJustificativa(activeConfig)
 
+  if (!user.ativo) {
+    erros.push('Conta inativa — não é permitido registrar presença')
+  }
+
   if (fields.data > getTodayString()) {
     erros.push('Não é permitido registrar presença em data futura')
   }

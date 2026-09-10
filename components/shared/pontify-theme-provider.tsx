@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { ThemeProvider } from '@/components/theme-provider'
+import { ThemeProvider } from '@/components/shared/theme-provider'
 
 const LOGIN_PATHS = new Set(['/', '/auth/callback'])
 

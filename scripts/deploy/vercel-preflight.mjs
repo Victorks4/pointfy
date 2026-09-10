@@ -6,7 +6,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const root = resolve(import.meta.dirname, '..')
+const root = resolve(import.meta.dirname, '..', '..')
 const envPath = [resolve(root, '.env.local'), resolve(root, '.env')].find((p) =>
   existsSync(p),
 )

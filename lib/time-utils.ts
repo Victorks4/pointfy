@@ -1,5 +1,11 @@
 // Utilitários para manipulação de tempo
 
+/** Dias de antecedência para alertas de recesso e fim de contrato. */
+export const ALERTA_ANTECEDENCIA_DIAS = 30
+
+/** Janela padrão para "recesso próximo" na UI admin. */
+export const RECESSO_PROXIMO_DIAS = ALERTA_ANTECEDENCIA_DIAS
+
 /**
  * Converte horário HH:mm para minutos
  */
@@ -126,6 +132,31 @@ export function formatDate(dateString: string): string {
   })
 }
 
+/** Data curta dd/mm/yyyy (sem dia da semana). */
+export function formatDateShort(dateString: string): string {
+  const date = new Date(dateString + 'T00:00:00')
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+/** Verifica se o mês/ano selecionado já encerrou (último dia no passado). */
+export function isMesEncerrado(year: string, month: string, referenceDate?: string): boolean {
+  const ref = referenceDate ?? getTodayString()
+  const lastDay = new Date(Number(year), Number(month), 0)
+  const lastDayKey = formatDateKeyFromDate(lastDay)
+  return lastDayKey < ref
+}
+
+function formatDateKeyFromDate(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 /**
  * Retorna a data atual no formato YYYY-MM-DD
  */
@@ -182,7 +213,7 @@ export function isAnyRecessApproaching(
     dataInicioRecesso1: string | null
     dataInicioRecesso2: string | null
   },
-  daysAhead: number = 7,
+  daysAhead: number = RECESSO_PROXIMO_DIAS,
 ): boolean {
   return (
     isRecessApproaching(user.dataInicioRecesso1, daysAhead) ||

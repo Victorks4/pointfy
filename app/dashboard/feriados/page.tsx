@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { listFeriadosAction } from '@/app/actions/feriados'
-import { FeriadosCalendarView } from '@/components/feriados-calendar-view'
+import { FeriadosCalendarView } from '@/components/admin/feriados-calendar-view'
 import { useAuth } from '@/lib/auth-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SidebarTrigger } from '@/components/ui/sidebar'

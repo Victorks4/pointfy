@@ -17,6 +17,8 @@ docs/DADOS-API.md
 node_modules/
 .next/
 reports/
+test-results/
+tsconfig.tsbuildinfo
 .DS_Store
 .vercel
 .env*

@@ -18,8 +18,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { FyChromaVideo } from '@/components/fy-chroma-video'
-import { FyFaqDialog } from '@/components/fy-faq-dialog'
+import { FyChromaVideo } from '@/components/fy/fy-chroma-video'
+import { FyFaqDialog } from '@/components/fy/fy-faq-dialog'
 import { FyMotionWrapper } from '@/components/fy/fy-motion-wrapper'
 import { FyReactionParticles } from '@/components/fy/fy-reaction-particles'
 import { FySleepZ } from '@/components/fy/fy-sleep-z'

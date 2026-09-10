@@ -99,7 +99,7 @@ app/actions/           # Server Actions (mutações)
 app/api/v1/            # GET snapshot e banco de horas
 middleware.ts          # Refresh de sessão + proteção /dashboard
 supabase/migrations/   # Schema + RLS
-scripts/seed-demo-users.mjs
+scripts/db/seed-demo-users.mjs
 ```
 
 ## Fluxo de autenticação
@@ -165,3 +165,4 @@ Resumo: configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e 
 npm run vercel:preflight
 npx vercel --prod
 ```
+

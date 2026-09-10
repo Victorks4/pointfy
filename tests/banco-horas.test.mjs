@@ -17,6 +17,7 @@ const user = {
   dataInicioRecesso2: null,
   dataFimRecesso2: null,
   mustChangePassword: false,
+  ativo: true,
   gestorId: null,
   createdAt: '2024-01-01T00:00:00Z',
 }

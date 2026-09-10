@@ -21,7 +21,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { PontifyDataFlowBrand } from '@/components/pontify-data-flow-brand'
+import { PontifyDataFlowBrand } from '@/components/shared/pontify-data-flow-brand'
 import {
   Clock,
   LayoutDashboard,
@@ -37,8 +37,8 @@ import {
   Target,
   CalendarRange,
 } from 'lucide-react'
-import { ThemeToggle } from '@/components/theme-toggle'
-import { DeveloperCredit } from '@/components/developer-credit'
+import { ThemeToggle } from '@/components/shared/theme-toggle'
+import { DeveloperCredit } from '@/components/shared/developer-credit'
 import { cn } from '@/lib/utils'
 
 function menuButtonClass(isActive: boolean) {

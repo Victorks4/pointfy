@@ -10,7 +10,6 @@ import { uuidSchema } from '@/lib/validations/parse'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import type { User, Notificacao, BloqueioPresenca, DesafioSemanal, DesafioProgresso, PontoConfig, Feriado } from '@/lib/types'
 import * as feriadoService from '@/lib/server/services/feriado.service'
-import { checkUpcomingFeriados, checkUpcomingRecessos } from '@/lib/server/services/hr-scheduler.service'
 
 export async function createUsuarioAction(input: unknown) {
   return runAction<User>(async () => {
@@ -166,6 +165,7 @@ export async function deleteFeriadoAction(id: string) {
 
 export async function runHrSchedulerAction() {
   return runAction<void>(async () => {
-    await Promise.all([checkUpcomingRecessos(), checkUpcomingFeriados()])
+    const { runAllHrReminders } = await import('@/lib/server/services/hr-scheduler.service')
+    await runAllHrReminders()
   })
 }

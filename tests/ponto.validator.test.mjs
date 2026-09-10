@@ -17,6 +17,7 @@ const baseUser = {
   dataInicioRecesso2: null,
   dataFimRecesso2: null,
   mustChangePassword: false,
+  ativo: true,
   gestorId: 'gestor-1',
   createdAt: '2024-01-01T00:00:00Z',
 }
@@ -87,6 +88,26 @@ describe('validatePontoBusinessRules', () => {
       ctx,
     )
     assert.ok(!erros.some((e) => e.includes('justificativa')))
+  })
+
+  it('rejeita conta inativa', () => {
+    const erros = validatePontoBusinessRules(
+      {
+        data: '2024-06-10',
+        entrada1: '09:15',
+        saida1: '12:15',
+        entrada2: '13:15',
+        saida2: '16:15',
+        totalMinutos: 360,
+        justificativaHoraExtra: null,
+      },
+      {
+        user: { ...baseUser, ativo: false },
+        bloqueios: [],
+        activeConfig: baseConfig,
+      },
+    )
+    assert.ok(erros.some((e) => e.includes('inativa')))
   })
 
   it('rejeita data futura', () => {

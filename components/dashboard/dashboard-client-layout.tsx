@@ -3,29 +3,30 @@
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { useServerUser } from '@/components/server-user-provider'
-import { DashboardSidebar } from '@/components/dashboard-sidebar'
-import { DashboardDataStatus } from '@/components/dashboard-data-status'
-import { DashboardProviders } from '@/components/dashboard-providers'
-import { PasswordChangeGuard } from '@/components/password-change-guard'
-import { EstagiarioHrScheduler } from '@/components/estagiario-hr-scheduler'
+import { useServerUser } from '@/components/shared/server-user-provider'
+import { DashboardSidebar } from '@/components/dashboard/dashboard-sidebar'
+import { DashboardDataStatus } from '@/components/dashboard/dashboard-data-status'
+import { DashboardProviders } from '@/components/dashboard/dashboard-providers'
+import { PasswordChangeGuard } from '@/components/auth/password-change-guard'
+import { InactiveAccountGuard } from '@/components/auth/inactive-account-guard'
+import { EstagiarioHrScheduler } from '@/components/admin/estagiario-hr-scheduler'
 import { FyTourProvider, useFyTour } from '@/lib/fy-tour-context'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 
 const FyGuide = dynamic(
-  () => import('@/components/fy-guide').then((m) => ({ default: m.FyGuide })),
+  () => import('@/components/fy/fy-guide').then((m) => ({ default: m.FyGuide })),
   { ssr: false },
 )
 
 const FyTourOverlay = dynamic(
-  () => import('@/components/fy-tour-overlay').then((m) => ({ default: m.FyTourOverlay })),
+  () => import('@/components/fy/fy-tour-overlay').then((m) => ({ default: m.FyTourOverlay })),
   { ssr: false },
 )
 
 const DashboardGsapRoot = dynamic(
-  () => import('@/components/dashboard-gsap-root').then((m) => ({ default: m.DashboardGsapRoot })),
+  () => import('@/components/dashboard/dashboard-gsap-root').then((m) => ({ default: m.DashboardGsapRoot })),
   { ssr: false },
 )
 
@@ -112,6 +113,7 @@ export function DashboardClientLayout({ children }: { children: React.ReactNode 
   return (
     <DashboardProviders>
       {user.cargo === 'estagiario' ? <EstagiarioHrScheduler /> : null}
+      <InactiveAccountGuard>
       <PasswordChangeGuard>
         <SidebarProvider>
         <DashboardSidebar />
@@ -125,6 +127,7 @@ export function DashboardClientLayout({ children }: { children: React.ReactNode 
         </SidebarInset>
         </SidebarProvider>
       </PasswordChangeGuard>
+      </InactiveAccountGuard>
     </DashboardProviders>
   )
 }

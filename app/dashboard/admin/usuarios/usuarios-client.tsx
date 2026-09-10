@@ -27,26 +27,27 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { resetUsuarioSenhaAction } from '@/app/actions/admin'
 import {
-  formatDate,
+  formatDateShort,
   formatMinutesToDisplay,
   getTodayString,
   isInRecessPeriod,
   isUserInRecessPeriod,
   isAnyRecessApproaching,
   isRecessApproaching,
+  RECESSO_PROXIMO_DIAS,
 } from '@/lib/time-utils'
 import type { User } from '@/lib/types'
 import { LOTACOES, lotacoesParaSelect } from '@/lib/lotacoes'
 import { LABELS } from '@/lib/labels'
-import { getGestorNomes } from '@/lib/gestor-utils'
+import { collectGestorIds, getGestorNomes } from '@/lib/gestor-utils'
 import {
   horarioTrabalhoPadrao,
   horarioTrabalhoVazio,
   validateHorarioTrabalho,
   type HorarioTrabalho,
 } from '@/lib/horario-trabalho'
-import { HorarioTrabalhoFields } from '@/components/horario-trabalho-fields'
-import { LotacaoCombobox } from '@/components/lotacao-combobox'
+import { HorarioTrabalhoFields } from '@/components/ponto/horario-trabalho-fields'
+import { LotacaoCombobox } from '@/components/admin/lotacao-combobox'
 import { UserPlus, Users, Calendar, Info, AlertCircle, Search, Shield, Plus, X, KeyRound, Copy } from 'lucide-react'
 
 const CARGAS_HORARIAS = [
@@ -82,6 +83,10 @@ export default function UsuariosAdminPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [lotacaoFiltro, setLotacaoFiltro] = useState('')
   const [busca, setBusca] = useState('')
+  const [gestorFiltro, setGestorFiltro] = useState('')
+  const [filtroRecesso, setFiltroRecesso] = useState<'todos' | 'em_recesso' | 'recesso_proximo'>('todos')
+  const [statusFiltro, setStatusFiltro] = useState<'todos' | 'ativos' | 'inativos'>('ativos')
+  const [editAtivo, setEditAtivo] = useState(true)
 
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
@@ -157,16 +162,33 @@ export default function UsuariosAdminPage() {
   }
 
   const estagiarios = usuarios.filter((u) => u.cargo === 'estagiario')
+  const estagiariosAtivos = estagiarios.filter((u) => u.ativo)
   const gestoresLista = usuarios.filter((u) => u.cargo === 'gestor')
   const estagiariosFiltrados = estagiarios.filter((u) => {
+    const statusOk =
+      statusFiltro === 'todos' ||
+      (statusFiltro === 'ativos' && u.ativo) ||
+      (statusFiltro === 'inativos' && !u.ativo)
     const lotacaoOk =
       !lotacaoFiltro || u.departamento.toLowerCase().includes(lotacaoFiltro.toLowerCase())
     const buscaOk =
       !busca ||
       u.nome.toLowerCase().includes(busca.toLowerCase()) ||
       u.matricula.toLowerCase().includes(busca.toLowerCase())
-    return lotacaoOk && buscaOk
+    const gestorOk =
+      !gestorFiltro || collectGestorIds(u).includes(gestorFiltro)
+    const recessoOk =
+      filtroRecesso === 'todos' ||
+      (filtroRecesso === 'em_recesso' && isUserInRecessPeriod(today, u)) ||
+      (filtroRecesso === 'recesso_proximo' &&
+        !isUserInRecessPeriod(today, u) &&
+        isAnyRecessApproaching(u, RECESSO_PROXIMO_DIAS))
+    return lotacaoOk && buscaOk && gestorOk && recessoOk && statusOk
   })
+
+  const toggleFiltroRecesso = (tipo: 'em_recesso' | 'recesso_proximo') => {
+    setFiltroRecesso((prev) => (prev === tipo ? 'todos' : tipo))
+  }
 
   const createSelectedGestorIds = () => [novoGestorId, ...extraGestorIds]
   const editSelectedGestorIds = () => [gestorVinculoId, ...editExtraGestorIds]
@@ -232,6 +254,7 @@ export default function UsuariosAdminPage() {
       dataInicioContrato: dataInicioContrato || null,
       dataFimContrato: dataFimContrato || null,
       mustChangePassword: true,
+      ativo: true,
     }
 
     if (novoCargoCadastro === 'gestor') {
@@ -311,6 +334,7 @@ export default function UsuariosAdminPage() {
           }
         : horarioTrabalhoPadrao(),
     )
+    setEditAtivo(usuario.ativo)
     setIsEditMode(false)
     setIsActionDialogOpen(true)
   }
@@ -364,6 +388,7 @@ export default function UsuariosAdminPage() {
       departamento,
       dataInicioContrato: dataInicioContrato || null,
       dataFimContrato: dataFimContrato || null,
+      ativo: editAtivo,
     }
 
     if (cargaHoraria) {
@@ -443,7 +468,7 @@ export default function UsuariosAdminPage() {
       const num = emR1 ? 1 : 2
       return (
         <Badge className="bg-blue-100 text-blue-800">
-          Recesso {num} até {fim && formatDate(fim)}
+          Recesso {num} até {fim && formatDateShort(fim)}
         </Badge>
       )
     }
@@ -454,7 +479,7 @@ export default function UsuariosAdminPage() {
       const num = proxR1 ? 1 : 2
       return (
         <Badge variant="outline" className="border-amber-500 text-amber-600">
-          Recesso {num} inicia em {inicio && formatDate(inicio)}
+          Recesso {num} inicia em {inicio && formatDateShort(inicio)}
         </Badge>
       )
     }
@@ -466,12 +491,12 @@ export default function UsuariosAdminPage() {
       const partes: string[] = []
       if (u.dataInicioRecesso1) {
         partes.push(
-          `R1: ${formatDate(u.dataInicioRecesso1)}${u.dataFimRecesso1 ? ` – ${formatDate(u.dataFimRecesso1)}` : ''}`,
+          `R1: ${formatDateShort(u.dataInicioRecesso1)}${u.dataFimRecesso1 ? ` – ${formatDateShort(u.dataFimRecesso1)}` : ''}`,
         )
       }
       if (u.dataInicioRecesso2) {
         partes.push(
-          `R2: ${formatDate(u.dataInicioRecesso2)}${u.dataFimRecesso2 ? ` – ${formatDate(u.dataFimRecesso2)}` : ''}`,
+          `R2: ${formatDateShort(u.dataInicioRecesso2)}${u.dataFimRecesso2 ? ` – ${formatDateShort(u.dataFimRecesso2)}` : ''}`,
         )
       }
       return <span className="text-sm text-muted-foreground">{partes.join(' · ')}</span>
@@ -872,7 +897,7 @@ export default function UsuariosAdminPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{estagiarios.length}</div>
+              <div className="text-2xl font-bold">{estagiariosAtivos.length}</div>
             </CardContent>
           </Card>
 
@@ -886,26 +911,36 @@ export default function UsuariosAdminPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card
+            className={`cursor-pointer transition-shadow hover:shadow-md ${filtroRecesso === 'em_recesso' ? 'ring-2 ring-blue-500' : ''}`}
+            onClick={() => toggleFiltroRecesso('em_recesso')}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Em Recesso</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {estagiarios.filter((u) => isUserInRecessPeriod(today, u)).length}
+                {estagiariosAtivos.filter((u) => isUserInRecessPeriod(today, u)).length}
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card
+            className={`cursor-pointer transition-shadow hover:shadow-md ${filtroRecesso === 'recesso_proximo' ? 'ring-2 ring-amber-500' : ''}`}
+            onClick={() => toggleFiltroRecesso('recesso_proximo')}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Recesso Próximo</CardTitle>
               <AlertCircle className="h-4 w-4 text-amber-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {estagiarios.filter((u) => isAnyRecessApproaching(u)).length}
+                {estagiariosAtivos.filter(
+                  (u) =>
+                    !isUserInRecessPeriod(today, u) &&
+                    isAnyRecessApproaching(u, RECESSO_PROXIMO_DIAS),
+                ).length}
               </div>
             </CardContent>
           </Card>
@@ -918,12 +953,40 @@ export default function UsuariosAdminPage() {
           </CardHeader>
           <CardContent>
             <div className="flex gap-3 items-center mb-4 flex-wrap">
-              <Input
-                placeholder="Filtrar por lotação"
+              <LotacaoCombobox
                 value={lotacaoFiltro}
-                onChange={(e) => setLotacaoFiltro(e.target.value)}
-                className="w-64"
+                onValueChange={setLotacaoFiltro}
+                options={LOTACOES}
+                placeholder="Filtrar por lotação"
               />
+
+              <Select value={gestorFiltro || '_all'} onValueChange={(v) => setGestorFiltro(v === '_all' ? '' : v)}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Filtrar por gestor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">Todos os gestores</SelectItem>
+                  {gestoresLista.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.nome} ({g.matricula})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={statusFiltro}
+                onValueChange={(v) => setStatusFiltro(v as 'todos' | 'ativos' | 'inativos')}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ativos">Ativos</SelectItem>
+                  <SelectItem value="inativos">Inativos</SelectItem>
+                  <SelectItem value="todos">Todos</SelectItem>
+                </SelectContent>
+              </Select>
 
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -936,6 +999,51 @@ export default function UsuariosAdminPage() {
               </div>
             </div>
 
+            {(filtroRecesso !== 'todos' || gestorFiltro || lotacaoFiltro || statusFiltro !== 'ativos') && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {filtroRecesso === 'em_recesso' && (
+                  <Badge variant="secondary" className="gap-1">
+                    Em recesso
+                    <button type="button" onClick={() => setFiltroRecesso('todos')} aria-label="Remover filtro">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {filtroRecesso === 'recesso_proximo' && (
+                  <Badge variant="secondary" className="gap-1">
+                    Recesso próximo
+                    <button type="button" onClick={() => setFiltroRecesso('todos')} aria-label="Remover filtro">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {gestorFiltro && (
+                  <Badge variant="secondary" className="gap-1">
+                    Gestor: {gestoresLista.find((g) => g.id === gestorFiltro)?.nome}
+                    <button type="button" onClick={() => setGestorFiltro('')} aria-label="Remover filtro">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {lotacaoFiltro && (
+                  <Badge variant="secondary" className="gap-1">
+                    Lotação: {lotacaoFiltro}
+                    <button type="button" onClick={() => setLotacaoFiltro('')} aria-label="Remover filtro">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {statusFiltro !== 'ativos' && (
+                  <Badge variant="secondary" className="gap-1">
+                    Status: {statusFiltro === 'inativos' ? 'Inativos' : 'Todos'}
+                    <button type="button" onClick={() => setStatusFiltro('ativos')} aria-label="Remover filtro">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+              </div>
+            )}
+
             {estagiariosFiltrados.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table>
@@ -947,6 +1055,7 @@ export default function UsuariosAdminPage() {
                       <TableHead>{LABELS.LOTACAO}</TableHead>
                       <TableHead>Carga Horária</TableHead>
                       <TableHead>Saldo</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Gestor(es)</TableHead>
                       <TableHead>Recesso</TableHead>
                     </TableRow>
@@ -979,6 +1088,11 @@ export default function UsuariosAdminPage() {
                             >
                               {formatMinutesToDisplay(bancoHoras)}
                             </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={u.ativo ? 'default' : 'secondary'} className={u.ativo ? 'bg-green-600' : ''}>
+                              {u.ativo ? 'Ativo' : 'Inativo'}
+                            </Badge>
                           </TableCell>
                           <TableCell
                             className="text-sm text-muted-foreground max-w-[160px] truncate"
@@ -1066,16 +1180,44 @@ export default function UsuariosAdminPage() {
             {!isEditMode ? (
               <div className="space-y-3">
                 {selectedUser?.cargo === 'estagiario' ? (
+                  <>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() => {
+                        if (!selectedUser) return
+                        setIsActionDialogOpen(false)
+                        router.push(`/dashboard/historico?userId=${selectedUser.id}`)
+                      }}
+                    >
+                      Visualizar Histórico
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        if (!selectedUser) return
+                        setIsActionDialogOpen(false)
+                        router.push(`/dashboard/historico?userId=${selectedUser.id}&relatorio=1`)
+                      }}
+                    >
+                      Relatório PDF
+                    </Button>
+                  </>
+                ) : null}
+                {selectedUser ? (
                   <Button
                     type="button"
+                    variant="outline"
                     className="w-full"
                     onClick={() => {
-                      if (!selectedUser) return
-                      setIsActionDialogOpen(false)
-                      router.push(`/dashboard/historico?userId=${selectedUser.id}`)
+                      updateUsuario(selectedUser.id, { ativo: !selectedUser.ativo })
+                      toast.success(selectedUser.ativo ? 'Usuário desativado' : 'Usuário reativado')
+                      handleActionDialogChange(false)
                     }}
                   >
-                    Visualizar Histórico
+                    {selectedUser.ativo ? 'Marcar como Inativo' : 'Marcar como Ativo'}
                   </Button>
                 ) : null}
                 <Button type="button" variant="outline" className="w-full" onClick={() => setIsEditMode(true)}>
@@ -1146,6 +1288,22 @@ export default function UsuariosAdminPage() {
                             {ch.label}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="edit-status">Status</FieldLabel>
+                    <Select
+                      value={editAtivo ? 'ativo' : 'inativo'}
+                      onValueChange={(v) => setEditAtivo(v === 'ativo')}
+                    >
+                      <SelectTrigger id="edit-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ativo">Ativo</SelectItem>
+                        <SelectItem value="inativo">Inativo</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>

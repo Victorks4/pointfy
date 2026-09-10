@@ -7,7 +7,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 
-const root = resolve(import.meta.dirname, '..')
+const root = resolve(import.meta.dirname, '..', '..')
 const envPath = [resolve(root, '.env.local'), resolve(root, '.env')].find((p) =>
   existsSync(p),
 )
@@ -45,9 +45,10 @@ const keys = [
   'NEXT_PUBLIC_SITE_URL',
   'RESEND_API_KEY',
   'EMAIL_FROM',
+  'CRON_SECRET',
 ]
 
-const optionalKeys = new Set(['RESEND_API_KEY', 'EMAIL_FROM'])
+const optionalKeys = new Set(['RESEND_API_KEY', 'EMAIL_FROM', 'CRON_SECRET'])
 
 const targets = ['production', 'preview', 'development']
 

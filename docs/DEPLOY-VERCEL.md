@@ -27,7 +27,8 @@ Em **Project → Settings → Environment Variables**, configure para **Producti
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → service_role | **Não** (só servidor) |
 | `NEXT_PUBLIC_SITE_URL` | URL pública do app (ex.: `https://pointfy.vercel.app`) | Sim |
 | `RESEND_API_KEY` | [Resend](https://resend.com) → API Keys (opcional, e-mail) | **Não** |
-| `EMAIL_FROM` | Remetente verificado no Resend (ex.: `Pontify <noreply@dominio.com>`) | **Não** |
+| `EMAIL_FROM` | Remetente verificado no Resend (ex.: `Pontify <noreply@dominio.com>`) | **N�o** |
+| `CRON_SECRET` | Token aleat�rio longo para `/api/cron/hr-reminders` (alertas 30 dias) | **N�o** |
 
 Copie de `.env.example`. **Nunca** commite `.env`, `.env.local` ou `docs/DADOS-API.md` (notas locais de credenciais).
 
@@ -113,3 +114,4 @@ O arquivo `vercel.json` define região **gru1** (São Paulo) para menor latênci
 - `SUPABASE_SERVICE_ROLE_KEY` apenas em env de **servidor** na Vercel (nunca `NEXT_PUBLIC_*`)
 - RLS ativo em todas as tabelas — não desabilitar em produção
 - Não usar `DATABASE_URL` direto; app usa PostgREST via SDK (ver `docs/BACKEND.md`)
+

@@ -76,6 +76,7 @@ const usuarioFieldsSchema = z.object({
   gestorId: z.string().uuid().nullable().optional(),
   gestorIds: z.array(z.string().uuid()).optional(),
   mustChangePassword: z.boolean().optional(),
+  ativo: z.boolean().optional(),
   horarioTrabalhoEntrada1: z.string().regex(timeRegex).nullable().optional(),
   horarioTrabalhoSaida1: z.string().regex(timeRegex).nullable().optional(),
   horarioTrabalhoEntrada2: z.string().regex(timeRegex).nullable().optional(),

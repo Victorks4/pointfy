@@ -1,7 +1,7 @@
 'use client'
 
 import { Field, FieldLabel } from '@/components/ui/field'
-import { TimeField } from '@/components/time-field'
+import { TimeField } from '@/components/ponto/time-field'
 import type { HorarioTrabalho } from '@/lib/horario-trabalho'
 
 type HorarioTrabalhoFieldsProps = {

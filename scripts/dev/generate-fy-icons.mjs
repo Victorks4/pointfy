@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url'
 import { mkdir } from 'fs/promises'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const root = resolve(__dirname, '..')
+const root = resolve(__dirname, '..', '..')
 const src = resolve(root, 'public/fy-mascote.png')
 const appDir = resolve(root, 'app')
 const publicDir = resolve(root, 'public')

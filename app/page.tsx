@@ -13,13 +13,13 @@ import { prefetchDashboardData } from "@/lib/data-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
-import { LoginBrandLoader } from "@/components/login-brand-loader";
-import { PontifyDataFlowBrand } from "@/components/pontify-data-flow-brand";
+import { LoginBrandLoader } from "@/components/auth/login-brand-loader";
+import { PontifyDataFlowBrand } from "@/components/shared/pontify-data-flow-brand";
 import { User, Lock, ArrowRight } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const LoginLeftPanel = dynamic(
-  () => import("@/components/login-left-panel").then((m) => ({ default: m.LoginLeftPanel })),
+  () => import("@/components/auth/login-left-panel").then((m) => ({ default: m.LoginLeftPanel })),
   {
     ssr: false,
     loading: () => (
@@ -27,8 +27,8 @@ const LoginLeftPanel = dynamic(
     ),
   },
 );
-import { GsapLoginEntrance } from "@/components/gsap-login-entrance";
-import { DeveloperCredit } from "@/components/developer-credit";
+import { GsapLoginEntrance } from "@/components/auth/gsap-login-entrance";
+import { DeveloperCredit } from "@/components/shared/developer-credit";
 import {
   LOGIN_SYNC_TRANSITION,
   LoginAmbientProvider,

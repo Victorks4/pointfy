@@ -3,7 +3,7 @@ import { readFileSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 for (const file of ['.env.local', '.env']) {
   const path = resolve(root, file)
   if (!existsSync(path)) continue

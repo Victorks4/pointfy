@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/lib/auth-context'
-import { PontifyThemeProvider } from '@/components/pontify-theme-provider'
+import { PontifyThemeProvider } from '@/components/shared/pontify-theme-provider'
 import { Toaster } from '@/components/ui/sonner'
-import { WebVitalsReporter } from '@/components/web-vitals-reporter'
+import { WebVitalsReporter } from '@/components/shared/web-vitals-reporter'
 import './globals.css'
 
 const geistSans = Geist({

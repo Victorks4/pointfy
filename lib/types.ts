@@ -17,6 +17,8 @@ export interface User {
   dataInicioRecesso2: string | null
   dataFimRecesso2: string | null
   mustChangePassword: boolean
+  /** false = conta inativa (sem acesso ao sistema). */
+  ativo: boolean
   createdAt: string
   /** Gestor principal (legado + primário). */
   gestorId?: string | null

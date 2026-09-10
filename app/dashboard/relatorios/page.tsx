@@ -4,240 +4,119 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { LABELS } from '@/lib/labels'
-import { formatMinutesToDisplay } from '@/lib/time-utils'
-import { Download, FileBarChart2, Info, Loader2 } from 'lucide-react'
+import { RelatorioPontoPanel } from '@/components/ponto/relatorio-ponto-panel'
 import { getGestorNomes } from '@/lib/gestor-utils'
 import { emptyLabel } from '@/lib/display-utils'
-import { buildRelatorioPresencaRows } from '@/lib/relatorio-presenca'
-import { toast } from 'sonner'
 
-const MESES = [
-  { value: '01', label: 'Janeiro' },
-  { value: '02', label: 'Fevereiro' },
-  { value: '03', label: 'Março' },
-  { value: '04', label: 'Abril' },
-  { value: '05', label: 'Maio' },
-  { value: '06', label: 'Junho' },
-  { value: '07', label: 'Julho' },
-  { value: '08', label: 'Agosto' },
-  { value: '09', label: 'Setembro' },
-  { value: '10', label: 'Outubro' },
-  { value: '11', label: 'Novembro' },
-  { value: '12', label: 'Dezembro' },
-]
-
-export default function RelatoriosEstagiarioPage() {
+export default function RelatoriosPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { pontos, usuarios, justificativas, getBancoHorasPorPeriodo, isPresencaBloqueada } = useData()
-  const [downloading, setDownloading] = useState(false)
+  const {
+    usuarios,
+    pontos,
+    justificativas,
+    getEstagiariosDoGestor,
+    getBancoHorasPorPeriodo,
+    isPresencaBloqueada,
+  } = useData()
 
-  const currentYear = new Date().getFullYear()
-  const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0')
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth)
-  const [selectedYear, setSelectedYear] = useState(String(currentYear))
+  const [selectedEstagiarioId, setSelectedEstagiarioId] = useState('')
+
+  const estagiariosDisponiveis = useMemo(() => {
+    if (!user) return []
+    if (user.cargo === 'admin') {
+      return usuarios.filter((u) => u.cargo === 'estagiario' && u.ativo)
+    }
+    if (user.cargo === 'gestor') {
+      return getEstagiariosDoGestor(user.id)
+    }
+    return []
+  }, [user, usuarios, getEstagiariosDoGestor])
 
   useEffect(() => {
-    if (user && user.cargo !== 'estagiario') {
-      router.replace('/dashboard')
+    if (!user) return
+    if (user.cargo === 'estagiario') return
+    if (estagiariosDisponiveis.length > 0 && !selectedEstagiarioId) {
+      setSelectedEstagiarioId(estagiariosDisponiveis[0].id)
     }
-  }, [user, router])
+  }, [user, estagiariosDisponiveis, selectedEstagiarioId])
 
-  const years = Array.from({ length: 5 }, (_, i) => String(currentYear - i))
-  const periodoKey = `${selectedYear}-${selectedMonth}`
-  const periodoLabel = `${MESES.find((m) => m.value === selectedMonth)?.label} de ${selectedYear}`
+  const targetUser = useMemo(() => {
+    if (!user) return null
+    if (user.cargo === 'estagiario') return user
+    return estagiariosDisponiveis.find((u) => u.id === selectedEstagiarioId) ?? null
+  }, [user, estagiariosDisponiveis, selectedEstagiarioId])
 
   const gestorNome = useMemo(() => {
-    if (!user) return emptyLabel(null)
-    const sessionUser = usuarios.find((u) => u.id === user.id) ?? user
-    const nome = getGestorNomes(sessionUser, usuarios)
+    if (!targetUser) return null
+    const nome = getGestorNomes(targetUser, usuarios)
     return nome === emptyLabel(null) ? null : nome
-  }, [user, usuarios])
+  }, [targetUser, usuarios])
 
-  const resumo = useMemo(() => {
-    if (!user) return null
-    const pontosPeriodo = pontos.filter(
-      (p) => p.userId === user.id && p.data.startsWith(periodoKey) && !isPresencaBloqueada(user.id, p.data),
-    )
-    const totalMes = pontosPeriodo.reduce((acc, p) => acc + p.totalMinutos, 0)
-    const totalGeral = pontos
-      .filter((p) => p.userId === user.id && !isPresencaBloqueada(user.id, p.data))
-      .reduce((acc, p) => acc + p.totalMinutos, 0)
-    const pontosRelatorio = buildRelatorioPresencaRows({
-      year: selectedYear,
-      month: selectedMonth,
-      userId: user.id,
-      pontos: pontos.filter(
-        (ponto) => ponto.userId === user.id && !isPresencaBloqueada(user.id, ponto.data),
-      ),
-      justificativas,
-    })
-    return {
-      registros: pontosPeriodo.length,
-      saldo: getBancoHorasPorPeriodo(user.id, selectedYear, selectedMonth),
-      totalMes,
-      totalGeral,
-      pontosPeriodo,
-      pontosRelatorio,
-    }
-  }, [user, pontos, justificativas, periodoKey, selectedYear, selectedMonth, getBancoHorasPorPeriodo, isPresencaBloqueada])
-
-  const handleDownloadPdf = async () => {
-    if (!user || !resumo) return
-
-    setDownloading(true)
-    try {
-      const { downloadRelatorioUsuarioPdf } = await import('@/lib/pdf/relatorios')
-      await downloadRelatorioUsuarioPdf({
-        titulo: 'Relatório de Presença',
-        periodoLabel,
-        usuario: {
-          nome: user.nome,
-          matricula: user.matricula,
-          departamento: user.departamento,
-        },
-        gestorNome: gestorNome ?? emptyLabel(null),
-        bancoHorasMinutos: resumo.saldo,
-        totalHorasMesMinutos: resumo.totalMes,
-        totalHorasGeralMinutos: resumo.totalGeral,
-        pontos: resumo.pontosRelatorio,
-        filename: `relatorio-presenca-${user.matricula}-${periodoKey}.pdf`,
-      })
-      toast.success('PDF gerado. Acesse o portal de assinatura da empresa para assinar o documento.')
-    } catch {
-      toast.error('Não foi possível gerar o PDF. Tente novamente.')
-    } finally {
-      setDownloading(false)
-    }
-  }
-
-  if (!user || user.cargo !== 'estagiario') {
+  if (!user) {
     return (
       <div className="flex flex-1 items-center justify-center p-8 text-muted-foreground text-sm">
-        Redirecionando…
+        Carregando…
       </div>
     )
   }
 
-  const semRegistros = resumo?.registros === 0
+  if (user.cargo !== 'estagiario' && user.cargo !== 'gestor' && user.cargo !== 'admin') {
+    router.replace('/dashboard')
+    return null
+  }
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4 print:hidden">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <h1 className="text-lg font-semibold">Relatórios</h1>
       </header>
 
       <main className="flex-1 p-4 md:p-6 space-y-6 max-w-3xl">
-        <Alert className="border-[#2f73e0]/30 bg-[#2f73e0]/5">
-          <Info className="h-4 w-4 text-[#2f73e0]" />
-          <AlertDescription>
-            Baixe seu relatório de presença em PDF (padrão SENAI) e envie ao portal de assinatura externo da
-            empresa. A assinatura digital não é feita neste sistema.
-          </AlertDescription>
-        </Alert>
+        {user.cargo !== 'estagiario' ? (
+          <div className="space-y-2 print:hidden">
+            <label htmlFor="relatorio-estagiario" className="text-sm font-medium">
+              Estagiário
+            </label>
+            <Select value={selectedEstagiarioId} onValueChange={setSelectedEstagiarioId}>
+              <SelectTrigger id="relatorio-estagiario" className="max-w-md">
+                <SelectValue placeholder="Selecione o estagiário" />
+              </SelectTrigger>
+              <SelectContent>
+                {estagiariosDisponiveis.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.nome} ({e.matricula})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
 
-        <Card data-fy-anchor="fy-relatorios-panel">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileBarChart2 className="h-5 w-5" />
-              Meu relatório mensal
-            </CardTitle>
-            <CardDescription>Período: {periodoLabel}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-3">
-              <div className="space-y-1">
-                <label htmlFor="relatorio-mes" className="text-xs text-muted-foreground">
-                  Mês
-                </label>
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger id="relatorio-mes" className="w-44">
-                    <SelectValue placeholder="Mês" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MESES.map((mes) => (
-                      <SelectItem key={mes.value} value={mes.value}>
-                        {mes.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="relatorio-ano" className="text-xs text-muted-foreground">
-                  Ano
-                </label>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger id="relatorio-ano" className="w-28">
-                    <SelectValue placeholder="Ano" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={year}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {resumo && (
-              <div className="rounded-xl border bg-muted/40 p-4 text-sm space-y-1">
-                <p>
-                  <span className="text-muted-foreground">Registros no período:</span>{' '}
-                  <strong>{resumo.registros}</strong>
-                </p>
-                <p>
-                  <span className="text-muted-foreground">Total de horas no período:</span>{' '}
-                  <strong>{formatMinutesToDisplay(resumo.totalMes)}</strong>
-                </p>
-                <p>
-                  <span className="text-muted-foreground">Total de horas (todos os meses):</span>{' '}
-                  <strong>{formatMinutesToDisplay(resumo.totalGeral)}</strong>
-                </p>
-                <p>
-                  <span className="text-muted-foreground">{LABELS.SALDO} no período:</span>{' '}
-                  <strong>{formatMinutesToDisplay(resumo.saldo)}</strong>
-                </p>
-                {gestorNome ? (
-                  <p>
-                    <span className="text-muted-foreground">Gestor(a):</span>{' '}
-                    <strong>{gestorNome}</strong>
-                  </p>
-                ) : null}
-                {semRegistros ? (
-                  <p className="pt-2 text-muted-foreground">
-                    O PDF inclui todos os dias do mês, inclusive fins de semana e compensações aprovadas.
-                  </p>
-                ) : null}
-              </div>
-            )}
-
-            <Button
-              onClick={handleDownloadPdf}
-              disabled={downloading}
-              className="w-full sm:w-auto"
-            >
-              {downloading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="mr-2 h-4 w-4" />
-              )}
-              {downloading ? 'Gerando PDF…' : 'Baixar PDF para assinatura externa'}
-            </Button>
-          </CardContent>
-        </Card>
+        {targetUser ? (
+          <RelatorioPontoPanel
+            targetUser={targetUser}
+            gestorNome={gestorNome}
+            pontos={pontos}
+            justificativas={justificativas}
+            getBancoHorasPorPeriodo={getBancoHorasPorPeriodo}
+            isPresencaBloqueada={isPresencaBloqueada}
+            title={user.cargo === 'estagiario' ? 'Meu relatório mensal' : 'Relatório de ponto encerrado'}
+            description={
+              user.cargo === 'estagiario'
+                ? undefined
+                : `Relatório mensal de ${targetUser.nome}`
+            }
+            showInfoAlert
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">Nenhum estagiário disponível para relatório.</p>
+        )}
       </main>
     </>
   )

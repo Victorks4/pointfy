@@ -1,5 +1,5 @@
 -- Seed demo: execute APÓS criar usuários no Auth (script npm run db:seed)
--- Ou use o script Node em scripts/seed-demo-users.mjs com service_role
+-- Ou use o script Node em scripts/db/seed-demo-users.mjs com service_role
 
 -- IDs fixos para referência em desenvolvimento (substituir pelos UUIDs reais do Auth após seed script)
 -- O script seed-demo-users.mjs cria auth users e profiles com gestor vinculado.
@@ -50,3 +50,4 @@ USING (
   bucket_id = 'justificativas'
   AND auth_user_role() = 'admin'
 );
+

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { requireRole } from '@/lib/server/auth'
-import { AdminHrScheduler } from '@/components/admin-hr-scheduler'
+import { AdminHrScheduler } from '@/components/admin/admin-hr-scheduler'
 
 export default async function AdminDashboardLayout({
   children,

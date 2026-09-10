@@ -2,7 +2,7 @@
  
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LiveClock } from '@/components/live-clock'
+import { LiveClock } from '@/components/ponto/live-clock'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useData } from '@/lib/data-context'
@@ -24,9 +24,9 @@ import {
   getLimiteMinutosSemJustificativa,
   precisaJustificativaHoraExtra,
 } from '@/lib/ponto-config-utils'
-import { PontifyDatePicker } from '@/components/pontify-date-calendar'
-import { TimeField } from '@/components/time-field'
-import { WaveClock, getEstadoClock } from '@/components/wave-clock'
+import { PontifyDatePicker } from '@/components/ponto/pontify-date-calendar'
+import { TimeField } from '@/components/ponto/time-field'
+import { WaveClock, getEstadoClock } from '@/components/ponto/wave-clock'
 import { Clock, AlertCircle, Save, Info, CheckCircle, Coffee } from 'lucide-react'
  
 // ─── Tipos ────────────────────────────────────────────────────────────────────
