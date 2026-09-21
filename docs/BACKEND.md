@@ -157,7 +157,7 @@ Bucket `justificativas`: upload via `uploadJustificativaArquivoAction` em `app/a
 
 ## Deploy (Vercel)
 
-Guia completo: [docs/DEPLOY-VERCEL.md](DEPLOY-VERCEL.md).
+Guia produção (Render): [docs/DEPLOY-RENDER.md](DEPLOY-RENDER.md). Legado Vercel: [docs/DEPLOY-VERCEL.md](DEPLOY-VERCEL.md).
 
 Resumo: configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` na Vercel; cadastre `https://SEU-DOMINIO.vercel.app/auth/callback` no Supabase; rode migrations e `npm run db:seed` uma vez se necessário.
 

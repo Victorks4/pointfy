@@ -1,0 +1,59 @@
+# Blueprint Render — PontiFy (Next.js + Supabase Senai)
+# https://render.com/docs/blueprint-spec
+#
+# Após criar o stack: defina secrets no dashboard (Supabase keys, CRON_SECRET, e-mail).
+# Ajuste NEXT_PUBLIC_SITE_URL para https://<nome-do-servico>.onrender.com (ou domínio custom).
+
+services:
+  - type: web
+    name: pointfy
+    runtime: node
+    region: ohio
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+
+  - type: cron
+    name: pointfy-hr-reminders
+    schedule: "0 11 * * *"
+    region: ohio
+    envVars:
+      - key: CRON_SECRET
+        sync: false
+      - key: POINTFY_WEB_HOST
+        fromService:
+          type: web
+          name: pointfy
+          property: host
+    startCommand: >-
+      curl -fsS -H "Authorization: Bearer ${CRON_SECRET}"
+      "https://${POINTFY_WEB_HOST}/api/cron/hr-reminders"

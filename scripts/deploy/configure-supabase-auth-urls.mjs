@@ -1,20 +1,59 @@
 #!/usr/bin/env node
 /**
- * Aplica Site URL e Redirect URLs no Supabase (produção Pontify).
- * Usa o token da CLI (`supabase login`) via Management API.
+ * Aplica Site URL e Redirect URLs no Supabase (Management API).
+ * Requer: npx supabase login (ou SUPABASE_ACCESS_TOKEN)
+ *
+ * URL do app: NEXT_PUBLIC_SITE_URL ou PRODUCTION_URL (sem barra final).
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const PROJECT_REF = 'royszemnvodpzhwswpmm'
-const SITE_URL = 'https://pointfy.vercel.app'
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
+
+function loadEnvFile(rel) {
+  const path = resolve(root, rel)
+  if (!existsSync(path)) return
+  for (const line of readFileSync(path, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/)) {
+    const m = line.match(/^([^#=]+)=(.*)$/)
+    if (m) process.env[m[1].trim()] = m[2].trim().replace(/^["']|["']$/g, '')
+  }
+}
+
+loadEnvFile('.env.local')
+loadEnvFile('.env')
+
+const PROJECT_REF =
+  process.env.SUPABASE_PROJECT_REF?.trim() || 'cnkhzfphbkswiasgalww'
+
+const siteRaw =
+  process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+  process.env.PRODUCTION_URL?.trim() ||
+  ''
+
+if (!siteRaw) {
+  console.error(
+    'Defina NEXT_PUBLIC_SITE_URL (ex.: https://pointfy.onrender.com) em .env.local ou no ambiente.',
+  )
+  process.exit(1)
+}
+
+const SITE_URL = siteRaw.replace(/\/$/, '')
 const REDIRECT_URLS = [
-  'https://pointfy.vercel.app/auth/callback',
-  'https://pointfy.vercel.app/**',
+  `${SITE_URL}/auth/callback`,
+  `${SITE_URL}/**`,
   'http://localhost:3000/auth/callback',
   'http://localhost:3000/**',
 ]
+
+const extra = process.env.SUPABASE_EXTRA_REDIRECT_URLS?.trim()
+if (extra) {
+  for (const part of extra.split(',')) {
+    const u = part.trim()
+    if (u && !REDIRECT_URLS.includes(u)) REDIRECT_URLS.push(u)
+  }
+}
 
 function readAccessToken() {
   if (process.env.SUPABASE_ACCESS_TOKEN?.trim()) {
@@ -62,6 +101,7 @@ if (!res.ok) {
 }
 
 console.log('✅ Supabase Auth configurado:')
+console.log(`   Projeto: ${PROJECT_REF}`)
 console.log(`   Site URL: ${SITE_URL}`)
 for (const url of REDIRECT_URLS) {
   console.log(`   Redirect: ${url}`)

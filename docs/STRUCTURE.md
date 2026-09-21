@@ -29,4 +29,4 @@ Client components grandes ficam em `components/` (gestor, ponto, admin), não em
 
 `tests/domain/ponto/`, `tests/server/`, `tests/auth/`, `tests/validations/`, `tests/lib/`
 
-Ver também `docs/BACKEND.md` e `docs/DEPLOY-VERCEL.md`.
+Ver também `docs/BACKEND.md`, `docs/DEPLOY-RENDER.md` e `docs/DEPLOY-VERCEL.md`.
