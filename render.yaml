@@ -44,8 +44,10 @@ services:
 
   - type: cron
     name: pointfy-hr-reminders
+    runtime: node
     schedule: "0 11 * * *"
     region: ohio
+    buildCommand: "true"
     envVars:
       - key: CRON_SECRET
         sync: false
