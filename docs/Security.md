@@ -111,3 +111,13 @@ private schema
   ├── handle_new_user()      → trigger auth.users
   └── set_updated_at()       → trigger ponto_registros
 ```
+
+### RLS multi-gestor (migration 013)
+
+Politicas de leitura/atualizacao de dados da equipe usam `private.is_gestor_of_estagiario(user_id)` (gestor principal **ou** vinculo em `estagiario_gestores`):
+
+- `ponto_registros` (SELECT gestor)
+- `bloqueios_presenca` (SELECT gestor)
+- `desafio_progressos` (SELECT gestor)
+- `notificacoes` (SELECT/INSERT gestor)
+- `justificativas` (SELECT/UPDATE compensacao gestor; SELECT tambem permite `gestor_id = auth.uid()` em pendencias)
