@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useId, useState } from 'react'
-import { useFyTour } from '@/lib/fy-tour-context'
-import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
+import { useFyTour } from '@/lib/fy/fy-tour-context'
+import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion'
 import { cn } from '@/lib/utils'
 
 const PADDING = 10

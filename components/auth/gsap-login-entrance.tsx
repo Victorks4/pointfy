@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from 'react'
 import { ensureGsapRegistered } from '@/lib/gsap/register'
-import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
+import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion'
 
 export function GsapLoginEntrance({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)

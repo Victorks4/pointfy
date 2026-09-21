@@ -1,10 +1,10 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
-import { emptyCell, emptyLabel } from '@/lib/display-utils'
+import { emptyCell, emptyLabel } from '@/lib/domain/shared/display-utils'
 
-import { LABELS } from '@/lib/labels'
-import { formatMinutesToDisplay } from '@/lib/time-utils'
+import { LABELS } from '@/lib/constants/labels'
+import { formatMinutesToDisplay } from '@/lib/domain/ponto/time-utils'
 import {
   SENAI,
   SENAI_LOGO_PATH,

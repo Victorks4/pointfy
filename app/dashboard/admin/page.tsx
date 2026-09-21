@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useData } from '@/lib/data-context'
+import { useData } from '@/lib/client/data-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
@@ -10,10 +10,10 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { formatMinutesToDisplay, formatDate } from '@/lib/time-utils'
-import { calcularBancoHorasPorPeriodo } from '@/lib/banco-horas'
+import { formatMinutesToDisplay, formatDate } from '@/lib/domain/ponto/time-utils'
+import { calcularBancoHorasPorPeriodo } from '@/lib/domain/ponto/banco-horas'
 import type { User, PontoRegistro, Justificativa } from '@/lib/types'
-import { LABELS } from '@/lib/labels'
+import { LABELS } from '@/lib/constants/labels'
 import { Users, Clock, TrendingUp, TrendingDown, Calendar, Search } from 'lucide-react'
 
 type EstagiarioComMetricas = User & {

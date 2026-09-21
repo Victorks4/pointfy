@@ -9,7 +9,7 @@ import {
 } from '@/lib/server/mappers'
 import { getSessionUser } from '@/lib/server/auth'
 import { assertTargetUserAccess } from '@/lib/server/access-control'
-import { calcularBancoHoras, calcularBancoHorasPorPeriodo } from '@/lib/banco-horas'
+import { calcularBancoHoras, calcularBancoHorasPorPeriodo } from '@/lib/domain/ponto/banco-horas'
 import { listNotificacoesForUser } from '@/lib/server/services/notificacao.service'
 import {
   PROFILE_COLUMNS,

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/client/auth-context'
 import { changePasswordAction } from '@/app/actions/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 import {
   getFyOnboardingStorageKey,
   getFyPendingTourStorageKey,
-} from '@/lib/fy-mascot'
+} from '@/lib/fy/fy-mascot'
 
 export default function AlterarSenhaPage() {
   const router = useRouter()

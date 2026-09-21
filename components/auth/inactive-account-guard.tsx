@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/client/auth-context'
 
 export function InactiveAccountGuard({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth()

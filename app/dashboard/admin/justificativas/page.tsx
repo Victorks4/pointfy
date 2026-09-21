@@ -1,13 +1,13 @@
 'use client'
 
-import { useAuth } from '@/lib/auth-context'
-import { useData } from '@/lib/data-context'
+import { useAuth } from '@/lib/client/auth-context'
+import { useData } from '@/lib/client/data-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { formatDate, formatMinutesToDisplay } from '@/lib/time-utils'
-import { STATUS_COMPENSACAO_LABELS } from '@/lib/compensacao-utils'
+import { formatDate, formatMinutesToDisplay } from '@/lib/domain/ponto/time-utils'
+import { STATUS_COMPENSACAO_LABELS } from '@/lib/domain/ponto/compensacao-utils'
 
 export default function AdminJustificativasPage() {
   const { user } = useAuth()

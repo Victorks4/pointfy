@@ -7,7 +7,7 @@ import {
 } from '@/lib/server/mappers'
 import { requireAuth, requireRole } from '@/lib/server/auth'
 import { assertTargetUserAccess } from '@/lib/server/access-control'
-import { getLimiteMinutosSemJustificativa } from '@/lib/ponto-config-utils'
+import { getLimiteMinutosSemJustificativa } from '@/lib/domain/ponto/ponto-config-utils'
 import { parseInput } from '@/lib/validations/parse'
 import {
   bloqueioInputSchema,

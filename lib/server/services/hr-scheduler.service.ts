@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendHrAlertEmail } from '@/lib/server/email/send-hr-alert'
-import { ALERTA_ANTECEDENCIA_DIAS, formatDate, formatDateShort, isRecessApproaching } from '@/lib/time-utils'
+import { ALERTA_ANTECEDENCIA_DIAS, formatDate, formatDateShort, isRecessApproaching } from '@/lib/domain/ponto/time-utils'
 import { PROFILE_COLUMNS } from '@/lib/server/query-columns'
 import type { ProfileRow } from '@/lib/server/db-types'
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { buildMonthGrid, toDateKey } from '@/lib/calendar-grid'
+import { buildMonthGrid, toDateKey } from '@/lib/domain/ponto/calendar-grid'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'] as const

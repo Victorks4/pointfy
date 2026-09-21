@@ -5,7 +5,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import type { FyMood } from '@/lib/fy-mascot'
+import type { FyMood } from '@/lib/fy/fy-mascot'
 
 interface FyMotionWrapperProps {
   children: React.ReactNode

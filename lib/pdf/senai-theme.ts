@@ -1,5 +1,5 @@
 import type jsPDF from 'jspdf'
-import { emptyLabel } from '@/lib/display-utils'
+import { emptyLabel } from '@/lib/domain/shared/display-utils'
 
 /** Cores institucionais SENAI (aproximação da marca). */
 export const SENAI = {

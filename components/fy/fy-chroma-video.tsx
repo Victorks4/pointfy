@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
+import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion'
 import {
   FY_VIDEO_CROP_BOTTOM_RATIO,
   FY_VIDEO_CROP_LEFT_RATIO,
@@ -10,7 +10,7 @@ import {
   FY_VIDEO_CROP_TOP_RATIO,
   isFyVideoBackgroundPixel,
   isFyVideoChromaEnabled,
-} from '@/lib/fy-video-config'
+} from '@/lib/fy/fy-video-config'
 
 type FyChromaVideoProps = {
   src: string

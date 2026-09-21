@@ -11,7 +11,7 @@ function PageLoading() {
   )
 }
 
-const PontoClient = dynamic(() => import('./ponto-client'), {
+const PontoClient = dynamic(() => import('@/components/ponto/ponto-client'), {
   ssr: false,
   loading: () => <PageLoading />,
 })

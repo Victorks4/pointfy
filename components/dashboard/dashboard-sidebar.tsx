@@ -4,8 +4,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { useAuth } from '@/lib/auth-context'
-import { useData } from '@/lib/data-context'
+import { useAuth } from '@/lib/client/auth-context'
+import { useData } from '@/lib/client/data-context'
 import {
   Sidebar,
   SidebarContent,

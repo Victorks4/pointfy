@@ -45,7 +45,7 @@ const configPadrao = {
 ## Exemplo — validator
 
 ```javascript
-import { validatePontoBusinessRules } from '../lib/server/validators/ponto.validator.ts'
+import { validatePontoBusinessRules } from '../../../lib/server/validators/ponto.validator.ts'
 
 describe('validatePontoBusinessRules', () => {
   it('aceita registro válido dentro do limite', () => {

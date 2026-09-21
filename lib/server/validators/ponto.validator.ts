@@ -1,4 +1,4 @@
-import { isPresencaBloqueada } from '@/lib/presenca-bloqueio'
+import { isPresencaBloqueada } from '@/lib/domain/ponto/presenca-bloqueio'
 import {
   calculateDayTotal,
   formatMinutesToDisplay,
@@ -7,8 +7,8 @@ import {
   isValidNonOverlapping,
   isValidTimeFormat,
   isValidTimeSequence,
-} from '@/lib/time-utils'
-import { getLimiteMinutosSemJustificativa } from '@/lib/ponto-config-utils'
+} from '@/lib/domain/ponto/time-utils'
+import { getLimiteMinutosSemJustificativa } from '@/lib/domain/ponto/ponto-config-utils'
 import type { BloqueioPresenca, PontoConfig, User } from '@/lib/types'
 
 export type PontoFieldsInput = {

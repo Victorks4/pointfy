@@ -7,9 +7,9 @@ import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { signInAction } from "@/app/actions/auth";
-import { useAuth } from "@/lib/auth-context";
-import { navigateAfterLogin } from "@/lib/post-login-nav";
-import { prefetchDashboardData } from "@/lib/data-api";
+import { useAuth } from "@/lib/client/auth-context";
+import { navigateAfterLogin } from "@/lib/auth/post-login-nav";
+import { prefetchDashboardData } from "@/lib/data/data-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
@@ -32,7 +32,7 @@ import { DeveloperCredit } from "@/components/shared/developer-credit";
 import {
   LOGIN_SYNC_TRANSITION,
   LoginAmbientProvider,
-} from "@/lib/login-ambient-context";
+} from "@/lib/client/login-ambient-context";
 
 function useIsDesktopLoginPanel() {
   const [show, setShow] = useState(false);

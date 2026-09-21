@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/lib/auth-context'
-import { useData } from '@/lib/data-context'
+import { useAuth } from '@/lib/client/auth-context'
+import { useData } from '@/lib/client/data-context'
 import type { DesafioSemanal, TipoDesafio } from '@/lib/types'
 import { TIPO_DESAFIO_LABELS } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'

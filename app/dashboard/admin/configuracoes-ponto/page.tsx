@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/lib/auth-context'
-import { useData } from '@/lib/data-context'
+import { useAuth } from '@/lib/client/auth-context'
+import { useData } from '@/lib/client/data-context'
 import type { PontoConfig } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -40,12 +40,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { emptyCell, emptyLabel } from '@/lib/display-utils'
+import { emptyCell, emptyLabel } from '@/lib/domain/shared/display-utils'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, SlidersHorizontal, Check } from 'lucide-react'
-import { formatMinutesToDisplay, formatDate } from '@/lib/time-utils'
-import { getLimiteMinutosSemJustificativa } from '@/lib/ponto-config-utils'
-import { LABELS } from '@/lib/labels'
+import { formatMinutesToDisplay, formatDate } from '@/lib/domain/ponto/time-utils'
+import { getLimiteMinutosSemJustificativa } from '@/lib/domain/ponto/ponto-config-utils'
+import { LABELS } from '@/lib/constants/labels'
 
 type FormState = {
   nome: string

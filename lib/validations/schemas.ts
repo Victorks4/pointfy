@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { validateHorarioTrabalho } from '@/lib/horario-trabalho'
-import { LOTACOES } from '@/lib/lotacoes'
+import { validateHorarioTrabalho } from '@/lib/domain/ponto/horario-trabalho'
+import { LOTACOES } from '@/lib/constants/lotacoes'
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/

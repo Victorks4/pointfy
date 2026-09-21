@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/lib/auth-context'
-import { useData } from '@/lib/data-context'
+import { useAuth } from '@/lib/client/auth-context'
+import { useData } from '@/lib/client/data-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,13 +15,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { formatDate, formatMinutesToDisplay, getTodayString, parseHorasToMinutos } from '@/lib/time-utils'
-import { LABELS } from '@/lib/labels'
+import { formatDate, formatMinutesToDisplay, getTodayString, parseHorasToMinutos } from '@/lib/domain/ponto/time-utils'
+import { LABELS } from '@/lib/constants/labels'
 import {
   STATUS_COMPENSACAO_LABELS,
   effectiveStatusCompensacao,
   isCompensacaoTipo,
-} from '@/lib/compensacao-utils'
+} from '@/lib/domain/ponto/compensacao-utils'
 import { FileText, Clock, Send, Info } from 'lucide-react'
 import { uploadJustificativaArquivoAction } from '@/app/actions/justificativas'
 

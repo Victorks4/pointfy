@@ -11,7 +11,7 @@ import {
   type MotionValue,
 } from 'framer-motion'
 
-import { LOGIN_SYNC_TRANSITION, useLoginSubmittingAmbient } from '@/lib/login-ambient-context'
+import { LOGIN_SYNC_TRANSITION, useLoginSubmittingAmbient } from '@/lib/client/login-ambient-context'
 
 const ORB_SIZE = 43
 

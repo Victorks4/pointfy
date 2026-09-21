@@ -11,7 +11,7 @@ function PageLoading() {
   )
 }
 
-const GestorClient = dynamic(() => import('./gestor-client'), {
+const GestorClient = dynamic(() => import('@/components/gestor/gestor-client'), {
   loading: () => <PageLoading />,
 })
 

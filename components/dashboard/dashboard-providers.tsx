@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, type ReactNode } from 'react'
-import { DataProvider } from '@/lib/data-context'
+import { DataProvider } from '@/lib/client/data-context'
 import { Skeleton } from '@/components/ui/skeleton'
 
 function DashboardDataFallback() {

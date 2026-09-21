@@ -2,7 +2,7 @@
 
 import { Field, FieldLabel } from '@/components/ui/field'
 import { TimeField } from '@/components/ponto/time-field'
-import type { HorarioTrabalho } from '@/lib/horario-trabalho'
+import type { HorarioTrabalho } from '@/lib/domain/ponto/horario-trabalho'
 
 type HorarioTrabalhoFieldsProps = {
   idPrefix: string

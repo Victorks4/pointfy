@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ATESTADO_RH_EMAIL } from '@/lib/server/email/constants'
 import { sendEmail } from '@/lib/server/email/mailer'
-import { formatDate } from '@/lib/time-utils'
+import { formatDate } from '@/lib/domain/ponto/time-utils'
 
 export type AtestadoRhEmailContext = {
   estagiarioNome: string

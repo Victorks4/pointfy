@@ -13,7 +13,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { toast } from 'sonner'
-import { formatDate } from '@/lib/time-utils'
+import { formatDate } from '@/lib/domain/ponto/time-utils'
 import type { Feriado, FeriadoTipo } from '@/lib/types'
 
 export default function FeriadosAdminPage() {

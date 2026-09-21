@@ -1,7 +1,7 @@
 'use client'
 
 import { AlertCircle, Loader2 } from 'lucide-react'
-import { useData } from '@/lib/data-context'
+import { useData } from '@/lib/client/data-context'
 import { Button } from '@/components/ui/button'
 
 export function DashboardDataStatus() {

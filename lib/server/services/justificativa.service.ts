@@ -12,8 +12,8 @@ import { MINUTOS_COMPENSACAO } from '@/lib/types'
 import type { Justificativa } from '@/lib/types'
 import type { JustificativaRow, ProfileRow } from '@/lib/server/db-types'
 import { isGestorOfEstagiario } from '@/lib/server/access-control'
-import { isCompensacaoTipo } from '@/lib/compensacao-utils'
-import { formatMinutesToDisplay } from '@/lib/time-utils'
+import { isCompensacaoTipo } from '@/lib/domain/ponto/compensacao-utils'
+import { formatMinutesToDisplay } from '@/lib/domain/ponto/time-utils'
 import { sendAtestadoCopyToRh } from '@/lib/server/email/send-atestado-rh'
 
 async function getEstagiarioTeamIds(

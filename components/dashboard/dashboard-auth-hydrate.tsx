@@ -1,7 +1,7 @@
 'use client'
 
 import { useLayoutEffect } from 'react'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/client/auth-context'
 import type { User } from '@/lib/types'
 
 /** Sincroniza perfil do servidor com o AuthProvider antes da pintura. */

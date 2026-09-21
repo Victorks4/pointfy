@@ -1,0 +1,1418 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useData } from '@/lib/client/data-context'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { SidebarTrigger } from '@/components/ui/sidebar'
+import { Separator } from '@/components/ui/separator'
+import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { toast } from 'sonner'
+import { resetUsuarioSenhaAction } from '@/app/actions/admin'
+import {
+  formatDateShort,
+  formatMinutesToDisplay,
+  getTodayString,
+  isUserInRecessPeriod,
+  isAnyRecessApproaching,
+  RECESSO_PROXIMO_DIAS,
+} from '@/lib/domain/ponto/time-utils'
+import type { User } from '@/lib/types'
+import { LOTACOES, lotacoesParaSelect } from '@/lib/constants/lotacoes'
+import { LABELS } from '@/lib/constants/labels'
+import { collectGestorIds, getGestorNomes } from '@/lib/domain/shared/gestor-utils'
+import {
+  horarioTrabalhoPadrao,
+  horarioTrabalhoVazio,
+  validateHorarioTrabalho,
+  type HorarioTrabalho,
+} from '@/lib/domain/ponto/horario-trabalho'
+import { HorarioTrabalhoFields } from '@/components/ponto/horario-trabalho-fields'
+import { LotacaoCombobox } from '@/components/admin/lotacao-combobox'
+import { UserPlus, Users, Calendar, Info, AlertCircle, Search, Shield, Plus, X, KeyRound, Copy } from 'lucide-react'
+
+const CARGAS_HORARIAS = [
+  { value: '1200', label: '20h semanais' },
+  { value: '1500', label: '25h semanais' },
+  { value: '1800', label: '30h semanais' },
+  { value: '2400', label: '40h semanais' },
+]
+
+function getGestoresDisponiveis(gestoresLista: User[], selectedIds: string[], currentValue: string): User[] {
+  const others = new Set(selectedIds.filter((id) => id !== '_none' && id !== currentValue))
+  return gestoresLista.filter((g) => !others.has(g.id))
+}
+
+function isUsuarioAtivo(user: Pick<User, 'ativo'>): boolean {
+  return user.ativo !== false
+}
+
+function validateDateRange(inicio: string, fim: string, label: string): boolean {
+  if (inicio && fim && fim < inicio) {
+    toast.error(`${label}: a data fim deve ser após o início`)
+    return false
+  }
+  return true
+}
+
+export default function UsuariosAdminPage() {
+  const router = useRouter()
+  const { usuarios, addUsuario, updateUsuario, deleteUsuario, getBancoHoras } = useData()
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isActionDialogOpen, setIsActionDialogOpen] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false)
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false)
+  const [tempPassword, setTempPassword] = useState<string | null>(null)
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [lotacaoFiltro, setLotacaoFiltro] = useState('')
+  const [busca, setBusca] = useState('')
+  const [gestorFiltro, setGestorFiltro] = useState('')
+  const [filtroRecesso, setFiltroRecesso] = useState<'todos' | 'em_recesso' | 'recesso_proximo'>('todos')
+  const [statusFiltro, setStatusFiltro] = useState<'ativos' | 'inativos'>('ativos')
+  const [editAtivo, setEditAtivo] = useState(true)
+
+  const [nome, setNome] = useState('')
+  const [email, setEmail] = useState('')
+  const [matricula, setMatricula] = useState('')
+  const [departamento, setDepartamento] = useState('')
+  const [cargaHoraria, setCargaHoraria] = useState('')
+  const [dataInicioContrato, setDataInicioContrato] = useState('')
+  const [dataFimContrato, setDataFimContrato] = useState('')
+  const [dataInicioRecesso1, setDataInicioRecesso1] = useState('')
+  const [dataFimRecesso1, setDataFimRecesso1] = useState('')
+  const [dataInicioRecesso2, setDataInicioRecesso2] = useState('')
+  const [dataFimRecesso2, setDataFimRecesso2] = useState('')
+  const [novoCargoCadastro, setNovoCargoCadastro] = useState<'estagiario' | 'gestor'>('estagiario')
+  const [novoGestorId, setNovoGestorId] = useState<string>('_none')
+  const [extraGestorIds, setExtraGestorIds] = useState<string[]>([])
+  const [gestorVinculoId, setGestorVinculoId] = useState<string>('_none')
+  const [editExtraGestorIds, setEditExtraGestorIds] = useState<string[]>([])
+  const [senha, setSenha] = useState('')
+  const [confirmSenha, setConfirmSenha] = useState('')
+  const [horarioTrabalho, setHorarioTrabalho] = useState<HorarioTrabalho>(() => horarioTrabalhoPadrao())
+
+  const selectedUser = selectedUserId ? usuarios.find((u) => u.id === selectedUserId) ?? null : null
+  const today = getTodayString()
+
+  const resetNovoUsuarioForm = () => {
+    setNome('')
+    setEmail('')
+    setMatricula('')
+    setDepartamento('')
+    setCargaHoraria('')
+    setDataInicioContrato('')
+    setDataFimContrato('')
+    setDataInicioRecesso1('')
+    setDataFimRecesso1('')
+    setDataInicioRecesso2('')
+    setDataFimRecesso2('')
+    setNovoCargoCadastro('estagiario')
+    setNovoGestorId('_none')
+    setExtraGestorIds([])
+    setSenha('')
+    setConfirmSenha('')
+    setHorarioTrabalho(horarioTrabalhoPadrao())
+  }
+
+  const resetEditForm = () => {
+    setSelectedUserId(null)
+    setIsEditMode(false)
+    setNome('')
+    setEmail('')
+    setMatricula('')
+    setDepartamento('')
+    setCargaHoraria('')
+    setDataInicioContrato('')
+    setDataFimContrato('')
+    setDataInicioRecesso1('')
+    setDataFimRecesso1('')
+    setDataInicioRecesso2('')
+    setDataFimRecesso2('')
+    setGestorVinculoId('_none')
+    setEditExtraGestorIds([])
+    setHorarioTrabalho(horarioTrabalhoPadrao())
+  }
+
+  const handleOpenNovoUsuario = (open: boolean) => {
+    if (open) resetNovoUsuarioForm()
+    setIsDialogOpen(open)
+    if (!open) resetNovoUsuarioForm()
+  }
+
+  const handleActionDialogChange = (open: boolean) => {
+    setIsActionDialogOpen(open)
+    if (!open) resetEditForm()
+  }
+
+  const estagiarios = usuarios.filter((u) => u.cargo === 'estagiario')
+  const estagiariosAtivos = estagiarios.filter(isUsuarioAtivo)
+  const gestoresLista = usuarios.filter((u) => u.cargo === 'gestor')
+  const gestoresAtivos = gestoresLista.filter(isUsuarioAtivo)
+  const gestoresFiltrados = gestoresLista.filter((u) =>
+    statusFiltro === 'ativos' ? isUsuarioAtivo(u) : !isUsuarioAtivo(u),
+  )
+
+  const estagiariosFiltrados = estagiarios.filter((u) => {
+    const statusOk =
+      statusFiltro === 'ativos' ? isUsuarioAtivo(u) : !isUsuarioAtivo(u)
+    const lotacaoOk =
+      !lotacaoFiltro || u.departamento.toLowerCase().includes(lotacaoFiltro.toLowerCase())
+    const buscaOk =
+      !busca ||
+      u.nome.toLowerCase().includes(busca.toLowerCase()) ||
+      u.matricula.toLowerCase().includes(busca.toLowerCase())
+    const gestorOk =
+      !gestorFiltro || collectGestorIds(u).includes(gestorFiltro)
+    const recessoOk =
+      filtroRecesso === 'todos' ||
+      (filtroRecesso === 'em_recesso' && isUserInRecessPeriod(today, u)) ||
+      (filtroRecesso === 'recesso_proximo' &&
+        !isUserInRecessPeriod(today, u) &&
+        isAnyRecessApproaching(u, RECESSO_PROXIMO_DIAS))
+    return lotacaoOk && buscaOk && gestorOk && recessoOk && statusOk
+  })
+
+  const toggleFiltroRecesso = (tipo: 'em_recesso' | 'recesso_proximo') => {
+    setFiltroRecesso((prev) => (prev === tipo ? 'todos' : tipo))
+  }
+
+  const createSelectedGestorIds = () => [novoGestorId, ...extraGestorIds]
+  const editSelectedGestorIds = () => [gestorVinculoId, ...editExtraGestorIds]
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    const requiresCargaHoraria = novoCargoCadastro === 'estagiario'
+    if (!nome || !email || !matricula || !departamento || (requiresCargaHoraria && !cargaHoraria)) {
+      toast.error('Preencha todos os campos obrigatórios')
+      return
+    }
+
+    if (!senha || senha.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres')
+      return
+    }
+
+    if (senha !== confirmSenha) {
+      toast.error('As senhas não coincidem')
+      return
+    }
+
+    if (usuarios.some((u) => u.email === email)) {
+      toast.error('Este email já está cadastrado')
+      return
+    }
+
+    if (usuarios.some((u) => u.matricula === matricula)) {
+      toast.error('Esta matrícula já está cadastrada')
+      return
+    }
+
+    if (!validateDateRange(dataInicioContrato, dataFimContrato, 'Contrato')) return
+    if (!validateDateRange(dataInicioRecesso1, dataFimRecesso1, 'Recesso 1')) return
+    if (!validateDateRange(dataInicioRecesso2, dataFimRecesso2, 'Recesso 2')) return
+
+    if (novoCargoCadastro === 'estagiario' && novoGestorId === '_none') {
+      toast.error('Selecione o gestor principal do estagiário')
+      return
+    }
+
+    if (novoCargoCadastro === 'estagiario' && gestoresAtivos.length === 0) {
+      toast.error('Cadastre um gestor antes de vincular o estagiário')
+      return
+    }
+
+    if (novoCargoCadastro === 'estagiario') {
+      const horarioErr = validateHorarioTrabalho(horarioTrabalho)
+      if (horarioErr) {
+        toast.error(horarioErr)
+        return
+      }
+    }
+
+    const base = {
+      nome,
+      email,
+      matricula,
+      departamento,
+      ...(cargaHoraria ? { cargaHorariaSemanal: parseInt(cargaHoraria, 10) } : {}),
+      senha,
+      dataInicioContrato: dataInicioContrato || null,
+      dataFimContrato: dataFimContrato || null,
+      mustChangePassword: true,
+      ativo: true,
+    }
+
+    if (novoCargoCadastro === 'gestor') {
+      addUsuario({
+        ...base,
+        cargo: 'gestor',
+        dataInicioRecesso1: null,
+        dataFimRecesso1: null,
+        dataInicioRecesso2: null,
+        dataFimRecesso2: null,
+      })
+      toast.success(`Gestor ${nome} cadastrado com sucesso!`)
+    } else {
+      const gestorIdsExtra = extraGestorIds.filter((id) => id !== '_none')
+      addUsuario({
+        ...base,
+        cargo: 'estagiario',
+        dataInicioRecesso1: dataInicioRecesso1 || null,
+        dataFimRecesso1: dataFimRecesso1 || null,
+        dataInicioRecesso2: dataInicioRecesso2 || null,
+        dataFimRecesso2: dataFimRecesso2 || null,
+        gestorId: novoGestorId === '_none' ? null : novoGestorId,
+        gestorIds: gestorIdsExtra.length > 0 ? gestorIdsExtra : undefined,
+        ...horarioTrabalho,
+      })
+      toast.success(`Estagiário ${nome} cadastrado com sucesso!`)
+    }
+
+    resetNovoUsuarioForm()
+    setIsDialogOpen(false)
+  }
+
+  const handleSetRecesso = (
+    userId: string,
+    inicio: string,
+    fim: string,
+    numero: 1 | 2,
+  ) => {
+    if (!validateDateRange(inicio, fim, `Recesso ${numero}`)) return
+
+    const patch: Parameters<typeof updateUsuario>[1] =
+      numero === 1
+        ? { dataInicioRecesso1: inicio, dataFimRecesso1: fim }
+        : { dataInicioRecesso2: inicio, dataFimRecesso2: fim }
+
+    updateUsuario(userId, patch)
+    toast.success('Recesso agendado com sucesso!')
+  }
+
+  const openUserActions = (userId: string) => {
+    const usuario = usuarios.find((u) => u.id === userId)
+    if (!usuario) return
+
+    setSelectedUserId(usuario.id)
+    setNome(usuario.nome)
+    setEmail(usuario.email)
+    setMatricula(usuario.matricula)
+    setDepartamento(usuario.departamento)
+    setCargaHoraria(String(usuario.cargaHorariaSemanal))
+    setDataInicioContrato(usuario.dataInicioContrato || '')
+    setDataFimContrato(usuario.dataFimContrato || '')
+    setDataInicioRecesso1(usuario.dataInicioRecesso1 || '')
+    setDataFimRecesso1(usuario.dataFimRecesso1 || '')
+    setDataInicioRecesso2(usuario.dataInicioRecesso2 || '')
+    setDataFimRecesso2(usuario.dataFimRecesso2 || '')
+    setGestorVinculoId(usuario.cargo === 'estagiario' ? (usuario.gestorId ?? '_none') : '_none')
+    const principal = usuario.gestorId
+    const extras = (usuario.gestorIds ?? []).filter((id) => id !== principal)
+    setEditExtraGestorIds(extras.length > 0 ? extras : [])
+    setHorarioTrabalho(
+      usuario.horarioTrabalhoEntrada1
+        ? {
+            horarioTrabalhoEntrada1: usuario.horarioTrabalhoEntrada1,
+            horarioTrabalhoSaida1: usuario.horarioTrabalhoSaida1 ?? null,
+            horarioTrabalhoEntrada2: usuario.horarioTrabalhoEntrada2 ?? null,
+            horarioTrabalhoSaida2: usuario.horarioTrabalhoSaida2 ?? null,
+          }
+        : horarioTrabalhoPadrao(),
+    )
+    setEditAtivo(usuario.ativo)
+    setIsEditMode(false)
+    setIsActionDialogOpen(true)
+  }
+
+  const handleUpdateSelectedUser = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedUser) return
+
+    const requiresCargaHoraria = selectedUser.cargo === 'estagiario'
+    if (!nome || !email || !matricula || !departamento || (requiresCargaHoraria && !cargaHoraria)) {
+      toast.error('Preencha todos os campos obrigatórios')
+      return
+    }
+
+    const emailDuplicado = usuarios.some(
+      (u) => u.id !== selectedUser.id && u.email.toLowerCase() === email.toLowerCase(),
+    )
+    if (emailDuplicado) {
+      toast.error('Este email já está cadastrado')
+      return
+    }
+
+    const matriculaDuplicada = usuarios.some(
+      (u) => u.id !== selectedUser.id && u.matricula.toLowerCase() === matricula.toLowerCase(),
+    )
+    if (matriculaDuplicada) {
+      toast.error('Esta matrícula já está cadastrada')
+      return
+    }
+
+    if (!validateDateRange(dataInicioContrato, dataFimContrato, 'Contrato')) return
+    if (!validateDateRange(dataInicioRecesso1, dataFimRecesso1, 'Recesso 1')) return
+    if (!validateDateRange(dataInicioRecesso2, dataFimRecesso2, 'Recesso 2')) return
+
+    if (selectedUser.cargo === 'estagiario' && gestorVinculoId === '_none') {
+      toast.error('Selecione o gestor principal do estagiário')
+      return
+    }
+
+    if (selectedUser.cargo === 'estagiario') {
+      const horarioErr = validateHorarioTrabalho(horarioTrabalho)
+      if (horarioErr) {
+        toast.error(horarioErr)
+        return
+      }
+    }
+
+    const patch: Parameters<typeof updateUsuario>[1] = {
+      nome,
+      matricula,
+      departamento,
+      dataInicioContrato: dataInicioContrato || null,
+      dataFimContrato: dataFimContrato || null,
+      ativo: editAtivo,
+    }
+
+    if (cargaHoraria) {
+      patch.cargaHorariaSemanal = parseInt(cargaHoraria, 10)
+    }
+
+    if (selectedUser.cargo === 'estagiario') {
+      patch.dataInicioRecesso1 = dataInicioRecesso1 || null
+      patch.dataFimRecesso1 = dataFimRecesso1 || null
+      patch.dataInicioRecesso2 = dataInicioRecesso2 || null
+      patch.dataFimRecesso2 = dataFimRecesso2 || null
+      patch.gestorId = gestorVinculoId === '_none' ? null : gestorVinculoId
+      const gestorIdsExtra = editExtraGestorIds.filter((id) => id !== '_none')
+      patch.gestorIds = gestorIdsExtra
+      patch.horarioTrabalhoEntrada1 = horarioTrabalho.horarioTrabalhoEntrada1
+      patch.horarioTrabalhoSaida1 = horarioTrabalho.horarioTrabalhoSaida1
+      patch.horarioTrabalhoEntrada2 = horarioTrabalho.horarioTrabalhoEntrada2
+      patch.horarioTrabalhoSaida2 = horarioTrabalho.horarioTrabalhoSaida2
+    }
+
+    if (selectedUser.cargo === 'gestor') {
+      patch.dataInicioRecesso1 = null
+      patch.dataFimRecesso1 = null
+      patch.dataInicioRecesso2 = null
+      patch.dataFimRecesso2 = null
+    }
+
+    updateUsuario(selectedUser.id, patch)
+
+    toast.success('Usuário atualizado com sucesso!')
+    setIsEditMode(false)
+  }
+
+  const handleDeleteSelectedUser = () => {
+    if (!selectedUser) return
+    deleteUsuario(selectedUser.id)
+    toast.success('Usuário excluído com sucesso!')
+    handleActionDialogChange(false)
+  }
+
+  const handleConfirmResetPassword = async () => {
+    if (!selectedUser) return
+    setResetPasswordLoading(true)
+    const result = await resetUsuarioSenhaAction(selectedUser.id)
+    setResetPasswordLoading(false)
+    setResetPasswordOpen(false)
+
+    if (!result.success) {
+      toast.error(result.error)
+      return
+    }
+
+    if (result.data.mode === 'email') {
+      toast.success('E-mail de redefinição de senha enviado ao usuário.')
+    } else {
+      setTempPassword(result.data.senhaTemporaria)
+    }
+  }
+
+  const handleCopyTempPassword = async () => {
+    if (!tempPassword) return
+    try {
+      await navigator.clipboard.writeText(tempPassword)
+      toast.success('Senha temporária copiada')
+    } catch {
+      toast.error('Não foi possível copiar. Selecione e copie manualmente.')
+    }
+  }
+
+  const renderRecessoCell = (u: User) => {
+    const temRecesso = u.dataInicioRecesso1 || u.dataInicioRecesso2
+    const emRecesso = isUserInRecessPeriod(today, u)
+    const recessoProximo =
+      !emRecesso && isAnyRecessApproaching(u, RECESSO_PROXIMO_DIAS)
+
+    if (temRecesso) {
+      const partes: string[] = []
+      if (u.dataInicioRecesso1) {
+        partes.push(
+          `R1: ${formatDateShort(u.dataInicioRecesso1)}${u.dataFimRecesso1 ? ` – ${formatDateShort(u.dataFimRecesso1)}` : ''}`,
+        )
+      }
+      if (u.dataInicioRecesso2) {
+        partes.push(
+          `R2: ${formatDateShort(u.dataInicioRecesso2)}${u.dataFimRecesso2 ? ` – ${formatDateShort(u.dataFimRecesso2)}` : ''}`,
+        )
+      }
+      const colorClass = recessoProximo ? 'text-amber-600 font-medium' : 'text-muted-foreground'
+      return <span className={`text-sm ${colorClass}`}>{partes.join(' · ')}</span>
+    }
+
+    const recessoAlvo: 1 | 2 = 1
+
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="sm">
+            Agendar
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agendar Recesso</DialogTitle>
+            <DialogDescription>Defina o período de recesso de {u.nome}</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const formData = new FormData(e.currentTarget)
+              const inicio = formData.get('inicio') as string
+              const fim = formData.get('fim') as string
+              if (inicio && fim) {
+                handleSetRecesso(u.id, inicio, fim, recessoAlvo)
+              }
+            }}
+            className="space-y-4"
+          >
+            <Field>
+              <FieldLabel htmlFor={`recesso-inicio-${u.id}`}>Data de Início</FieldLabel>
+              <Input id={`recesso-inicio-${u.id}`} name="inicio" type="date" required />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor={`recesso-fim-${u.id}`}>Data de Fim</FieldLabel>
+              <Input id={`recesso-fim-${u.id}`} name="fim" type="date" required />
+            </Field>
+            <Button type="submit" className="w-full">
+              Confirmar
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  const renderGestorSelectors = (
+    primary: string,
+    setPrimary: (v: string) => void,
+    extras: string[],
+    setExtras: (v: string[]) => void,
+    selectedIds: string[],
+    idPrefix: string,
+  ) => (
+    <div className="space-y-3 sm:col-span-2">
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-gestor-principal`}>Gestor principal</FieldLabel>
+        <Select value={primary} onValueChange={setPrimary} required>
+          <SelectTrigger id={`${idPrefix}-gestor-principal`}>
+            <SelectValue placeholder="Selecione o gestor" />
+          </SelectTrigger>
+          <SelectContent>
+            {getGestoresDisponiveis(gestoresAtivos, selectedIds, primary).map((g) => (
+              <SelectItem key={g.id} value={g.id}>
+                {g.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      {extras.map((extraId, idx) => (
+        <Field key={`${idPrefix}-extra-${idx}`}>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <FieldLabel htmlFor={`${idPrefix}-gestor-extra-${idx}`}>Gestor adicional</FieldLabel>
+              <Select
+                value={extraId}
+                onValueChange={(v) => {
+                  const next = [...extras]
+                  next[idx] = v
+                  setExtras(next)
+                }}
+              >
+                <SelectTrigger id={`${idPrefix}-gestor-extra-${idx}`}>
+                  <SelectValue placeholder="Selecione o gestor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Nenhum</SelectItem>
+                  {getGestoresDisponiveis(gestoresAtivos, selectedIds, extraId).map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setExtras(extras.filter((_, i) => i !== idx))}
+              aria-label="Remover gestor adicional"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </Field>
+      ))}
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setExtras([...extras, '_none'])}
+        disabled={getGestoresDisponiveis(gestoresAtivos, selectedIds, '_none').length === 0}
+      >
+        <Plus className="mr-2 h-4 w-4" />
+        Adicionar gestor
+      </Button>
+    </div>
+  )
+
+  const renderContratoFields = (idPrefix: string) => (
+    <>
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-contrato-inicio`}>Início do contrato</FieldLabel>
+        <Input
+          id={`${idPrefix}-contrato-inicio`}
+          type="date"
+          value={dataInicioContrato}
+          onChange={(e) => setDataInicioContrato(e.target.value)}
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-contrato-fim`}>Fim do contrato</FieldLabel>
+        <Input
+          id={`${idPrefix}-contrato-fim`}
+          type="date"
+          value={dataFimContrato}
+          onChange={(e) => setDataFimContrato(e.target.value)}
+        />
+      </Field>
+    </>
+  )
+
+  const renderRecessoFields = (idPrefix: string) => (
+    <>
+      <Field className="sm:col-span-2">
+        <p className="text-sm font-medium mb-2">Recesso 1</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor={`${idPrefix}-recesso1-inicio`}>Início</FieldLabel>
+            <Input
+              id={`${idPrefix}-recesso1-inicio`}
+              type="date"
+              value={dataInicioRecesso1}
+              onChange={(e) => setDataInicioRecesso1(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={`${idPrefix}-recesso1-fim`}>Fim</FieldLabel>
+            <Input
+              id={`${idPrefix}-recesso1-fim`}
+              type="date"
+              value={dataFimRecesso1}
+              onChange={(e) => setDataFimRecesso1(e.target.value)}
+            />
+          </Field>
+        </div>
+      </Field>
+      <Field className="sm:col-span-2">
+        <p className="text-sm font-medium mb-2">Recesso 2</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor={`${idPrefix}-recesso2-inicio`}>Início</FieldLabel>
+            <Input
+              id={`${idPrefix}-recesso2-inicio`}
+              type="date"
+              value={dataInicioRecesso2}
+              onChange={(e) => setDataInicioRecesso2(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={`${idPrefix}-recesso2-fim`}>Fim</FieldLabel>
+            <Input
+              id={`${idPrefix}-recesso2-fim`}
+              type="date"
+              value={dataFimRecesso2}
+              onChange={(e) => setDataFimRecesso2(e.target.value)}
+            />
+          </Field>
+        </div>
+      </Field>
+    </>
+  )
+
+  return (
+    <>
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mr-2 h-4" />
+        <h1 className="text-lg font-semibold">Gestão de Usuários</h1>
+      </header>
+
+      <main data-fy-anchor="fy-admin-usuarios-main" className="flex-1 p-4 md:p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Usuários</h2>
+            <p className="text-muted-foreground">Estagiários, gestores e vínculos entre eles</p>
+          </div>
+
+          <Dialog open={isDialogOpen} onOpenChange={handleOpenNovoUsuario}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Novo Usuário
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Cadastrar usuário</DialogTitle>
+                <DialogDescription>Estagiário (com gestor obrigatório) ou gestor</DialogDescription>
+              </DialogHeader>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field className="sm:col-span-2">
+                    <FieldLabel htmlFor="tipo-cadastro">Tipo</FieldLabel>
+                    <Select
+                      value={novoCargoCadastro}
+                      onValueChange={(v) => {
+                        setNovoCargoCadastro(v as 'estagiario' | 'gestor')
+                        if (v === 'gestor') {
+                          setDataInicioRecesso1('')
+                          setDataFimRecesso1('')
+                          setDataInicioRecesso2('')
+                          setDataFimRecesso2('')
+                          setNovoGestorId('_none')
+                          setExtraGestorIds([])
+                          setHorarioTrabalho(horarioTrabalhoVazio())
+                        } else {
+                          setHorarioTrabalho(horarioTrabalhoPadrao())
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="tipo-cadastro">
+                        <SelectValue placeholder="Tipo de usuário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="estagiario">Estagiário</SelectItem>
+                        <SelectItem value="gestor">Gestor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="nome">Nome Completo</FieldLabel>
+                    <Input
+                      id="nome"
+                      placeholder="Nome do estagiário"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      required
+                    />
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="email">Email</FieldLabel>
+                    <Input
+                      id="novo-email"
+                      type="email"
+                      autoComplete="off"
+                      placeholder="email@empresa.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="matricula">Matrícula</FieldLabel>
+                    <Input
+                      id="matricula"
+                      placeholder="EST001"
+                      value={matricula}
+                      onChange={(e) => setMatricula(e.target.value)}
+                      required
+                    />
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="departamento">{LABELS.LOTACAO}</FieldLabel>
+                    <LotacaoCombobox
+                      id="departamento"
+                      value={departamento}
+                      onValueChange={setDepartamento}
+                      options={LOTACOES}
+                    />
+                  </Field>
+
+                  <Field className={novoCargoCadastro === 'gestor' ? 'sm:col-span-2' : undefined}>
+                    <FieldLabel htmlFor="cargaHoraria">
+                      Carga Horária Semanal
+                      {novoCargoCadastro === 'gestor' ? (
+                        <span className="ml-1 font-normal text-muted-foreground">(opcional)</span>
+                      ) : null}
+                    </FieldLabel>
+                    <Select value={cargaHoraria} onValueChange={setCargaHoraria}>
+                      <SelectTrigger id="cargaHoraria">
+                        <SelectValue
+                          placeholder={
+                            novoCargoCadastro === 'gestor'
+                              ? 'Opcional para gestor'
+                              : 'Selecione a carga horária'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CARGAS_HORARIAS.map((ch) => (
+                          <SelectItem key={ch.value} value={ch.value}>
+                            {ch.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  {renderContratoFields('novo')}
+
+                  <Field>
+                    <FieldLabel htmlFor="senha">Senha</FieldLabel>
+                    <Input
+                      id="senha"
+                      type="password"
+                      value={senha}
+                      onChange={(e) => setSenha(e.target.value)}
+                      minLength={6}
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="confirmSenha">Confirmar senha</FieldLabel>
+                    <Input
+                      id="confirmSenha"
+                      type="password"
+                      value={confirmSenha}
+                      onChange={(e) => setConfirmSenha(e.target.value)}
+                      minLength={6}
+                      required
+                    />
+                  </Field>
+
+                  {novoCargoCadastro === 'estagiario' ? (
+                    <>
+                      {renderGestorSelectors(
+                        novoGestorId,
+                        setNovoGestorId,
+                        extraGestorIds,
+                        setExtraGestorIds,
+                        createSelectedGestorIds(),
+                        'novo',
+                      )}
+                      <HorarioTrabalhoFields
+                        idPrefix="novo"
+                        value={horarioTrabalho}
+                        onChange={setHorarioTrabalho}
+                      />
+                      {renderRecessoFields('novo')}
+                    </>
+                  ) : null}
+                </div>
+
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    {novoCargoCadastro === 'gestor'
+                      ? 'Gestores acompanham estagiários vinculados no painel Meus estagiários.'
+                      : 'O gestor principal é obrigatório. Você pode adicionar gestores extras se necessário.'}
+                  </AlertDescription>
+                </Alert>
+
+                <Button type="submit" className="w-full">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  {novoCargoCadastro === 'gestor' ? 'Cadastrar gestor' : 'Cadastrar estagiário'}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Estagiários</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{estagiariosAtivos.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Gestores</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{gestoresAtivos.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card
+            className={`cursor-pointer transition-shadow hover:shadow-md ${filtroRecesso === 'em_recesso' ? 'ring-2 ring-blue-500' : ''}`}
+            onClick={() => toggleFiltroRecesso('em_recesso')}
+          >
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Em Recesso</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {estagiariosAtivos.filter((u) => isUserInRecessPeriod(today, u)).length}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card
+            className={`cursor-pointer transition-shadow hover:shadow-md ${filtroRecesso === 'recesso_proximo' ? 'ring-2 ring-amber-500' : ''}`}
+            onClick={() => toggleFiltroRecesso('recesso_proximo')}
+          >
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Recesso Próximo</CardTitle>
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {estagiariosAtivos.filter(
+                  (u) =>
+                    !isUserInRecessPeriod(today, u) &&
+                    isAnyRecessApproaching(u, RECESSO_PROXIMO_DIAS),
+                ).length}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Estagiários</CardTitle>
+            <CardDescription>Todos os estagiários cadastrados no sistema</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-3 items-center mb-4 flex-wrap">
+              <LotacaoCombobox
+                value={lotacaoFiltro}
+                onValueChange={setLotacaoFiltro}
+                options={LOTACOES}
+                placeholder="Filtrar por lotação"
+              />
+
+              <Select value={gestorFiltro || '_all'} onValueChange={(v) => setGestorFiltro(v === '_all' ? '' : v)}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Filtrar por gestor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">Todos os gestores</SelectItem>
+                  {gestoresAtivos.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.nome} ({g.matricula})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={statusFiltro}
+                onValueChange={(v) => setStatusFiltro(v as 'ativos' | 'inativos')}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ativos">Ativos</SelectItem>
+                  <SelectItem value="inativos">Inativos</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou matrícula"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="pl-9 w-80"
+                />
+              </div>
+            </div>
+
+            {(filtroRecesso !== 'todos' || gestorFiltro || lotacaoFiltro || statusFiltro !== 'ativos') && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {filtroRecesso === 'em_recesso' && (
+                  <Badge variant="secondary" className="gap-1">
+                    Em recesso
+                    <button type="button" onClick={() => setFiltroRecesso('todos')} aria-label="Remover filtro">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {filtroRecesso === 'recesso_proximo' && (
+                  <Badge variant="secondary" className="gap-1">
+                    Recesso próximo
+                    <button type="button" onClick={() => setFiltroRecesso('todos')} aria-label="Remover filtro">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {gestorFiltro && (
+                  <Badge variant="secondary" className="gap-1">
+                    Gestor: {gestoresLista.find((g) => g.id === gestorFiltro)?.nome}
+                    <button type="button" onClick={() => setGestorFiltro('')} aria-label="Remover filtro">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {lotacaoFiltro && (
+                  <Badge variant="secondary" className="gap-1">
+                    Lotação: {lotacaoFiltro}
+                    <button type="button" onClick={() => setLotacaoFiltro('')} aria-label="Remover filtro">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {statusFiltro === 'inativos' && (
+                  <Badge variant="secondary" className="gap-1">
+                    Status: Inativos
+                    <button type="button" onClick={() => setStatusFiltro('ativos')} aria-label="Remover filtro">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+              </div>
+            )}
+
+            {estagiariosFiltrados.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Matrícula</TableHead>
+                      <TableHead>{LABELS.LOTACAO}</TableHead>
+                      <TableHead>Carga Horária</TableHead>
+                      <TableHead>Saldo</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Gestor(es)</TableHead>
+                      <TableHead>Recesso</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {estagiariosFiltrados.map((u) => {
+                      const bancoHoras = getBancoHoras(u.id)
+                      const gestorNome = getGestorNomes(u, usuarios)
+
+                      return (
+                        <TableRow key={u.id}>
+                          <TableCell className="font-medium">
+                            <button
+                              type="button"
+                              onClick={() => openUserActions(u.id)}
+                              className="text-primary hover:underline"
+                            >
+                              {u.nome}
+                            </button>
+                          </TableCell>
+                          <TableCell>{u.email}</TableCell>
+                          <TableCell>{u.matricula}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{u.departamento}</Badge>
+                          </TableCell>
+                          <TableCell>{formatMinutesToDisplay(u.cargaHorariaSemanal)}/sem</TableCell>
+                          <TableCell>
+                            <span
+                              className={`font-semibold ${bancoHoras >= 0 ? 'text-green-600' : 'text-destructive'}`}
+                            >
+                              {formatMinutesToDisplay(bancoHoras)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={isUsuarioAtivo(u) ? 'default' : 'secondary'}
+                              className={isUsuarioAtivo(u) ? 'bg-green-600' : ''}
+                            >
+                              {isUsuarioAtivo(u) ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell
+                            className="text-sm text-muted-foreground max-w-[160px] truncate"
+                            title={gestorNome}
+                          >
+                            {gestorNome}
+                          </TableCell>
+                          <TableCell>{renderRecessoCell(u)}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum estagiário encontrado no filtro atual. Clique em &quot;Novo Usuário&quot; para adicionar.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Lista de gestores</CardTitle>
+            <CardDescription>Quem pode acompanhar estagiários vinculados</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {gestoresFiltrados.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                {statusFiltro === 'inativos'
+                  ? 'Nenhum gestor inativo encontrado.'
+                  : 'Nenhum gestor cadastrado. Use &quot;Novo usuário&quot; e escolha o tipo Gestor.'}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Matrícula</TableHead>
+                      <TableHead>{LABELS.LOTACAO}</TableHead>
+                      <TableHead>Carga</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {gestoresFiltrados.map((g) => (
+                      <TableRow key={g.id}>
+                        <TableCell className="font-medium">
+                          <button
+                            type="button"
+                            onClick={() => openUserActions(g.id)}
+                            className="text-primary hover:underline text-left"
+                          >
+                            {g.nome}
+                          </button>
+                        </TableCell>
+                        <TableCell>{g.email}</TableCell>
+                        <TableCell>{g.matricula}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{g.departamento}</Badge>
+                        </TableCell>
+                        <TableCell>{formatMinutesToDisplay(g.cargaHorariaSemanal)}/sem</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={isUsuarioAtivo(g) ? 'default' : 'secondary'}
+                            className={isUsuarioAtivo(g) ? 'bg-green-600' : ''}
+                          >
+                            {isUsuarioAtivo(g) ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Dialog open={isActionDialogOpen} onOpenChange={handleActionDialogChange}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedUser ? `Ações de ${selectedUser.nome}` : 'Ações do usuário'}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedUser?.cargo === 'estagiario'
+                  ? 'Histórico, edição e exclusão do estagiário.'
+                  : 'Edição e exclusão do perfil do gestor.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            {!isEditMode ? (
+              <div className="space-y-3">
+                {selectedUser?.cargo === 'estagiario' ? (
+                  <>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() => {
+                        if (!selectedUser) return
+                        setIsActionDialogOpen(false)
+                        router.push(`/dashboard/historico?userId=${selectedUser.id}`)
+                      }}
+                    >
+                      Visualizar Histórico
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        if (!selectedUser) return
+                        setIsActionDialogOpen(false)
+                        router.push(`/dashboard/historico?userId=${selectedUser.id}&relatorio=1`)
+                      }}
+                    >
+                      Relatório PDF
+                    </Button>
+                  </>
+                ) : null}
+                {selectedUser ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      const novoAtivo = !isUsuarioAtivo(selectedUser)
+                      updateUsuario(selectedUser.id, { ativo: novoAtivo })
+                      toast.success(novoAtivo ? 'Usuário reativado' : 'Usuário desativado')
+                      handleActionDialogChange(false)
+                    }}
+                  >
+                    {isUsuarioAtivo(selectedUser) ? 'Marcar como Inativo' : 'Marcar como Ativo'}
+                  </Button>
+                ) : null}
+                <Button type="button" variant="outline" className="w-full" onClick={() => setIsEditMode(true)}>
+                  Editar Usuário
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setResetPasswordOpen(true)}
+                >
+                  <KeyRound className="mr-2 h-4 w-4" aria-hidden />
+                  Resetar senha
+                </Button>
+                <Button type="button" variant="destructive" className="w-full" onClick={handleDeleteSelectedUser}>
+                  Excluir Usuário
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleUpdateSelectedUser} className="space-y-4">
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="edit-nome">Nome Completo</FieldLabel>
+                    <Input id="edit-nome" value={nome} onChange={(e) => setNome(e.target.value)} required />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="edit-email">Email</FieldLabel>
+                    <Input id="edit-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="edit-matricula">Matrícula</FieldLabel>
+                    <Input
+                      id="edit-matricula"
+                      value={matricula}
+                      onChange={(e) => setMatricula(e.target.value)}
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="edit-departamento">{LABELS.LOTACAO}</FieldLabel>
+                    <LotacaoCombobox
+                      id="edit-departamento"
+                      value={departamento}
+                      onValueChange={setDepartamento}
+                      options={lotacoesParaSelect(departamento)}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="edit-carga">
+                      Carga Horária Semanal
+                      {selectedUser?.cargo === 'gestor' ? (
+                        <span className="ml-1 font-normal text-muted-foreground">(opcional)</span>
+                      ) : null}
+                    </FieldLabel>
+                    <Select value={cargaHoraria} onValueChange={setCargaHoraria}>
+                      <SelectTrigger id="edit-carga">
+                        <SelectValue
+                          placeholder={
+                            selectedUser?.cargo === 'gestor'
+                              ? 'Opcional para gestor'
+                              : 'Selecione a carga horária'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CARGAS_HORARIAS.map((ch) => (
+                          <SelectItem key={ch.value} value={ch.value}>
+                            {ch.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="edit-status">Status</FieldLabel>
+                    <Select
+                      value={editAtivo ? 'ativo' : 'inativo'}
+                      onValueChange={(v) => setEditAtivo(v === 'ativo')}
+                    >
+                      <SelectTrigger id="edit-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ativo">Ativo</SelectItem>
+                        <SelectItem value="inativo">Inativo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel htmlFor="edit-contrato-inicio">Início do contrato</FieldLabel>
+                      <Input
+                        id="edit-contrato-inicio"
+                        type="date"
+                        value={dataInicioContrato}
+                        onChange={(e) => setDataInicioContrato(e.target.value)}
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="edit-contrato-fim">Fim do contrato</FieldLabel>
+                      <Input
+                        id="edit-contrato-fim"
+                        type="date"
+                        value={dataFimContrato}
+                        onChange={(e) => setDataFimContrato(e.target.value)}
+                      />
+                    </Field>
+                  </div>
+
+                  {selectedUser != null && selectedUser.cargo === 'estagiario' ? (
+                    <>
+                      {renderGestorSelectors(
+                        gestorVinculoId,
+                        setGestorVinculoId,
+                        editExtraGestorIds,
+                        setEditExtraGestorIds,
+                        editSelectedGestorIds(),
+                        'edit',
+                      )}
+                      <HorarioTrabalhoFields
+                        idPrefix="edit"
+                        value={horarioTrabalho}
+                        onChange={setHorarioTrabalho}
+                      />
+                      {renderRecessoFields('edit')}
+                    </>
+                  ) : null}
+                </FieldGroup>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setIsEditMode(false)}>
+                    Voltar
+                  </Button>
+                  <Button type="submit" className="flex-1">
+                    Salvar Alterações
+                  </Button>
+                </div>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Resetar senha</AlertDialogTitle>
+              <AlertDialogDescription>
+                Deseja realmente redefinir a senha de {selectedUser?.nome ?? 'este usuário'}? Um e-mail de
+                recuperação será enviado quando possível.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={resetPasswordLoading}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={resetPasswordLoading}
+                onClick={(e) => {
+                  e.preventDefault()
+                  void handleConfirmResetPassword()
+                }}
+              >
+                {resetPasswordLoading ? 'Processando...' : 'Confirmar'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog
+          open={tempPassword !== null}
+          onOpenChange={(open) => {
+            if (!open) setTempPassword(null)
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Senha temporária gerada</AlertDialogTitle>
+              <AlertDialogDescription>
+                O e-mail de recuperação não pôde ser enviado. Copie a senha abaixo e repasse ao usuário com
+                segurança. Ela não será exibida novamente. O usuário deverá alterá-la no próximo acesso.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex gap-2">
+              <Input
+                readOnly
+                value={tempPassword ?? ''}
+                aria-label="Senha temporária"
+                className="font-mono"
+              />
+              <Button type="button" variant="outline" size="icon" onClick={() => void handleCopyTempPassword()} aria-label="Copiar senha">
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setTempPassword(null)}>Fechar</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </main>
+    </>
+  )
+}

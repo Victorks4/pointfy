@@ -3,8 +3,8 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, Palmtree } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatDate } from '@/lib/time-utils'
-import { buildMonthGrid, toDateKey } from '@/lib/calendar-grid'
+import { formatDate } from '@/lib/domain/ponto/time-utils'
+import { buildMonthGrid, toDateKey } from '@/lib/domain/ponto/calendar-grid'
 import type { Feriado, FeriadoTipo } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const

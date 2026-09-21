@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
-import { AuthProvider } from '@/lib/auth-context'
+import { AuthProvider } from '@/lib/client/auth-context'
 import { PontifyThemeProvider } from '@/components/shared/pontify-theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { WebVitalsReporter } from '@/components/shared/web-vitals-reporter'
@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Sistema de Presença Digital',
+  title: 'PontiFy',
   description: 'Sistema de Gestão de Presença Digital para Estagiários',
 }
 

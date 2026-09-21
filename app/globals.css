@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import './cyber-neon.css';
+@import './styles/cyber-neon.css';
 
 @custom-variant dark (&:is(.dark *));
 

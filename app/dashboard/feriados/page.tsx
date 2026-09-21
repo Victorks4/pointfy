@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { listFeriadosAction } from '@/app/actions/feriados'
 import { FeriadosCalendarView } from '@/components/admin/feriados-calendar-view'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/client/auth-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { formatDate } from '@/lib/time-utils'
+import { formatDate } from '@/lib/domain/ponto/time-utils'
 import type { Feriado, FeriadoTipo } from '@/lib/types'
 
 const TIPO_LABELS: Record<FeriadoTipo, string> = {

@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useGsapMount } from '@/hooks/use-gsap-mount'
+import { useGsapMount } from '@/lib/hooks/use-gsap-mount'
 
 export function DashboardGsapRoot({ children }: { children: ReactNode }) {
   const ref = useGsapMount({ selector: '[data-gsap-reveal]' })

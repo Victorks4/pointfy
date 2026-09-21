@@ -78,7 +78,7 @@ Checklist Pontify detalhado: [pontify-checklist.md](pontify-checklist.md).
 ```javascript
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { validatePontoBusinessRules } from '../lib/server/validators/ponto.validator.ts'
+import { validatePontoBusinessRules } from '../../../lib/server/validators/ponto.validator.ts'
 
 describe('validatePontoBusinessRules', () => {
   it('rejeita totalMinutos inconsistente com horários', () => {

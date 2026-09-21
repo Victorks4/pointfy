@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { initWebVitalsReporting } from '@/lib/web-vitals'
+import { initWebVitalsReporting } from '@/lib/config/web-vitals'
 
 export function WebVitalsReporter() {
   useEffect(() => {

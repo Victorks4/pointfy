@@ -11,7 +11,7 @@ function PageLoading() {
   )
 }
 
-const UsuariosClient = dynamic(() => import('./usuarios-client'), {
+const UsuariosClient = dynamic(() => import('@/components/admin/usuarios-client'), {
   loading: () => <PageLoading />,
 })
 

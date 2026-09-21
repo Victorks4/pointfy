@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useId, useMemo, useState } from 'react'
-import { FY_NAME } from '@/lib/fy-mascot'
-import type { FyTipRole } from '@/lib/fy-mascot'
-import { getFyFaqItemsForRole } from '@/lib/fy-faq'
+import { FY_NAME } from '@/lib/fy/fy-mascot'
+import type { FyTipRole } from '@/lib/fy/fy-mascot'
+import { getFyFaqItemsForRole } from '@/lib/fy/fy-faq'
 import {
   Dialog,
   DialogContent,

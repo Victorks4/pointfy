@@ -2,14 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth-context'
-import { useData } from '@/lib/data-context'
+import { useAuth } from '@/lib/client/auth-context'
+import { useData } from '@/lib/client/data-context'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RelatorioPontoPanel } from '@/components/ponto/relatorio-ponto-panel'
-import { getGestorNomes } from '@/lib/gestor-utils'
-import { emptyLabel } from '@/lib/display-utils'
+import { getGestorNomes } from '@/lib/domain/shared/gestor-utils'
+import { emptyLabel } from '@/lib/domain/shared/display-utils'
 
 export default function RelatoriosPage() {
   const router = useRouter()

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/client/auth-context'
 
 /** Redireciona para troca de senha quando mustChangePassword. */
 export function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
