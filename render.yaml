@@ -3,6 +3,8 @@
 #
 # Após criar o stack: defina secrets no dashboard (Supabase keys, CRON_SECRET, e-mail).
 # Ajuste NEXT_PUBLIC_SITE_URL para https://<nome-do-servico>.onrender.com (ou domínio custom).
+#
+# Tier GRATUITO: não use Blueprint (plan: starter abaixo cobra). Siga docs/DEPLOY-RENDER-FREE.md.
 
 services:
   - type: web

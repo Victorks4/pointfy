@@ -2,6 +2,9 @@
 
 Guia para hospedar o PontiFy (Next.js 16 + Supabase) no [Render](https://render.com), com banco no projeto **PontFy** (`cnkhzfphbkswiasgalww`).
 
+> **Recomendado sem pagar:** [DEPLOY-RENDER-FREE.md](./DEPLOY-RENDER-FREE.md) — Web Service **Free**, sem Blueprint.  
+> Env vars: [`scripts/deploy/render-web-free.env.example`](../scripts/deploy/render-web-free.env.example).
+
 ## Pré-requisitos
 
 1. Repositório GitHub conectado ao Render

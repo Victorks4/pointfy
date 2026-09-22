@@ -21,4 +21,4 @@ Sistema de ponto e gestao de presenca — Next.js 16, TypeScript, Tailwind e Sup
 
 1. `.env.local` a partir de `.env.example`
 2. Migrations em `supabase/migrations/`
-3. `docs/BACKEND.md`, `docs/DEPLOY-RENDER.md` (produção), `docs/DEPLOY-VERCEL.md` (legado)
+3. `docs/BACKEND.md`, `docs/DEPLOY-RENDER-FREE.md` (Render Free), `docs/DEPLOY-VERCEL.md` (legado)
