@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
 import { LoginBrandLoader } from "@/components/auth/login-brand-loader";
 import { PontifyDataFlowBrand } from "@/components/shared/pontify-data-flow-brand";
-import { User, Lock, ArrowRight } from "lucide-react";
+import { User, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const LoginLeftPanel = dynamic(
@@ -64,6 +64,7 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -179,13 +180,27 @@ function LoginPageContent() {
                     <Lock className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-black" aria-hidden />
                     <Input
                       id="senha"
-                      type="password"
+                      type={mostrarSenha ? "text" : "password"}
                       placeholder="Digite sua senha"
                       value={senha}
                       onChange={(e) => setSenha(e.target.value)}
-                      className="neon-input-glow h-12 border-2 border-gray-200 pl-12 text-base transition-all focus:border-gray-500 focus:ring-gray-500/20"
+                      autoComplete="current-password"
+                      className="neon-input-glow h-12 border-2 border-gray-200 pl-12 pr-12 text-base transition-all focus:border-gray-500 focus:ring-gray-500/20"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setMostrarSenha((v) => !v)}
+                      className="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-1 text-gray-400 transition-colors hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/30"
+                      aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                      aria-pressed={mostrarSenha}
+                    >
+                      {mostrarSenha ? (
+                        <EyeOff className="h-5 w-5" aria-hidden />
+                      ) : (
+                        <Eye className="h-5 w-5" aria-hidden />
+                      )}
+                    </button>
                   </div>
                 </Field>
               </FieldGroup>
