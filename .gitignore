@@ -24,3 +24,6 @@ tsconfig.tsbuildinfo
 .env*
 !e2e/credentials.env.example
 e2e/credentials.env
+scripts/db/migrate.env
+scripts/db/senai-sync-passwords.sql
+scripts/db/out/

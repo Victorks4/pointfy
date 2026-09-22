@@ -45,13 +45,7 @@ npm run deploy:preflight
 
 ## Vercel (legado)
 
-Se ainda usar Vercel temporariamente, atualize as variáveis Supabase e redeploy:
-
-```bash
-npm run vercel:env
-```
-
-Ver [DEPLOY-VERCEL.md](./DEPLOY-VERCEL.md).
+Ver [DEPLOY-VERCEL.md](./DEPLOY-VERCEL.md) — env vars no dashboard manualmente.
 
 ### URLs sugeridas (Render + dev)
 
@@ -79,4 +73,4 @@ Projeto legado (referência): `royszemnvodpzhwswpmm` (Pontify).
 
 ## Migração de dados
 
-Ver [MIGRACAO-DADOS.md](./MIGRACAO-DADOS.md) e scripts/db/export-legacy.ps1.
+Ver [MIGRACAO-DADOS.md](./MIGRACAO-DADOS.md).

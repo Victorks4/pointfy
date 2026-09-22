@@ -8,7 +8,7 @@ WHERE j.id <> j2.id
   AND j.tipo IN ('compensacao', 'compensacao_parcial')
   AND j.status_compensacao IN ('pendente_gestor', 'aprovada_gestor')
   AND j2.status_compensacao IN ('pendente_gestor', 'aprovada_gestor')
-  AND COALESCE(j.data_compensacao, '') = COALESCE(j2.data_compensacao, '')
+  AND j.data_compensacao IS NOT DISTINCT FROM j2.data_compensacao
   AND j.created_at > j2.created_at;
 
 -- Impede novas duplicatas ativas por usuário/data

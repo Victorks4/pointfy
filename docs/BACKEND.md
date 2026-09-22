@@ -162,7 +162,7 @@ Guia produção (Render): [docs/DEPLOY-RENDER.md](DEPLOY-RENDER.md). Legado Verc
 Resumo: configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` na Vercel; cadastre `https://SEU-DOMINIO.vercel.app/auth/callback` no Supabase; rode migrations e `npm run db:seed` uma vez se necessário.
 
 ```bash
-npm run vercel:preflight
+npm run deploy:preflight
 npx vercel --prod
 ```
 

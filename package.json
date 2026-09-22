@@ -13,8 +13,6 @@
     "db:seed": "node scripts/db/seed-demo-users.mjs",
     "db:check": "node scripts/db/check-supabase.mjs",
     "icons:generate": "node scripts/dev/generate-fy-icons.mjs",
-    "vercel:preflight": "node scripts/deploy/vercel-preflight.mjs",
-    "vercel:env": "node scripts/deploy/sync-vercel-env.mjs",
     "supabase:auth-urls": "node scripts/deploy/configure-supabase-auth-urls.mjs",
     "test": "npx tsx --test tests/**/*.test.mjs",
     "test:e2e": "playwright test",

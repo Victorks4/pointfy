@@ -34,7 +34,9 @@ Em **Project → Settings → Environment Variables**, configure para **Producti
 
 Copie de `.env.example`. **Nunca** commite `.env`, `.env.local` ou `docs/DADOS-API.md` (notas locais de credenciais).
 
-### Via CLI (a partir da máquina com `.env` local)
+### Variáveis (manual no dashboard)
+
+Configure no painel Vercel; não há mais script CLI no repo.
 
 ```bash
 npx vercel link
