@@ -27,7 +27,11 @@ function usePetAnchorPixel() {
   return pt
 }
 
-function useHighlightRect(anchorId: string | null | undefined, active: boolean) {
+function useHighlightRect(
+  anchorId: string | null | undefined,
+  active: boolean,
+  stepKey: number,
+) {
   const [rect, setRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
 
   useEffect(() => {
@@ -36,38 +40,53 @@ function useHighlightRect(anchorId: string | null | undefined, active: boolean) 
       return
     }
 
+    let cancelled = false
     const measure = () => {
       const el = document.querySelector(`[data-fy-anchor="${anchorId}"]`)
       if (!el || !(el instanceof HTMLElement)) {
         setRect(null)
-        return
+        return false
       }
       const r = el.getBoundingClientRect()
+      if (r.width < 1 && r.height < 1) {
+        setRect(null)
+        return false
+      }
       setRect({
         x: r.left - PADDING,
         y: r.top - PADDING,
         w: r.width + PADDING * 2,
         h: r.height + PADDING * 2,
       })
+      return true
     }
 
-    measure()
-    const ro = new ResizeObserver(measure)
+    const ro = new ResizeObserver(() => {
+      measure()
+    })
     ro.observe(document.documentElement)
     window.addEventListener('scroll', measure, true)
     window.addEventListener('resize', measure)
 
-    const id = window.requestAnimationFrame(measure)
+    const deadline = Date.now() + 5000
+    const poll = () => {
+      if (cancelled) return
+      if (measure()) return
+      if (Date.now() < deadline) {
+        window.requestAnimationFrame(poll)
+      }
+    }
+    poll()
     const id2 = window.setTimeout(measure, 320)
 
     return () => {
-      cancelAnimationFrame(id)
+      cancelled = true
       window.clearTimeout(id2)
       ro.disconnect()
       window.removeEventListener('scroll', measure, true)
       window.removeEventListener('resize', measure)
     }
-  }, [anchorId, active])
+  }, [anchorId, active, stepKey])
 
   return rect
 }
@@ -106,10 +125,16 @@ function FyEntranceLayer() {
 }
 
 export function FyTourOverlay() {
-  const { isTourActive, currentStep, showEntrance, uiMode } = useFyTour()
+  const { isTourActive, isStepTransitioning, currentStep, showEntrance, uiMode, tourStepIndex } =
+    useFyTour()
   const maskId = useId().replace(/:/g, '')
   const prefersReducedMotion = usePrefersReducedMotion()
-  const rect = useHighlightRect(currentStep?.anchorId ?? null, isTourActive)
+  const highlightActive = isTourActive && !isStepTransitioning
+  const rect = useHighlightRect(
+    currentStep?.anchorId ?? null,
+    highlightActive,
+    tourStepIndex,
+  )
   const { x: petX, y: petY } = usePetAnchorPixel()
 
   const targetCx = rect ? rect.x + rect.w / 2 : null

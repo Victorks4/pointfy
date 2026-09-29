@@ -55,16 +55,27 @@ function useTourScroll(anchorId: string | null | undefined, active: boolean, ste
 
   useEffect(() => {
     if (!active || !anchorId) return
-    const run = () => {
+    let cancelled = false
+    const scrollToAnchor = () => {
       const el = document.querySelector(`[data-fy-anchor="${anchorId}"]`)
       if (el instanceof HTMLElement) {
-        el.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion ? 'auto' : 'smooth' })
+        el.scrollIntoView({ block: 'center', behavior: prefersReducedMotion ? 'auto' : 'smooth' })
+        return true
+      }
+      return false
+    }
+    const deadline = Date.now() + 4000
+    const tick = () => {
+      if (cancelled) return
+      if (scrollToAnchor()) return
+      if (Date.now() < deadline) {
+        window.requestAnimationFrame(tick)
       }
     }
-    const id = window.requestAnimationFrame(run)
-    const t = window.setTimeout(run, 400)
+    tick()
+    const t = window.setTimeout(scrollToAnchor, 350)
     return () => {
-      cancelAnimationFrame(id)
+      cancelled = true
       window.clearTimeout(t)
     }
   }, [active, anchorId, stepKey, prefersReducedMotion])
@@ -272,9 +283,10 @@ function FyGuideInner() {
     }
   }, [contextualAnchorId, mounted, tour.isTourActive])
 
-  useTourSpotlight(tour.currentStep?.anchorId ?? null, tour.isTourActive)
-  useTourScroll(tour.currentStep?.anchorId ?? null, tour.isTourActive, tour.tourStepIndex)
-  useTourSidebarOpen(tour.currentStep?.anchorId ?? null, tour.isTourActive)
+  const tourStepReady = tour.isTourActive && !tour.isStepTransitioning
+  useTourSpotlight(tour.currentStep?.anchorId ?? null, tourStepReady)
+  useTourScroll(tour.currentStep?.anchorId ?? null, tourStepReady, tour.tourStepIndex)
+  useTourSidebarOpen(tour.currentStep?.anchorId ?? null, tourStepReady)
 
   if (!mounted || tour.uiMode === 'hydrating') return null
 
@@ -440,19 +452,31 @@ function FyGuideInner() {
                 variant="outline"
                 size="sm"
                 className="gap-1"
-                disabled={tour.tourStepIndex <= 0}
+                disabled={tour.tourStepIndex <= 0 || tour.isStepTransitioning}
                 onClick={() => tour.prevTourStep()}
               >
                 <ChevronLeft className="h-4 w-4" />
                 Voltar
               </Button>
               {isLastTourStep ? (
-                <Button type="button" size="sm" className="gap-1 bg-sky-600 hover:bg-sky-700" onClick={() => tour.completeTourAndCollapse()}>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1 bg-sky-600 hover:bg-sky-700"
+                  disabled={tour.isStepTransitioning}
+                  onClick={() => tour.completeTourAndCollapse()}
+                >
                   Concluir
                 </Button>
               ) : (
-                <Button type="button" size="sm" className="gap-1 bg-sky-600 hover:bg-sky-700" onClick={() => tour.nextTourStep()}>
-                  Próximo
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1 bg-sky-600 hover:bg-sky-700"
+                  disabled={tour.isStepTransitioning}
+                  onClick={() => tour.nextTourStep()}
+                >
+                  {tour.isStepTransitioning ? 'Carregando…' : 'Próximo'}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               )}

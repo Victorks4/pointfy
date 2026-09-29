@@ -115,11 +115,16 @@ export type FyOnboardingStep = {
   anchorId: string | null
 }
 
+const FY_TOUR_EXACT_ROUTES = new Set([
+  '/dashboard',
+  '/dashboard/admin',
+  '/dashboard/gestor',
+])
+
 export function fyPathnameMatchesRoute(pathname: string, route: string | null): boolean {
   if (!route) return true
   if (pathname === route) return true
-  if (route === '/dashboard' && pathname.startsWith('/dashboard/admin')) return false
-  if (route === '/dashboard' && pathname.startsWith('/dashboard/gestor')) return false
+  if (FY_TOUR_EXACT_ROUTES.has(route)) return false
   return pathname.startsWith(`${route}/`)
 }
 

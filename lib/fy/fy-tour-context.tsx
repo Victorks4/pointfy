@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -20,6 +21,7 @@ import {
   fyPathnameMatchesRoute,
   type FyOnboardingStep,
 } from '@/lib/fy/fy-mascot'
+import { waitForTourAnchor } from '@/lib/fy/wait-for-tour-anchor'
 
 export type FyUiMode = 'hydrating' | 'entrance' | 'tour' | 'exiting' | 'fab' | 'dock'
 
@@ -38,6 +40,7 @@ type FyTourContextValue = {
   collapseToFab: () => void
   currentStep: FyOnboardingStep | undefined
   isTourActive: boolean
+  isStepTransitioning: boolean
   showEntrance: boolean
 }
 
@@ -71,18 +74,15 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
   const [uiMode, setUiMode] = useState<FyUiMode>('hydrating')
   const [tourStepIndex, setTourStepIndex] = useState(0)
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false)
+  const [isStepTransitioning, setIsStepTransitioning] = useState(false)
+  const [pendingStepIndex, setPendingStepIndex] = useState<number | null>(null)
+  const transitionGen = useRef(0)
 
   const storageKey = user ? getFyOnboardingStorageKey(user.id, variant) : ''
   const pendingTourKey = user ? getFyPendingTourStorageKey(user.id, variant) : ''
 
   useEffect(() => {
     if (!user) return
-    if (user.cargo === 'gestor') {
-      setHasCompletedOnboarding(true)
-      setUiMode('fab')
-      setTourStepIndex(0)
-      return
-    }
     if (!storageKey) return
     if (user.mustChangePassword || pathname === '/dashboard/alterar-senha') {
       setUiMode('fab')
@@ -97,6 +97,8 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
     } else if (pendingTour) {
       setUiMode('entrance')
       setTourStepIndex(0)
+      setPendingStepIndex(0)
+      setIsStepTransitioning(true)
     } else {
       setUiMode('fab')
     }
@@ -110,15 +112,67 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
     return () => globalThis.clearTimeout(timer)
   }, [uiMode])
 
+  const beginStepTransition = useCallback(
+    (targetIndex: number) => {
+      if (targetIndex < 0 || targetIndex >= flow.length) return
+      const step = flow[targetIndex]
+      setIsStepTransitioning(true)
+      setPendingStepIndex(targetIndex)
+      if (step.rotaSugerida && !fyPathnameMatchesRoute(pathname, step.rotaSugerida)) {
+        router.push(step.rotaSugerida)
+      }
+    },
+    [flow, pathname, router],
+  )
+
   useEffect(() => {
-    if (uiMode !== 'tour') return
-    if (user?.mustChangePassword) return
-    const step = flow[tourStepIndex]
+    if (uiMode !== 'tour' || user?.mustChangePassword) return
+    if (pendingStepIndex === null) return
+
+    const step = flow[pendingStepIndex]
+    if (!step) return
+    if (step.rotaSugerida && !fyPathnameMatchesRoute(pathname, step.rotaSugerida)) {
+      return
+    }
+
+    const gen = ++transitionGen.current
+    let cancelled = false
+
+    void (async () => {
+      await waitForTourAnchor(step.anchorId, 5000)
+      if (cancelled || gen !== transitionGen.current) return
+      setTourStepIndex(pendingStepIndex)
+      setPendingStepIndex(null)
+      setIsStepTransitioning(false)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [uiMode, pathname, pendingStepIndex, flow, user?.mustChangePassword])
+
+  useEffect(() => {
+    if (uiMode !== 'tour' || user?.mustChangePassword) return
+    const idx = pendingStepIndex ?? tourStepIndex
+    const step = flow[idx]
     if (!step?.rotaSugerida) return
-    if (!fyPathnameMatchesRoute(pathname, step.rotaSugerida)) {
+    if (fyPathnameMatchesRoute(pathname, step.rotaSugerida)) return
+    if (pendingStepIndex === null) {
+      beginStepTransition(tourStepIndex)
+    } else {
+      setIsStepTransitioning(true)
       router.push(step.rotaSugerida)
     }
-  }, [uiMode, tourStepIndex, flow, pathname, router, user?.mustChangePassword])
+  }, [
+    uiMode,
+    tourStepIndex,
+    pathname,
+    flow,
+    user?.mustChangePassword,
+    pendingStepIndex,
+    beginStepTransition,
+    router,
+  ])
 
   const persistComplete = useCallback(() => {
     if (!storageKey) return
@@ -131,6 +185,8 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
 
   const completeTourAndCollapse = useCallback(() => {
     persistComplete()
+    setPendingStepIndex(null)
+    setIsStepTransitioning(false)
     setUiMode('exiting')
     globalThis.setTimeout(() => {
       setUiMode('fab')
@@ -139,6 +195,8 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
 
   const skipTour = useCallback(() => {
     persistComplete()
+    setPendingStepIndex(null)
+    setIsStepTransitioning(false)
     setUiMode('exiting')
     globalThis.setTimeout(() => {
       setUiMode('fab')
@@ -146,24 +204,22 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
   }, [persistComplete])
 
   const nextTourStep = useCallback(() => {
-    setTourStepIndex((prev) => {
-      if (prev >= flow.length - 1) return prev
-      return prev + 1
-    })
-  }, [flow.length])
+    if (isStepTransitioning) return
+    if (tourStepIndex >= flow.length - 1) return
+    beginStepTransition(tourStepIndex + 1)
+  }, [isStepTransitioning, tourStepIndex, flow.length, beginStepTransition])
 
   const prevTourStep = useCallback(() => {
-    setTourStepIndex((i) => Math.max(0, i - 1))
-  }, [])
+    if (isStepTransitioning) return
+    if (tourStepIndex <= 0) return
+    beginStepTransition(tourStepIndex - 1)
+  }, [isStepTransitioning, tourStepIndex, beginStepTransition])
 
   const startTourFromMenu = useCallback(() => {
     setTourStepIndex(0)
     setUiMode('tour')
-    const first = flow[0]
-    if (first?.rotaSugerida && !fyPathnameMatchesRoute(pathname, first.rotaSugerida)) {
-      router.push(first.rotaSugerida)
-    }
-  }, [flow, pathname, router])
+    beginStepTransition(0)
+  }, [beginStepTransition])
 
   const expandDock = useCallback(() => {
     setUiMode('dock')
@@ -197,6 +253,7 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
       collapseToFab,
       currentStep,
       isTourActive,
+      isStepTransitioning,
       showEntrance,
     }),
     [
@@ -214,6 +271,7 @@ export function FyTourProvider({ children }: { children: ReactNode }) {
       collapseToFab,
       currentStep,
       isTourActive,
+      isStepTransitioning,
       showEntrance,
     ],
   )
