@@ -43,3 +43,17 @@ Bucket `justificativas`: copiar do legado se faltar. `supabase/seed.sql` se o bu
 ## Validar
 
 `node scripts/db/test-login.mjs` + login na URL Render.
+
+## Zerar histórico de presença (go-live)
+
+Para contar saldo e registros do zero **sem apagar contas** (somente estagiários):
+
+```bash
+npm run db:reset-estagiarios-ops
+npm run db:reset-estagiarios-ops -- --confirm
+```
+
+Alternativa no SQL Editor: [`scripts/db/reset-estagiarios-operational-data.sql`](../scripts/db/reset-estagiarios-operational-data.sql).
+
+Remove `ponto_registros`, `justificativas`, progresso de desafios, bloqueios por estagiário, notificações pessoais e leituras. Mantém `profiles`, `auth.users`, configs, feriados e vínculos gestor–estagiário.
+

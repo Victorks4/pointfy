@@ -17,7 +17,8 @@
     "test": "npx tsx --test tests/**/*.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "deploy:preflight": "node scripts/deploy/deploy-preflight.mjs"
+    "deploy:preflight": "node scripts/deploy/deploy-preflight.mjs",
+    "db:reset-estagiarios-ops": "node scripts/db/reset-estagiarios-operational-data.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
