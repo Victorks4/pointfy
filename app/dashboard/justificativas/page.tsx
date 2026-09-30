@@ -24,6 +24,7 @@ import {
 } from '@/lib/domain/ponto/compensacao-utils'
 import { FileText, Clock, Send, Info } from 'lucide-react'
 import { uploadJustificativaArquivoAction } from '@/app/actions/justificativas'
+import { DEFAULT_ATESTADO_RH_EMAIL } from '@/lib/constants/atestado-rh'
 
 export default function JustificativasPage() {
   const { user } = useAuth()
@@ -63,19 +64,21 @@ export default function JustificativasPage() {
       return
     }
 
+    if (!atestadoArquivo) {
+      toast.error('Anexe o documento do atestado (PDF ou imagem)')
+      return
+    }
+
     setSubmittingAtestado(true)
     try {
-    let arquivoPath: string | null = null
-    if (atestadoArquivo) {
-      const formData = new FormData()
-      formData.append('file', atestadoArquivo)
-      const upload = await uploadJustificativaArquivoAction(formData)
-      if (!upload.success) {
-        toast.error(upload.error)
-        return
-      }
-      arquivoPath = upload.data.path
+    const formData = new FormData()
+    formData.append('file', atestadoArquivo)
+    const upload = await uploadJustificativaArquivoAction(formData)
+    if (!upload.success) {
+      toast.error(upload.error)
+      return
     }
+    const arquivoPath = upload.data.path
 
     const result = await addJustificativa({
       userId: user.id,
@@ -253,8 +256,10 @@ export default function JustificativasPage() {
                 <Alert className="mb-4">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    Com anexo, uma cópia é enviada automaticamente para{' '}
-                    <strong>ngpsenaifeira@fieb.org.br</strong> para validação pelo RH.
+                    O anexo é obrigatório (PDF ou imagem). O RH consulta os atestados no painel
+                    administrativo. O envio automático por e-mail para{' '}
+                    <strong>{DEFAULT_ATESTADO_RH_EMAIL}</strong> será habilitado quando a TI
+                    configurar o serviço de e-mail (veja documentação no repositório).
                     Faltas justificadas não geram débito no saldo.
                   </AlertDescription>
                 </Alert>
@@ -286,7 +291,9 @@ export default function JustificativasPage() {
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="atestado-arquivo">Anexar Arquivo</FieldLabel>
+                      <FieldLabel htmlFor="atestado-arquivo">
+                        Anexar arquivo <span className="text-destructive">*</span>
+                      </FieldLabel>
                       <div className="flex items-center gap-2">
                         <Input
                           id="atestado-arquivo"
@@ -294,6 +301,7 @@ export default function JustificativasPage() {
                           accept=".pdf,.jpg,.jpeg,.png"
                           onChange={handleFileChange}
                           className="flex-1"
+                          required
                         />
                       </div>
                       {atestadoArquivo && (

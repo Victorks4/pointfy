@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ATESTADO_RH_EMAIL } from '@/lib/server/email/constants'
+import { getAtestadoRhEmail } from '@/lib/server/email/atestado-email-config'
 import { sendEmail } from '@/lib/server/email/mailer'
 import { formatDate } from '@/lib/domain/ponto/time-utils'
 
@@ -31,7 +31,8 @@ export async function sendAtestadoCopyToRh(ctx: AtestadoRhEmailContext): Promise
   const { data: file, error } = await admin.storage.from('justificativas').download(ctx.arquivoPath)
 
   if (error || !file) {
-    throw new Error('Não foi possível ler o anexo do atestado para envio ao RH')
+    console.error('[atestado-rh] download storage:', error?.message)
+    throw new Error('Não foi possível ler o anexo do atestado no storage')
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
@@ -67,19 +68,27 @@ export async function sendAtestadoCopyToRh(ctx: AtestadoRhEmailContext): Promise
     <p>O documento está em anexo neste e-mail.</p>
   `.trim()
 
-  await sendEmail({
-    to: ATESTADO_RH_EMAIL,
-    subject,
-    html,
-    text,
-    attachments: [
-      {
-        filename,
-        content: buffer,
-        contentType: guessContentType(filename),
-      },
-    ],
-  })
+  const rhEmail = getAtestadoRhEmail()
+
+  try {
+    await sendEmail({
+      to: rhEmail,
+      subject,
+      html,
+      text,
+      attachments: [
+        {
+          filename,
+          content: buffer,
+          contentType: guessContentType(filename),
+        },
+      ],
+    })
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err)
+    console.error('[atestado-rh] falha ao enviar para', rhEmail, detail)
+    throw err
+  }
 }
 
 function escapeHtml(value: string): string {

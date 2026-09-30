@@ -34,6 +34,16 @@ export const justificativaInputSchema = z
     minutosSolicitados: z.number().int().positive().nullable().optional(),
   })
   .superRefine((val, ctx) => {
+    if (val.tipo === 'atestado') {
+      const path = val.arquivoPath?.trim()
+      if (!path) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Anexe o documento do atestado (PDF ou imagem)',
+          path: ['arquivoPath'],
+        })
+      }
+    }
     if (val.tipo === 'compensacao_parcial') {
       if (!val.dataCompensacao) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Data da compensação é obrigatória' })

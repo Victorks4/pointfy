@@ -1,0 +1,3 @@
+# Redirecionamento
+
+Ver [FUTURO-EMAIL-ATESTADOS.md](./FUTURO-EMAIL-ATESTADOS.md).

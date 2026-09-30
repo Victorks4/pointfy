@@ -68,9 +68,9 @@ if (!ok) {
 const emailOk =
   Boolean(env.RESEND_API_KEY?.trim()) || Boolean(env.SMTP_HOST?.trim())
 if (emailOk) {
-  console.log('✓ E-mail de atestados (RESEND_API_KEY ou SMTP_HOST)')
+  console.log('✓ E-mail (opcional — cópia de atestados ao RH quando habilitado)')
 } else {
-  console.warn('⚠ E-mail de atestados não configurado (RESEND_API_KEY ou SMTP_HOST)')
+  console.log('○ E-mail não configurado (atestados seguem só no app; ver docs/FUTURO-EMAIL-ATESTADOS.md)')
 }
 
 if (!env.CRON_SECRET?.trim()) {

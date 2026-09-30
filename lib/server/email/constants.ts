@@ -1,5 +1,7 @@
-/** Destinatário fixo do RH para cópia de atestados anexados. */
-export const ATESTADO_RH_EMAIL = 'ngpsenaifeira@fieb.org.br'
+import { DEFAULT_ATESTADO_RH_EMAIL } from '@/lib/constants/atestado-rh'
+
+/** @deprecated Use getAtestadoRhEmail() — mantido para imports legados. */
+export const ATESTADO_RH_EMAIL = DEFAULT_ATESTADO_RH_EMAIL
 
 export function getEmailFromAddress(): string {
   return (

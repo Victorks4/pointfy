@@ -14,7 +14,7 @@ import type { JustificativaRow, ProfileRow } from '@/lib/server/db-types'
 import { isGestorOfEstagiario } from '@/lib/server/access-control'
 import { isCompensacaoTipo } from '@/lib/domain/ponto/compensacao-utils'
 import { formatMinutesToDisplay } from '@/lib/domain/ponto/time-utils'
-import { sendAtestadoCopyToRh } from '@/lib/server/email/send-atestado-rh'
+import { maybeSendAtestadoCopyToRh } from '@/lib/server/email/atestado-email-config'
 
 async function getEstagiarioTeamIds(
   supabase: SupabaseClient,
@@ -186,14 +186,20 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
     return mapJustificativa(row, arquivoUrl)
   }
 
+  if (parsed.tipo !== 'atestado') {
+    throw new Error('Tipo de justificativa inválido')
+  }
+
+  const arquivoPath = parsed.arquivoPath!.trim()
+
   const { data, error } = await supabase
     .from('justificativas')
     .insert({
       user_id: session.id,
       data: parsed.data,
-      tipo: parsed.tipo,
+      tipo: 'atestado',
       descricao: parsed.descricao,
-      arquivo_path: parsed.arquivoPath ?? null,
+      arquivo_path: arquivoPath,
       minutos_abatidos: 0,
     })
     .select()
@@ -202,27 +208,25 @@ export async function createJustificativa(input: unknown): Promise<Justificativa
   if (error) throw error
   const row = data as JustificativaRow
 
-  if (parsed.tipo === 'atestado' && parsed.arquivoPath) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('nome, email, matricula, departamento')
-      .eq('id', session.id)
-      .single()
-    const profileRow = profile as Pick<
-      ProfileRow,
-      'nome' | 'email' | 'matricula' | 'departamento'
-    > | null
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('nome, email, matricula, departamento')
+    .eq('id', session.id)
+    .single()
+  const profileRow = profile as Pick<
+    ProfileRow,
+    'nome' | 'email' | 'matricula' | 'departamento'
+  > | null
 
-    await sendAtestadoCopyToRh({
-      estagiarioNome: profileRow?.nome ?? session.nome,
-      estagiarioEmail: profileRow?.email ?? session.email,
-      matricula: profileRow?.matricula ?? '-',
-      lotacao: profileRow?.departamento ?? '-',
-      dataAusencia: parsed.data,
-      descricao: parsed.descricao,
-      arquivoPath: parsed.arquivoPath,
-    })
-  }
+  await maybeSendAtestadoCopyToRh({
+    estagiarioNome: profileRow?.nome ?? session.nome,
+    estagiarioEmail: profileRow?.email ?? session.email,
+    matricula: profileRow?.matricula ?? '-',
+    lotacao: profileRow?.departamento ?? '-',
+    dataAusencia: parsed.data,
+    descricao: parsed.descricao,
+    arquivoPath,
+  })
 
   const arquivoUrl = await signedUrlForPath(supabase, row.arquivo_path)
   return mapJustificativa(row, arquivoUrl)
