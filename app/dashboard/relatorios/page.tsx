@@ -18,7 +18,6 @@ export default function RelatoriosPage() {
     usuarios,
     pontos,
     justificativas,
-    getEstagiariosDoGestor,
     getBancoHorasPorPeriodo,
     isPresencaBloqueada,
   } = useData()
@@ -30,11 +29,8 @@ export default function RelatoriosPage() {
     if (user.cargo === 'admin') {
       return usuarios.filter((u) => u.cargo === 'estagiario' && u.ativo)
     }
-    if (user.cargo === 'gestor') {
-      return getEstagiariosDoGestor(user.id)
-    }
     return []
-  }, [user, usuarios, getEstagiariosDoGestor])
+  }, [user, usuarios])
 
   useEffect(() => {
     if (!user) return
@@ -64,8 +60,12 @@ export default function RelatoriosPage() {
     )
   }
 
-  if (user.cargo !== 'estagiario' && user.cargo !== 'gestor' && user.cargo !== 'admin') {
-    router.replace('/dashboard')
+  if (user.cargo !== 'estagiario' && user.cargo !== 'admin') {
+    if (user.cargo === 'gestor') {
+      router.replace('/dashboard/gestor')
+    } else {
+      router.replace('/dashboard')
+    }
     return null
   }
 

@@ -1,10 +1,12 @@
 'use client'
  
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LiveClock } from '@/components/ponto/live-clock'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/client/auth-context'
+import { getDashboardPathForRole } from '@/lib/auth/auth-routes'
 import { useData } from '@/lib/client/data-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -514,9 +516,17 @@ function JustificativaAlert({
  
 export default function PontoPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const { addPonto, updatePonto, getPontoByDate, getActivePontoConfig, isPresencaBloqueada, feriados } =
     useData()
   const activeConfig = getActivePontoConfig()
+
+  useEffect(() => {
+    if (!user) return
+    if (user.cargo !== 'estagiario') {
+      router.replace(getDashboardPathForRole(user.cargo))
+    }
+  }, [user, router])
 
   const [mounted, setMounted] = useState(false)
   const [selectedDate, setSelectedDate] = useState(getTodayString())
@@ -674,6 +684,10 @@ export default function PontoPage() {
     clearPontoDraft(user.id, selectedDate)
   }
  
+  if (user && user.cargo !== 'estagiario') {
+    return null
+  }
+
   if (emRecesso && user) {
     const fim = isInRecessPeriod(selectedDate, user.dataInicioRecesso1, user.dataFimRecesso1)
       ? user.dataFimRecesso1

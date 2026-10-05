@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useAuth } from '@/lib/client/auth-context'
 import { useData } from '@/lib/client/data-context'
@@ -61,11 +61,17 @@ export function DashboardSidebar() {
   const { user, logout } = useAuth()
   const { getNotificacoesByUser, getCompensacoesPendentesGestor } = useData()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const notificacoesNaoLidas = user ? getNotificacoesByUser(user.id).filter((n) => !n.lida).length : 0
   const compensacoesPendentes =
     user?.cargo === 'gestor' ? getCompensacoesPendentesGestor(user.id).length : 0
+  const gestorTab = searchParams.get('tab')
+  const gestorAprovacoesActive =
+    pathname === '/dashboard/gestor' && gestorTab === 'justificativas'
+  const gestorPainelActive =
+    pathname === '/dashboard/gestor' && gestorTab !== 'justificativas'
 
   const handleLogout = async () => {
     if (isLoggingOut) return
@@ -218,18 +224,14 @@ export function DashboardSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname === '/dashboard/gestor' || pathname.startsWith('/dashboard/gestor/')}
+                    isActive={gestorPainelActive}
                     tooltip="Meus estagiários"
-                    className={menuButtonClass(
-                      pathname === '/dashboard/gestor' || pathname.startsWith('/dashboard/gestor/'),
-                    )}
+                    className={menuButtonClass(gestorPainelActive)}
                   >
                     <Link href="/dashboard/gestor" className="flex items-center gap-3">
                       <div
                         className={cn(
-                          menuIconClass(
-                            pathname === '/dashboard/gestor' || pathname.startsWith('/dashboard/gestor/'),
-                          ),
+                          menuIconClass(gestorPainelActive),
                           'group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0',
                         )}
                       >
@@ -250,37 +252,36 @@ export function DashboardSidebar() {
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                {[
-                  { title: 'Registrar Presença', href: '/dashboard/ponto', icon: Clock },
-                  { title: 'Histórico', href: '/dashboard/historico', icon: CalendarDays },
-                  { title: 'Relatórios', href: '/dashboard/relatorios', icon: FileBarChart2 },
-                ].map((item) => {
-                  const isActive = pathname === item.href
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        tooltip={item.title}
-                        className={menuButtonClass(isActive)}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={gestorAprovacoesActive}
+                    tooltip="Aprovações de compensação"
+                    className={menuButtonClass(gestorAprovacoesActive)}
+                  >
+                    <Link href="/dashboard/gestor?tab=justificativas" className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          menuIconClass(gestorAprovacoesActive),
+                          'group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0',
+                        )}
                       >
-                        <Link href={item.href} className="flex items-center gap-3">
-                          <div
-                            className={cn(
-                              menuIconClass(isActive),
-                              'group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0',
-                            )}
-                          >
-                            <item.icon className="h-4 w-4" />
-                          </div>
-                          <span data-sidebar-label className="flex-1">
-                            {item.title}
-                          </span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )
-                })}
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <span data-sidebar-label className="flex-1">
+                        Aprovações
+                      </span>
+                      {compensacoesPendentes > 0 ? (
+                        <Badge
+                          data-sidebar-label
+                          className="flex h-5 min-w-[20px] animate-pulse items-center justify-center bg-amber-500 text-xs text-white dark:bg-amber-500/90"
+                        >
+                          {compensacoesPendentes}
+                        </Badge>
+                      ) : null}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild

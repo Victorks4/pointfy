@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useAuth } from '@/lib/client/auth-context'
 import { useServerUser } from '@/components/shared/server-user-provider'
 import { DashboardSidebar } from '@/components/dashboard/dashboard-sidebar'
@@ -116,7 +116,9 @@ export function DashboardClientLayout({ children }: { children: React.ReactNode 
       <InactiveAccountGuard>
       <PasswordChangeGuard>
         <SidebarProvider>
-        <DashboardSidebar />
+        <Suspense fallback={null}>
+          <DashboardSidebar />
+        </Suspense>
         <SidebarInset className="min-h-0 overflow-hidden">
           <DashboardDataStatus />
           <FyTourProvider>

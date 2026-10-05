@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/client/auth-context'
 import { useData } from '@/lib/client/data-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,17 +29,12 @@ import { DEFAULT_ATESTADO_RH_EMAIL } from '@/lib/constants/atestado-rh'
 
 export default function JustificativasPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const { addJustificativa, getJustificativasByUser, getBancoHoras } = useData()
 
-  const justificativas = user ? getJustificativasByUser(user.id) : []
-  const bancoHoras = user ? getBancoHoras(user.id) : 0
-
-  // Estados para formulário de atestado
   const [atestadoData, setAtestadoData] = useState('')
   const [atestadoDescricao, setAtestadoDescricao] = useState('')
   const [atestadoArquivo, setAtestadoArquivo] = useState<File | null>(null)
-
-  // Estados para formulário de compensação
   const [compDataFalta, setCompDataFalta] = useState('')
   const [compDescricao, setCompDescricao] = useState('')
   const [parcialDataFalta, setParcialDataFalta] = useState('')
@@ -48,6 +44,21 @@ export default function JustificativasPage() {
   const [submittingAtestado, setSubmittingAtestado] = useState(false)
   const [submittingComp, setSubmittingComp] = useState(false)
   const [submittingParcial, setSubmittingParcial] = useState(false)
+
+  useEffect(() => {
+    if (user?.cargo === 'gestor') {
+      router.replace('/dashboard/gestor?tab=justificativas')
+    } else if (user?.cargo === 'admin') {
+      router.replace('/dashboard/admin/justificativas')
+    }
+  }, [user?.cargo, router])
+
+  if (user?.cargo === 'gestor' || user?.cargo === 'admin') {
+    return null
+  }
+
+  const justificativas = user ? getJustificativasByUser(user.id) : []
+  const bancoHoras = user ? getBancoHoras(user.id) : 0
 
   const handleAtestadoSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

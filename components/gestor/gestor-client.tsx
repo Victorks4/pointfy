@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/client/auth-context'
 import { useData } from '@/lib/client/data-context'
 import { emptyCell } from '@/lib/domain/shared/display-utils'
-import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SidebarTrigger } from '@/components/ui/sidebar'
@@ -20,7 +20,7 @@ import {
   getTodayString,
   calcularSequenciaAtual,
 } from '@/lib/domain/ponto/time-utils'
-import { Calendar, Clock, FileText, Bell, User, TrendingUp, TrendingDown, ExternalLink } from 'lucide-react'
+import { Calendar, Clock, FileText, Bell, User, TrendingUp, TrendingDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LABELS } from '@/lib/constants/labels'
 import { precisaJustificativaHoraExtra } from '@/lib/domain/ponto/ponto-config-utils'
@@ -56,8 +56,17 @@ type AtividadeItem = {
   dataRef: string
 }
 
+const GESTOR_TABS = ['resumo', 'pontos', 'historico', 'justificativas', 'atividades'] as const
+type GestorTab = (typeof GESTOR_TABS)[number]
+
+function parseGestorTab(value: string | null): GestorTab {
+  if (value && GESTOR_TABS.includes(value as GestorTab)) return value as GestorTab
+  return 'resumo'
+}
+
 export default function GestorDashboardPage() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const {
     getEstagiariosDoGestor,
     getPontosByUser,
@@ -74,12 +83,25 @@ export default function GestorDashboardPage() {
   } = useData()
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<GestorTab>(() => parseGestorTab(searchParams.get('tab')))
   const [selectedMonth, setSelectedMonth] = useState(() =>
     String(new Date().getMonth() + 1).padStart(2, '0'),
   )
   const [selectedYear, setSelectedYear] = useState(() => String(new Date().getFullYear()))
 
   const vinculados = user ? getEstagiariosDoGestor(user.id) : []
+
+  useEffect(() => {
+    setActiveTab(parseGestorTab(searchParams.get('tab')))
+  }, [searchParams])
+
+  const requestedUserId = searchParams.get('userId')
+  useEffect(() => {
+    if (!requestedUserId) return
+    if (vinculados.some((e) => e.id === requestedUserId)) {
+      setSelectedId(requestedUserId)
+    }
+  }, [requestedUserId, vinculados])
 
   useEffect(() => {
     if (vinculados.length === 0) {
@@ -215,15 +237,13 @@ export default function GestorDashboardPage() {
                     {selected.departamento} · {formatMinutesToDisplay(selected.cargaHorariaSemanal)}/sem
                   </p>
                 </div>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/dashboard/historico?userId=${selected.id}`}>
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Histórico em tela cheia
-                  </Link>
-                </Button>
               </div>
 
-              <Tabs defaultValue="resumo" className="w-full">
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => setActiveTab(parseGestorTab(value))}
+                className="w-full"
+              >
                 <TabsList className="flex w-full flex-wrap h-auto gap-1 bg-muted/50 p-1">
                   <TabsTrigger value="resumo" className="flex-1 min-w-[5.5rem]">
                     Resumo
