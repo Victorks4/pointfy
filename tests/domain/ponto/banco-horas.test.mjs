@@ -155,4 +155,31 @@ describe('calcularBancoHoras', () => {
     const saldo = calcularBancoHoras(user, pontos, [], [])
     assert.equal(saldo, 60)
   })
+
+  it('aplica abono positivo e negativo no saldo', () => {
+    const justificativas = [
+      {
+        id: 'j-abono',
+        userId: 'u1',
+        data: '2024-06-10',
+        tipo: 'abono',
+        descricao: 'crédito',
+        arquivoUrl: null,
+        minutosAbatidos: 60,
+        createdAt: '',
+      },
+      {
+        id: 'j-debito',
+        userId: 'u1',
+        data: '2024-06-11',
+        tipo: 'abono',
+        descricao: 'débito',
+        arquivoUrl: null,
+        minutosAbatidos: -30,
+        createdAt: '',
+      },
+    ]
+    const saldo = calcularBancoHoras(user, [], justificativas, [])
+    assert.equal(saldo, 30)
+  })
 })

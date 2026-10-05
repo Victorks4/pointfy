@@ -44,6 +44,16 @@ export async function rejeitarCompensacaoAction(
   })
 }
 
+export async function createAbonoHorasAction(input: unknown) {
+  return runAction<Justificativa>(async () => {
+    const result = await justificativaService.createAbonoHoras(input)
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/gestor')
+    revalidatePath('/dashboard/admin/justificativas')
+    return result
+  })
+}
+
 export async function uploadJustificativaArquivoAction(
   formData: FormData,
 ): Promise<ActionResult<{ path: string }>> {

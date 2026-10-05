@@ -463,7 +463,13 @@ export default function JustificativasPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant={j.tipo === 'atestado' ? 'secondary' : 'default'}>
-                            {j.tipo === 'atestado' ? 'Atestado' : j.tipo === 'compensacao_parcial' ? 'Compensação parcial' : 'Compensação'}
+                            {j.tipo === 'atestado'
+                              ? 'Atestado'
+                              : j.tipo === 'abono'
+                                ? 'Abono'
+                                : j.tipo === 'compensacao_parcial'
+                                  ? 'Compensação parcial'
+                                  : 'Compensação'}
                           </Badge>
                         </TableCell>
                         <TableCell>

@@ -5,15 +5,18 @@ import { mapJustificativa } from '@/lib/server/mappers'
 import { requireAuth, requireRole } from '@/lib/server/auth'
 import { assertTargetUserAccess } from '@/lib/server/access-control'
 import { parseInput } from '@/lib/validations/parse'
-import { compensacaoDecisionSchema, justificativaInputSchema } from '@/lib/validations/schemas'
+import { abonoInputSchema, compensacaoDecisionSchema, justificativaInputSchema } from '@/lib/validations/schemas'
 import { JUSTIFICATIVA_COLUMNS } from '@/lib/server/query-columns'
 import { signedUrlsForPaths, signedUrlForPath } from '@/lib/server/storage-signed-urls'
 import { MINUTOS_COMPENSACAO } from '@/lib/types'
 import type { Justificativa } from '@/lib/types'
 import type { JustificativaRow, ProfileRow } from '@/lib/server/db-types'
 import { isGestorOfEstagiario } from '@/lib/server/access-control'
-import { isCompensacaoTipo } from '@/lib/domain/ponto/compensacao-utils'
-import { formatMinutesToDisplay } from '@/lib/domain/ponto/time-utils'
+import {
+  formatAbonoMinutosLabel,
+  isCompensacaoTipo,
+} from '@/lib/domain/ponto/compensacao-utils'
+import { formatDate, formatMinutesToDisplay } from '@/lib/domain/ponto/time-utils'
 import { maybeSendAtestadoCopyToRh } from '@/lib/server/email/atestado-email-config'
 
 async function getEstagiarioTeamIds(
@@ -367,4 +370,47 @@ export async function listCompensacoesHistoricoGestor(gestorId: string) {
 
   if (error) throw error
   return mapJustificativasWithSignedUrls(supabase, data as JustificativaRow[], true)
+}
+
+export async function createAbonoHoras(input: unknown): Promise<Justificativa> {
+  const operador = await requireRole('gestor', 'admin')
+  const parsed = parseInput(abonoInputSchema, input)
+  const supabase = await createClient()
+  await assertTargetUserAccess(operador, parsed.estagiarioId, supabase)
+
+  const { data: alvo, error: pe } = await supabase
+    .from('profiles')
+    .select('id, cargo, nome')
+    .eq('id', parsed.estagiarioId)
+    .single()
+  if (pe || !alvo || alvo.cargo !== 'estagiario') {
+    throw new Error('Estagiário não encontrado')
+  }
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('justificativas')
+    .insert({
+      user_id: parsed.estagiarioId,
+      data: parsed.data,
+      tipo: 'abono',
+      descricao: parsed.descricao,
+      arquivo_path: null,
+      minutos_abatidos: parsed.minutos,
+      gestor_id: operador.id,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  const row = data as JustificativaRow
+
+  const label = formatAbonoMinutosLabel(parsed.minutos)
+  await admin.from('notificacoes').insert({
+    user_id: parsed.estagiarioId,
+    titulo: 'Abono de horas registrado',
+    mensagem: `${operador.nome} registrou um abono de ${label} em ${formatDate(parsed.data)}: ${parsed.descricao}`,
+  })
+
+  return mapJustificativa(row, null)
 }

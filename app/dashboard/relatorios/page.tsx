@@ -18,6 +18,7 @@ export default function RelatoriosPage() {
     usuarios,
     pontos,
     justificativas,
+    feriados,
     getBancoHorasPorPeriodo,
     isPresencaBloqueada,
   } = useData()
@@ -104,6 +105,7 @@ export default function RelatoriosPage() {
             gestorNome={gestorNome}
             pontos={pontos}
             justificativas={justificativas}
+            feriados={feriados}
             getBancoHorasPorPeriodo={getBancoHorasPorPeriodo}
             isPresencaBloqueada={isPresencaBloqueada}
             title={user.cargo === 'estagiario' ? 'Meu relatório mensal' : 'Relatório de ponto encerrado'}

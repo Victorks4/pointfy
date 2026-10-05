@@ -113,5 +113,57 @@ describe('relatorio-presenca', () => {
     assert.equal(rows[11].observacao, 'Compensação parcial (2h)')
     assert.equal(rows[6].data, '2026-03-07')
     assert.equal(rows[6].entrada1, null)
+    assert.match(rows[6].observacao ?? '', /sábado/i)
+  })
+
+  it('anota feriado e abono no relatório', () => {
+    const rows = buildRelatorioPresencaRows({
+      year: '2026',
+      month: '01',
+      userId: 'user-1',
+      user: {
+        id: 'user-1',
+        email: 'e@test.com',
+        matricula: '1',
+        nome: 'Teste',
+        cargo: 'estagiario',
+        departamento: 'X',
+        cargaHorariaSemanal: 1800,
+        dataInicioContrato: null,
+        dataFimContrato: null,
+        dataInicioRecesso1: null,
+        dataFimRecesso1: null,
+        dataInicioRecesso2: null,
+        dataFimRecesso2: null,
+        mustChangePassword: false,
+        ativo: true,
+        createdAt: '',
+      },
+      pontos: [],
+      justificativas: [
+        {
+          id: 'a1',
+          userId: 'user-1',
+          data: '2026-01-05',
+          tipo: 'abono',
+          descricao: 'Ajuste RH',
+          arquivoUrl: null,
+          minutosAbatidos: 120,
+          createdAt: '',
+        },
+      ],
+      feriados: [
+        {
+          id: 'f1',
+          data: '2026-01-01',
+          nome: 'Ano Novo',
+          tipo: 'nacional',
+          recorrente: true,
+          createdAt: '',
+        },
+      ],
+    })
+    assert.match(rows[0].observacao ?? '', /Ano Novo/)
+    assert.match(rows[4].observacao ?? '', /Abono/)
   })
 })

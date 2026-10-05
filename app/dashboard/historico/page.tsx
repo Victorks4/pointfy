@@ -45,6 +45,7 @@ export default function HistoricoPage() {
     getBancoHorasPorPeriodo,
     getActivePontoConfig,
     isPresencaBloqueada,
+    feriados,
   } = useData()
   const activeConfig = getActivePontoConfig()
   const searchParams = useSearchParams()
@@ -227,6 +228,7 @@ export default function HistoricoPage() {
             gestorNome={gestorNomeRelatorio}
             pontos={pontos}
             justificativas={justificativas}
+            feriados={feriados}
             getBancoHorasPorPeriodo={getBancoHorasPorPeriodo}
             isPresencaBloqueada={isPresencaBloqueada}
             title="Relatório de ponto encerrado"

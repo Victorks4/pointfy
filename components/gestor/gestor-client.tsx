@@ -19,6 +19,7 @@ import {
   formatMinutesToDisplay,
   getTodayString,
   calcularSequenciaAtual,
+  isUserInRecessPeriod,
 } from '@/lib/domain/ponto/time-utils'
 import { Calendar, Clock, FileText, Bell, User, TrendingUp, TrendingDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -32,6 +33,12 @@ import {
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { AbonoHorasForm } from '@/components/justificativas/abono-horas-form'
+import { formatAbonoMinutosLabel, isAbonoTipo } from '@/lib/domain/ponto/compensacao-utils'
+import {
+  GestorRecessosEstagiarioCard,
+  GestorRecessosVinculadosCard,
+} from '@/components/gestor/gestor-recessos'
 
 const MESES = [
   { value: '01', label: 'Janeiro' },
@@ -79,6 +86,7 @@ export default function GestorDashboardPage() {
     getCompensacoesHistoricoGestor,
     aprovarCompensacao,
     rejeitarCompensacao,
+    createAbonoHoras,
     usuarios,
   } = useData()
 
@@ -90,6 +98,7 @@ export default function GestorDashboardPage() {
   const [selectedYear, setSelectedYear] = useState(() => String(new Date().getFullYear()))
 
   const vinculados = user ? getEstagiariosDoGestor(user.id) : []
+  const hoje = getTodayString()
 
   useEffect(() => {
     setActiveTab(parseGestorTab(searchParams.get('tab')))
@@ -181,45 +190,53 @@ export default function GestorDashboardPage() {
         data-fy-anchor="fy-gestor-panel"
         className="flex flex-1 flex-col gap-4 p-4 md:flex-row md:p-6 md:gap-6"
       >
-        <Card className="md:w-72 shrink-0 border-border/80 flex flex-col min-h-0 max-h-[min(70vh,32rem)]">
-          <CardHeader className="pb-2 shrink-0">
-            <CardTitle className="text-base flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              Vinculados a você
-            </CardTitle>
-            <CardDescription>Selecione um estagiário para acompanhar</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0 flex-1 min-h-0 overflow-hidden">
-            {vinculados.length === 0 ? (
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Nenhum estagiário vinculado. Peça ao administrador para associar estagiários ao seu perfil em
-                Usuários.
-              </p>
-            ) : (
-              <ScrollArea className="h-full max-h-[min(60vh,28rem)] pr-3 [&_[data-slot=scroll-area-thumb]]:bg-muted-foreground/50">
-                <ul className="flex flex-col gap-1">
-                  {vinculados.map((e) => (
-                    <li key={e.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedId(e.id)}
-                        className={cn(
-                          'w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
-                          selectedId === e.id
-                            ? 'border-primary bg-primary/5 text-foreground'
-                            : 'border-transparent bg-muted/40 hover:bg-muted/70 text-foreground',
-                        )}
-                      >
-                        <span className="font-medium block truncate">{e.nome}</span>
-                        <span className="text-xs text-muted-foreground truncate block">{e.email}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-4 md:w-72 shrink-0 min-h-0">
+          <Card className="border-border/80 flex flex-col min-h-0 max-h-[min(70vh,32rem)]">
+            <CardHeader className="pb-2 shrink-0">
+              <CardTitle className="text-base flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                Vinculados a você
+              </CardTitle>
+              <CardDescription>Selecione um estagiário para acompanhar</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0 flex-1 min-h-0 overflow-hidden">
+              {vinculados.length === 0 ? (
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Nenhum estagiário vinculado. Peça ao administrador para associar estagiários ao seu perfil em
+                  Usuários.
+                </p>
+              ) : (
+                <ScrollArea className="h-full max-h-[min(60vh,28rem)] pr-3 [&_[data-slot=scroll-area-thumb]]:bg-muted-foreground/50">
+                  <ul className="flex flex-col gap-1">
+                    {vinculados.map((e) => (
+                      <li key={e.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(e.id)}
+                          className={cn(
+                            'w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
+                            selectedId === e.id
+                              ? 'border-primary bg-primary/5 text-foreground'
+                              : 'border-transparent bg-muted/40 hover:bg-muted/70 text-foreground',
+                          )}
+                        >
+                          <span className="font-medium block truncate">{e.nome}</span>
+                          <span className="text-xs text-muted-foreground truncate block">{e.email}</span>
+                          {isUserInRecessPeriod(hoje, e) ? (
+                            <Badge variant="secondary" className="mt-1.5 text-[10px] px-1.5 py-0">
+                              Em recesso
+                            </Badge>
+                          ) : null}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+          <GestorRecessosVinculadosCard estagiarios={vinculados} />
+        </div>
 
         <div className="flex-1 min-w-0 space-y-4">
           {!selected ? (
@@ -327,6 +344,7 @@ export default function GestorDashboardPage() {
                       </CardContent>
                     </Card>
                   </div>
+                  <GestorRecessosEstagiarioCard estagiario={selected} />
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">Últimos registros</CardTitle>
@@ -522,6 +540,48 @@ export default function GestorDashboardPage() {
                 </TabsContent>
 
                 <TabsContent value="justificativas" className="mt-4 space-y-4">
+                  <AbonoHorasForm
+                    estagiarios={vinculados}
+                    selectedEstagiarioId={selected?.id}
+                    onEstagiarioChange={(id) => setSelectedId(id)}
+                    onSubmit={createAbonoHoras}
+                  />
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Abonos registrados</CardTitle>
+                      <CardDescription>
+                        Ajustes de saldo feitos por você ou pelo administrador
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {justificativas.filter((j) => isAbonoTipo(j.tipo)).length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Nenhum abono para este estagiário.
+                        </p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {justificativas
+                            .filter((j) => isAbonoTipo(j.tipo))
+                            .map((j) => (
+                              <li key={j.id} className="text-sm border rounded-md p-3">
+                                <div className="flex flex-wrap gap-2 items-center mb-1">
+                                  <Badge variant="secondary">Abono</Badge>
+                                  <span className="font-medium">
+                                    {formatAbonoMinutosLabel(j.minutosAbatidos)}
+                                  </span>
+                                  <span className="text-muted-foreground text-xs">
+                                    {formatDate(j.data)}
+                                  </span>
+                                </div>
+                                <p>{j.descricao}</p>
+                              </li>
+                            ))}
+                        </ul>
+                      )}
+                    </CardContent>
+                  </Card>
+
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">Compensações pendentes de aprovação</CardTitle>

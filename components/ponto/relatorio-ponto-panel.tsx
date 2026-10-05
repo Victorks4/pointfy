@@ -10,7 +10,7 @@ import { LABELS } from '@/lib/constants/labels'
 import { emptyLabel } from '@/lib/domain/shared/display-utils'
 import { buildRelatorioPresencaRows } from '@/lib/domain/relatorios/relatorio-presenca'
 import { formatMinutesToDisplay, isMesEncerrado } from '@/lib/domain/ponto/time-utils'
-import type { Justificativa, PontoRegistro, User } from '@/lib/types'
+import type { Feriado, Justificativa, PontoRegistro, User } from '@/lib/types'
 import { Download, FileBarChart2, Info, Loader2, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -34,6 +34,7 @@ type RelatorioPontoPanelProps = {
   gestorNome?: string | null
   pontos: PontoRegistro[]
   justificativas: Justificativa[]
+  feriados?: Feriado[]
   getBancoHorasPorPeriodo: (userId: string, year: string, month: string) => number
   isPresencaBloqueada: (userId: string, data: string) => boolean
   title?: string
@@ -47,6 +48,7 @@ export function RelatorioPontoPanel({
   gestorNome,
   pontos,
   justificativas,
+  feriados = [],
   getBancoHorasPorPeriodo,
   isPresencaBloqueada,
   title = 'Relatório mensal de presença',
@@ -80,10 +82,12 @@ export function RelatorioPontoPanel({
       year: selectedYear,
       month: selectedMonth,
       userId: targetUser.id,
+      user: targetUser,
       pontos: pontos.filter(
         (ponto) => ponto.userId === targetUser.id && !isPresencaBloqueada(targetUser.id, ponto.data),
       ),
       justificativas,
+      feriados,
     })
     return {
       registros: pontosPeriodo.length,
@@ -96,6 +100,7 @@ export function RelatorioPontoPanel({
     targetUser.id,
     pontos,
     justificativas,
+    feriados,
     periodoKey,
     selectedYear,
     selectedMonth,

@@ -1,7 +1,13 @@
-import { compensacaoAfetaSaldo, compensacaoTipoLabel } from '@/lib/domain/ponto/compensacao-utils'
+import {
+  abonoAfetaSaldo,
+  compensacaoAfetaSaldo,
+  compensacaoTipoLabel,
+  formatAbonoMinutosLabel,
+} from '@/lib/domain/ponto/compensacao-utils'
+import { getAnotacaoDiaNaoUtil } from '@/lib/domain/ponto/dia-calendario'
 import { ANOTACAO_DATA_POSTERIOR } from '@/lib/constants/labels'
 import { formatMinutesToDisplay } from '@/lib/domain/ponto/time-utils'
-import type { Justificativa, PontoRegistro } from '@/lib/types'
+import type { Feriado, Justificativa, PontoRegistro, User } from '@/lib/types'
 import type { PontoDetalhe } from '@/lib/pdf/relatorios'
 
 export function stripAnotacaoDataPosterior(observacao: string | null | undefined): string | null {
@@ -46,8 +52,22 @@ function getCompensacaoObservacoes(day: string, justificativas: Justificativa[])
   return notes
 }
 
-function mergeObservacao(observacao: string | null | undefined, compensacaoNotes: string[]): string | null {
-  const parts = [stripAnotacaoDataPosterior(observacao), ...compensacaoNotes].filter(Boolean) as string[]
+function getAbonoObservacoes(day: string, justificativas: Justificativa[]): string[] {
+  const notes: string[] = []
+  for (const j of justificativas) {
+    if (!abonoAfetaSaldo(j) || j.data !== day) continue
+    const label = formatAbonoMinutosLabel(j.minutosAbatidos)
+    const motivo = j.descricao?.trim()
+    notes.push(motivo ? `Abono ${label}: ${motivo}` : `Abono ${label}`)
+  }
+  return notes
+}
+
+function mergeObservacao(
+  observacao: string | null | undefined,
+  extraNotes: string[],
+): string | null {
+  const parts = [stripAnotacaoDataPosterior(observacao), ...extraNotes].filter(Boolean) as string[]
   return parts.length > 0 ? parts.join('. ') : null
 }
 
@@ -55,10 +75,12 @@ export function buildRelatorioPresencaRows(params: {
   year: string
   month: string
   userId: string
+  user?: User | null
   pontos: PontoRegistro[]
   justificativas: Justificativa[]
+  feriados?: Feriado[]
 }): PontoDetalhe[] {
-  const { year, month, userId, pontos, justificativas } = params
+  const { year, month, userId, user, pontos, justificativas, feriados = [] } = params
   const pontosMap = new Map(
     pontos.filter((ponto) => ponto.userId === userId).map((ponto) => [ponto.data, ponto]),
   )
@@ -67,6 +89,13 @@ export function buildRelatorioPresencaRows(params: {
   return getMonthDateKeys(year, month).map((data) => {
     const ponto = pontosMap.get(data)
     const compensacaoNotes = getCompensacaoObservacoes(data, userJustificativas)
+    const abonoNotes = getAbonoObservacoes(data, userJustificativas)
+    const calendarioNote = getAnotacaoDiaNaoUtil({ dateKey: data, feriados, user })
+    const extraNotes = [
+      ...compensacaoNotes,
+      ...abonoNotes,
+      ...(calendarioNote ? [calendarioNote] : []),
+    ]
 
     if (ponto) {
       return {
@@ -76,7 +105,7 @@ export function buildRelatorioPresencaRows(params: {
         entrada2: ponto.entrada2,
         saida2: ponto.saida2,
         totalMinutos: ponto.totalMinutos,
-        observacao: mergeObservacao(ponto.observacao, compensacaoNotes),
+        observacao: mergeObservacao(ponto.observacao, extraNotes),
       }
     }
 
@@ -87,7 +116,7 @@ export function buildRelatorioPresencaRows(params: {
       entrada2: null,
       saida2: null,
       totalMinutos: 0,
-      observacao: compensacaoNotes.length > 0 ? compensacaoNotes.join('. ') : null,
+      observacao: extraNotes.length > 0 ? extraNotes.join('. ') : null,
     }
   })
 }

@@ -1,9 +1,6 @@
 import { isPresencaBloqueada } from '@/lib/domain/ponto/presenca-bloqueio'
 import { isUserInRecessPeriod } from '@/lib/domain/ponto/time-utils'
-import {
-  compensacaoAfetaSaldo,
-  minutosCompensacaoEfetivos,
-} from '@/lib/domain/ponto/compensacao-utils'
+import { minutosAjusteSaldoEfetivos } from '@/lib/domain/ponto/compensacao-utils'
 import type {
   PontoRegistro,
   Justificativa,
@@ -29,11 +26,11 @@ export function calcularBancoHoras(
   const totalCompensado = userJustificativas
     .filter(
       (j) =>
-        compensacaoAfetaSaldo(j) &&
+        minutosAjusteSaldoEfetivos(j) !== 0 &&
         !isPresencaBloqueada(bloqueios, user.id, j.data) &&
         !isUserInRecessPeriod(j.data, user),
     )
-    .reduce((acc, j) => acc + minutosCompensacaoEfetivos(j), 0)
+    .reduce((acc, j) => acc + minutosAjusteSaldoEfetivos(j), 0)
 
   const diasTrabalhados = userPontos.length
   const cargaDiaria = user.cargaHorariaSemanal / 5
@@ -70,8 +67,8 @@ export function calcularBancoHorasPorPeriodo(
 
   const totalTrabalhado = pontosNoPeriodo.reduce((acc, p) => acc + p.totalMinutos, 0)
   const totalCompensado = justificativasNoPeriodo
-    .filter((j) => compensacaoAfetaSaldo(j))
-    .reduce((acc, j) => acc + minutosCompensacaoEfetivos(j), 0)
+    .filter((j) => minutosAjusteSaldoEfetivos(j) !== 0)
+    .reduce((acc, j) => acc + minutosAjusteSaldoEfetivos(j), 0)
 
   const diasTrabalhados = pontosNoPeriodo.length
   const cargaDiaria = user.cargaHorariaSemanal / 5

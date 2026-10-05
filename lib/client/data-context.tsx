@@ -29,6 +29,7 @@ import {
 import { createPontoAction, updatePontoAction } from '@/app/actions/pontos'
 import {
   createJustificativaAction,
+  createAbonoHorasAction,
   aprovarCompensacaoAction,
   rejeitarCompensacaoAction,
 } from '@/app/actions/justificativas'
@@ -82,6 +83,12 @@ interface DataContextType {
   addJustificativa: (
     justificativa: Omit<Justificativa, 'id' | 'createdAt'>,
   ) => Promise<ActionResult<Justificativa>>
+  createAbonoHoras: (input: {
+    estagiarioId: string
+    data: string
+    minutos: number
+    descricao: string
+  }) => Promise<ActionResult<Justificativa>>
   getJustificativasByUser: (userId: string) => Justificativa[]
   getJustificativasVisiveisRh: () => Justificativa[]
   aprovarCompensacao: (
@@ -333,6 +340,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [refreshJustificativas],
   )
 
+  const createAbonoHoras = useCallback(
+    async (input: {
+      estagiarioId: string
+      data: string
+      minutos: number
+      descricao: string
+    }) => {
+      const result = await createAbonoHorasAction(input)
+      if (result.success) await refreshJustificativas()
+      return result
+    },
+    [refreshJustificativas],
+  )
+
   const aprovarCompensacao = useCallback(
     async (
       _gestorId: string,
@@ -399,6 +420,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       justificativas.filter(
         (j) =>
           j.tipo === 'atestado' ||
+          j.tipo === 'abono' ||
           (isCompensacaoTipo(j.tipo) && compensacaoAfetaSaldo(j)),
       ),
     [justificativas],
@@ -637,6 +659,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         getPontoByDate,
         justificativas,
         addJustificativa,
+        createAbonoHoras,
         getJustificativasByUser,
         getJustificativasVisiveisRh,
         aprovarCompensacao,
@@ -690,6 +713,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       getPontoByDate,
       justificativas,
       addJustificativa,
+      createAbonoHoras,
       getJustificativasByUser,
       getJustificativasVisiveisRh,
       aprovarCompensacao,

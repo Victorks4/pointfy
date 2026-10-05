@@ -27,7 +27,7 @@ export const pontoUpdateSchema = pontoInputSchema.partial()
 export const justificativaInputSchema = z
   .object({
     data: z.string().regex(dateRegex),
-    tipo: z.enum(['atestado', 'compensacao', 'compensacao_parcial']),
+    tipo: z.enum(['atestado', 'compensacao', 'compensacao_parcial', 'abono']),
     descricao: z.string().min(1),
     arquivoPath: z.string().nullable().optional(),
     dataCompensacao: z.string().regex(dateRegex).nullable().optional(),
@@ -53,6 +53,17 @@ export const justificativaInputSchema = z
       }
     }
   })
+
+export const abonoInputSchema = z.object({
+  estagiarioId: z.string().uuid(),
+  data: z.string().regex(dateRegex),
+  minutos: z
+    .number()
+    .int()
+    .refine((n) => n !== 0, { message: 'Informe um valor de horas diferente de zero' })
+    .refine((n) => Math.abs(n) <= 24 * 60, { message: 'Máximo de 24h por abono' }),
+  descricao: z.string().min(3, 'Descreva o motivo do abono'),
+})
 
 const recessoPeriodSchema = z
   .object({

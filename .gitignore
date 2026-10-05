@@ -22,6 +22,7 @@ tsconfig.tsbuildinfo
 .DS_Store
 .vercel
 .env*
+!.env.example
 !e2e/credentials.env.example
 e2e/credentials.env
 scripts/db/migrate.env

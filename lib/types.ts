@@ -51,7 +51,7 @@ export type StatusCompensacao =
   | 'aprovada_gestor'
   | 'rejeitada_gestor'
 
-export type JustificativaTipo = 'atestado' | 'compensacao' | 'compensacao_parcial'
+export type JustificativaTipo = 'atestado' | 'compensacao' | 'compensacao_parcial' | 'abono'
 
 export interface Justificativa {
   id: string
